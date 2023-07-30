@@ -8,7 +8,7 @@
 import os
 import torch
 import unittest
-from shuffled_key import key2txyz, txyz2key
+from hextree.hextree.shuffled_key import key2txyz, txyz2key
 
 
 class ShuffledKeyTest(unittest.TestCase):
