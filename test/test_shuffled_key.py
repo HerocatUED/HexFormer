@@ -3,12 +3,16 @@
 # Copyright (c) 2022 Peng-Shuai Wang <wangps@hotmail.com>
 # Licensed under The MIT License [see LICENSE for details]
 # Written by Peng-Shuai Wang
+# Modified by Xiang Wang
 # --------------------------------------------------------
 
 import os
 import torch
 import unittest
-from shuffled_key import key2txyz, txyz2key
+
+import sys 
+sys.path.append('..')
+from hextree.shuffled_key import key2txyz, txyz2key
 
 
 class ShuffledKeyTest(unittest.TestCase):
