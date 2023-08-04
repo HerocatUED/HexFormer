@@ -110,19 +110,19 @@ class MLP(torch.nn.Module):
     return data
 
 
-class OctreeDWConvBn(torch.nn.Module):
+# class OctreeDWConvBn(torch.nn.Module):
 
-  def __init__(self, in_channels: int, kernel_size: List[int] = [3],
-               stride: int = 1, nempty: bool = False):
-    super().__init__()
-    self.conv = dwconv.OctreeDWConv(
-        in_channels, kernel_size, nempty, use_bias=False)
-    self.bn = torch.nn.BatchNorm1d(in_channels)
+#   def __init__(self, in_channels: int, kernel_size: List[int] = [3],
+#                stride: int = 1, nempty: bool = False):
+#     super().__init__()
+#     self.conv = dwconv.OctreeDWConv(
+#         in_channels, kernel_size, nempty, use_bias=False)
+#     self.bn = torch.nn.BatchNorm1d(in_channels)
 
-  def forward(self, data: torch.Tensor, octree: Octree, depth: int):
-    out = self.conv(data, octree, depth)
-    out = self.bn(out)
-    return out
+#   def forward(self, data: torch.Tensor, octree: Octree, depth: int):
+#     out = self.conv(data, octree, depth)
+#     out = self.bn(out)
+#     return out
 
 
 class RPE(torch.nn.Module):

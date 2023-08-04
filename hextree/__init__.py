@@ -1,2 +1,2 @@
-import points
-import shuffled_key
+from points import *
+from shuffled_key import *
