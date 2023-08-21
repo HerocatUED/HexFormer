@@ -253,12 +253,12 @@ class OctFormerBlock(torch.nn.Module):
         self.drop_path = ocnn.nn.OctreeDropPath(drop_path, nempty)
         self.cpe = OctreeDWConvBn(dim, nempty=nempty)
 
-    def forward(self, data: torch.Tensor, octree: OctreeT, depth: int):
-        data = self.cpe(data, octree, depth) + data
-        attn = self.attention(self.norm1(data), octree, depth)
-        data = data + self.drop_path(attn, octree, depth)
+    def forward(self, data: torch.Tensor, hextree: HextreeT, depth: int):
+        data = self.cpe(data, hextree, depth) + data
+        attn = self.attention(self.norm1(data), hextree, depth)
+        data = data + self.drop_path(attn, hextree, depth)
         ffn = self.mlp(self.norm2(data))
-        data = data + self.drop_path(ffn, octree, depth)
+        data = data + self.drop_path(ffn, hextree, depth)
         return data
 
 
@@ -277,28 +277,26 @@ class OctFormerStage(torch.nn.Module):
         self.interval = interval  # normalization interval
         self.num_norms = (num_blocks - 1) // self.interval
 
-        self.blocks = torch.nn.ModuleList([octformer_block(
-            dim=dim, num_heads=num_heads, patch_size=patch_size,
-            dilation=1 if (i % 2 == 0) else dilation,
-            mlp_ratio=mlp_ratio, qkv_bias=qkv_bias, qk_scale=qk_scale,
-            attn_drop=attn_drop, proj_drop=proj_drop,
-            drop_path=drop_path[i] if isinstance(
-                drop_path, list) else drop_path,
-            nempty=nempty, activation=activation) for i in range(num_blocks)])
+        self.blocks = torch.nn.ModuleList([octformer_block(dim=dim, num_heads=num_heads, patch_size=patch_size,
+                                                           dilation=1 if (i % 2 == 0) else dilation,
+                                                           mlp_ratio=mlp_ratio, qkv_bias=qkv_bias, qk_scale=qk_scale, attn_drop=attn_drop, proj_drop=proj_drop,
+                                                           drop_path=drop_path[i] if isinstance(drop_path, list) else drop_path,
+                                                           nempty=nempty, activation=activation) for i in range(num_blocks)])
         # self.norms = torch.nn.ModuleList([
         #     torch.nn.BatchNorm1d(dim) for _ in range(self.num_norms)])
 
-    def forward(self, data: torch.Tensor, octree: OctreeT, depth: int):
+    def forward(self, data: torch.Tensor, hextree: HextreeT, depth: int):
         for i in range(self.num_blocks):
             if self.use_checkpoint and self.training:
-                data = checkpoint(self.blocks[i], data, octree, depth)
+                data = checkpoint(self.blocks[i], data, hextree, depth)
             else:
-                data = self.blocks[i](data, octree, depth)
+                data = self.blocks[i](data, hextree, depth)
             # if i % self.interval == 0 and i != 0:
             #   data = self.norms[(i - 1) // self.interval](data)
         return data
 
 
+# TODO
 class PatchEmbed(torch.nn.Module):
 
     def __init__(self, in_channels: int = 3, dim: int = 96, num_down: int = 2,
