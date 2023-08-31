@@ -8,10 +8,10 @@
 import torch
 from typing import Optional
 
-from ocnn.octree import Octree
+from ..hextree import Hextree
 
 
-class OctreeDropPath(torch.nn.Module):
+class HextreeDropPath(torch.nn.Module):
   r'''Drop paths (Stochastic Depth) per sample when applied in main path of 
   residual blocks, following the logic of :func:`timm.models.layers.DropPath`.
 
@@ -30,14 +30,14 @@ class OctreeDropPath(torch.nn.Module):
     self.nempty = nempty
     self.scale_by_keep = scale_by_keep
 
-  def forward(self, data: torch.Tensor, octree: Octree, depth: int,
+  def forward(self, data: torch.Tensor, hextree: Hextree, depth: int,
               batch_id: Optional[torch.Tensor] = None):
     r''''''
 
     if self.drop_prob <= 0.0 or not self.training:
       return data
 
-    batch_size = octree.batch_size
+    batch_size = hextree.batch_size
     keep_prob = 1 - self.drop_prob
     rnd_tensor = torch.rand(batch_size, 1, dtype=data.dtype, device=data.device)
     rnd_tensor = torch.floor(rnd_tensor + keep_prob)
@@ -45,7 +45,7 @@ class OctreeDropPath(torch.nn.Module):
       rnd_tensor.div_(keep_prob)
 
     if batch_id is None:
-      batch_id = octree.batch_id(depth, self.nempty)
+      batch_id = hextree.batch_id(depth, self.nempty)
     drop_mask = rnd_tensor[batch_id]
     output = data * drop_mask
     return output
