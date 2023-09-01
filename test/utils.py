@@ -9,7 +9,6 @@ import os
 import torch
 import numpy as np
 
-# import ocnn
 import hextree as ht
 
 
