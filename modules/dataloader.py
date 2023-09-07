@@ -8,6 +8,7 @@ index_to_label = np.arange(0, 49, dtype='int32')
 label_to_index = np.arange(0, 49, dtype='int32')
 index_to_class = [str(i) for i in range(0, 49)]
 
+
 def index_to_label_func(x):
     return index_to_label[x]
 
@@ -16,7 +17,7 @@ index_to_label_vec_func = np.vectorize(index_to_label_func)
 
 
 class SegDataset(Dataset):
-    def __init__(self, root='data/pc', frames_per_clip=3, num_points=8192, train=True, train_data=1):
+    def __init__(self, root: str, frames_per_clip=3, num_points=8192, train=True):
         super(SegDataset, self).__init__()
 
         self.frames_per_clip = frames_per_clip
@@ -27,7 +28,7 @@ class SegDataset(Dataset):
         # pcd       (750, 300, 8192, 3)
         # center    (750, 300, 3)
         # semantic  (750, 300, 8192)
-        
+
         self.data_file = []
         if self.train:
             for filename in ['train1.h5', 'train2.h5', 'train3.h5', 'train4.h5']:
@@ -38,9 +39,12 @@ class SegDataset(Dataset):
                 self.data_file.append(h5py.File(root + '/' + filename, 'r'))
                 print(f'{filename}')
 
-
     def __len__(self):
-        leng = 2971 * 100 # 750 + 750 + 750 + 721
+        leng = 0
+        if self.train:
+            leng = 2971 * 100  # 750 + 750 + 750 + 721
+        else:
+            leng = 500 * 100
         return leng
 
     def read_training_data_point(self, index):
@@ -55,33 +59,35 @@ class SegDataset(Dataset):
             idx = int(index / 100)
             s = int(idx / 500)
             d = idx % 500
-        
+
         data = self.data_file[s]
-        pc = data['pcd'][d][frame_id:int(frame_id + self.frames_per_clip)]
+        pcd = data['pcd'][d][frame_id:int(frame_id + self.frames_per_clip)]
         rgb = data['pcd'][d][frame_id:int(frame_id + self.frames_per_clip)]
-        semantic = data['semantic'][d][frame_id:int(frame_id + self.frames_per_clip)]
+        semantic = data['semantic'][d][frame_id:int(
+            frame_id + self.frames_per_clip)]
         center_0 = data['center'][d][frame_id]
 
-        return pc, rgb, semantic, center_0
+        return pcd, rgb, semantic, center_0
 
-    def augment(self, pc, center):
+    def augment(self, pcd, center):
         flip = np.random.uniform(0, 1) > 0.5
         if flip:
-            pc = pc - center
-            jittered_data = np.clip(0.01 * np.random.randn(self.frames_per_clip, self.num_points, 3), -1 * 0.05, 0.05)
-            jittered_data += pc
-            pc = pc + center
+            pcd = pcd - center
+            jittered_data = np.clip(
+                0.01 * np.random.randn(self.frames_per_clip, self.num_points, 3), -1 * 0.05, 0.05)
+            jittered_data += pcd
+            pcd = pcd + center
 
         scale = np.random.uniform(0.8, 1.2)
-        pc = (pc - center) * scale + center
+        pcd = (pcd - center) * scale + center
 
         rot_axis = np.array([0, 1, 0])
         rot_angle = np.random.uniform(np.pi * -0.05, np.pi * 0.05)
         q = Quaternion(axis=rot_axis, angle=rot_angle)
         R = q.rotation_matrix
 
-        pc = np.dot(pc - center, R) + center
-        return pc
+        pcd = np.dot(pcd - center, R) + center
+        return pcd
 
     def label_conversion(self, semantic):
         labels = []
@@ -118,16 +124,18 @@ class SegDataset(Dataset):
         label = self.label_conversion(semantic)
         label = np.array(label)
         if self.train:
-            pc = self.augment(pc, center)
+            pcd = self.augment(pcd, center)
         rgb = np.swapaxes(rgb, 1, 2)
 
         return pc.astype(np.float32), rgb.astype(np.float32), label.astype(np.int64)
 
 
 if __name__ == '__main__':
-    
+
     print("Creating data loaders")
-    
-    datasets = SegDataset(root='/mnt/sdc/wangx/HOI4D_dataset/seg_data_h5', frames_per_clip=3, train=True)
-    
-    data_loader = torch.utils.data.DataLoader(datasets, batch_size=24, shuffle=True, num_workers=8, pin_memory=False)
+
+    datasets = SegDataset(
+        root='/mnt/sdc/wangx/HOI4D_dataset/seg_data_h5', frames_per_clip=3, train=True)
+
+    data_loader = torch.utils.data.DataLoader(
+        datasets, batch_size=24, shuffle=True, num_workers=8, pin_memory=False)
