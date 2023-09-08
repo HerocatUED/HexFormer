@@ -10,7 +10,7 @@ import torch
 import unittest
 
 from .utils import get_hextree
-from ..modules.octree_drop import HextreeDropPath
+from ..modules.hextree_drop import HextreeDropPath
 
 
 class HextreeDropTest(unittest.TestCase):

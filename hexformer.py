@@ -7,6 +7,7 @@
 
 import torch
 import hextree
+from modules.hextree_drop import HextreeDropPath
 
 from typing import Optional, List
 from torch.utils.checkpoint import checkpoint
@@ -112,21 +113,6 @@ class MLP(torch.nn.Module):
         data = self.fc2(data)
         data = self.drop(data)
         return data
-
-
-# class OctreeDWConvBn(torch.nn.Module):
-
-#   def __init__(self, in_channels: int, kernel_size: List[int] = [3],
-#                stride: int = 1, nempty: bool = False):
-#     super().__init__()
-#     self.conv = dwconv.OctreeDWConv(
-#         in_channels, kernel_size, nempty, use_bias=False)
-#     self.bn = torch.nn.BatchNorm1d(in_channels)
-
-#   def forward(self, data: torch.Tensor, octree: Octree, depth: int):
-#     out = self.conv(data, octree, depth)
-#     out = self.bn(out)
-#     return out
 
 
 class RPE(torch.nn.Module):  # TODO
@@ -250,7 +236,7 @@ class HexFormerBlock(torch.nn.Module):
                                          qk_scale, attn_drop, proj_drop, dilation)
         self.norm2 = torch.nn.LayerNorm(dim)
         self.mlp = MLP(dim, int(dim * mlp_ratio), dim, activation, proj_drop)
-        self.drop_path = ocnn.nn.OctreeDropPath(drop_path, nempty)
+        self.drop_path = HextreeDropPath(drop_path, nempty)
         self.cpe = OctreeDWConvBn(dim, nempty=nempty)
 
     def forward(self, data: torch.Tensor, hextree: HextreeT, depth: int):
