@@ -1,5 +1,9 @@
 # --------------------------------------------------------
-# Modified from ocnn-pytorch/ocnn/octree/shuffled_key.py
+# Octree-based Sparse Convolutional Neural Networks
+# Copyright (c) 2022 Peng-Shuai Wang <wangps@hotmail.com>
+# Licensed under The MIT License [see LICENSE for details]
+# Written by Peng-Shuai Wang
+# Hextree version modified by Xiang Wang
 # --------------------------------------------------------
 
 import torch

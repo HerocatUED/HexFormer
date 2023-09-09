@@ -1,3 +1,6 @@
+# Written by Xiang Wang
+# Modified from https://github.com/hoi4d/HOI4D_SemSeg/blob/main/datasets/seg_base.py
+
 import numpy as np
 import torch
 from pyquaternion import Quaternion
