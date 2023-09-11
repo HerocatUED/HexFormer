@@ -9,9 +9,11 @@
 import os
 import torch
 import unittest
+import sys
 
-from .utils import get_hextree
-from ..modules.hextree_drop import HextreeDropPath
+from utils import get_hextree
+sys.path.append('..')
+from modules.hextree_drop import HextreeDropPath
 
 
 class HextreeDropTest(unittest.TestCase):
