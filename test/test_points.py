@@ -14,7 +14,7 @@ import math
 
 import sys 
 sys.path.append("..") 
-import hextree.points
+import hextree
 
 
 class TestPoints(unittest.TestCase):
@@ -25,7 +25,7 @@ class TestPoints(unittest.TestCase):
         normals = torch.Tensor([[s2, -s2, 0], [-s3, -s3, s3]])
         labels = torch.Tensor([[1], [2]])
         features = torch.rand(2, 4)
-        return hextree.points.Points(points, normals, features, labels)
+        return hextree.Points(points, normals, features, labels)
 
     def test_orient_normal(self):
         point_cloud = self.init_points()
@@ -42,14 +42,14 @@ class TestPoints(unittest.TestCase):
         points = point_cloud.points.clone()
         point_cloud.scale_xyz(factor)
         points[:, 1:] *= 0.5
-        self.assertTrue((point_cloud.normals == normals).all() &
-                        (point_cloud.points == points).all())
+        self.assertTrue(torch.allclose(point_cloud.normals, F.normalize(
+            normals/factor)) & torch.equal(point_cloud.points, points))
         factor_t = torch.Tensor([0.3, 0.5, 0.5, 0.5])
         point_cloud.scale_xyz(1.0 / factor)
         point_cloud.scale_txyz(factor_t)
         points[:, 0] *= 0.3
-        self.assertTrue((point_cloud.normals == normals).all() &
-                        (point_cloud.points == points).all())
+        self.assertTrue(torch.allclose(point_cloud.normals, F.normalize(
+            normals/factor)) & torch.equal(point_cloud.points, points))
 
     def test_scale(self):
         point_cloud = self.init_points()

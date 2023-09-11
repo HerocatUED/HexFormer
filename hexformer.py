@@ -7,7 +7,7 @@
 # --------------------------------------------------------
 
 import torch
-import hextree
+from hextree import Hextree
 from modules.hextree_drop import HextreeDropPath
 
 from typing import Optional, List

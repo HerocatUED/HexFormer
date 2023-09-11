@@ -1,0 +1,103 @@
+# --------------------------------------------------------
+# Octree-based Sparse Convolutional Neural Networks
+# Copyright (c) 2022 Peng-Shuai Wang <wangps@hotmail.com>
+# Licensed under The MIT License [see LICENSE for details]
+# Written by Peng-Shuai Wang
+# Modified by Ruihuan Wang
+# --------------------------------------------------------
+
+import os
+import torch 
+import numpy as np 
+import unittest
+import sys 
+sys.path.append('..')
+import hextree as hextree
+
+
+class TestHextree(unittest.TestCase):
+
+    def init_points(self):
+        points = torch.Tensor([[0, -1, -1, -1], [0, 0, 0, -1], [8, 0.0625, 0.0625, -1]])
+        normals = torch.Tensor([[1, 0, 0], [-1, 0, 0], [0, 1, 0]])
+        features = torch.Tensor([[1, -1], [2, -2], [3, -3]])
+        labels = torch.Tensor([[0], [2], [2]])
+        return hextree.Points(points, normals, features, labels)
+    
+    def build_hextree(self, device):
+        point_cloud = self.init_points().to(device)
+        htree = hextree.Hextree(depth=5, full_depth=1, device=device)
+        htree.build_hextree(point_cloud)
+        htree = htree.to('cpu')
+
+        # test node number
+        nnum = torch.Tensor([1, 16, 32, 48, 48, 48])
+        nnum_nempty = torch.Tensor([1, 2, 3, 3, 3, 3])
+        self.assertTrue((htree.nnum == nnum).all())
+        self.assertTrue((htree.nnum_nempty == nnum_nempty).all())
+
+        # test the key
+        keys = [
+            torch.Tensor([0]),
+            torch.Tensor([0, 1, 2, 3, 4, 5, 6, 7, 8, 
+                          9, 10, 11, 12, 13, 14, 15]),
+            torch.Tensor([0, 1, 2, 3, 4, 5, 6, 7, 8, 
+                          9, 10, 11, 12, 13, 14, 15,
+                          96, 97, 98, 99, 100, 101, 102, 103, 
+                          104, 105, 106, 107, 108, 109, 110, 111]),
+            torch.Tensor([0, 1, 2, 3, 4, 5, 6, 7, 8, 
+                          9, 10, 11, 12, 13, 14, 15,
+                          1536, 1537, 1538, 1539, 1540, 1541, 1542, 1543, 
+                          1544, 1545, 1546, 1547, 1548, 1549, 1550, 1551,
+                          1664, 1665, 1666, 1667, 1668, 1669, 1670, 1671, 
+                          1672, 1673, 1674, 1675, 1676, 1677, 1678, 1679]),
+            torch.Tensor([0, 1, 2, 3, 4, 5, 6, 7, 8, 
+                          9, 10, 11, 12, 13, 14, 15,
+                          24576, 24577, 24578, 24579, 24580, 24581, 24582, 24583,
+                          24584, 24585, 24586, 24587, 24588, 24589, 24590, 24591,
+                          26624, 26625, 26626, 26627, 26628, 26629, 26630, 26631, 
+                          26632, 26633, 26634, 26635, 26636, 26637, 26638, 26639]),
+            torch.Tensor([0, 1, 2, 3, 4, 5, 6, 7, 8, 
+                          9, 10, 11, 12, 13, 14, 15,
+                          393216, 393217, 393218, 393219, 393220, 393221, 393222, 393223, 
+                          393224, 393225, 393226, 393227, 393228, 393229, 393230, 393231,
+                          425984, 425985, 425986, 425987, 425988, 425989, 425990, 425991, 
+                          425992, 425993, 425994, 425995, 425996, 425997, 425998, 425999])
+        ]
+        for d in range(6):
+            self.assertTrue((htree.keys[d][:, 1] == keys[d]).all())
+
+        # test the children 
+        children = [
+            torch.Tensor([0]),
+            torch.Tensor([0, -1, -1, -1, -1, -1, 1, -1, -1, -1, -1, -1, -1, -1, -1, -1]),
+            torch.Tensor([0, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+                          1, -1, -1, -1, -1, -1, -1, -1, 2, -1, -1, -1, -1, -1, -1, -1]),
+            torch.Tensor([0, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+                          1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+                          2, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1]),
+            torch.Tensor([0, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+                          1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+                          2, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1]),
+            torch.Tensor([0, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+                          1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+                          -1, -1, -1, -1, -1, -1, 2, -1, -1, -1, -1, -1, -1, -1, -1, -1]),
+        ]
+        for d in range(6):
+            self.assertTrue((htree.children[d] == children[d]).all())
+        
+        # test the signal
+        normals = torch.Tensor([[1., 0., 0.], [-1., 0., 0.], [0., 1., 0.]])
+        features = torch.Tensor([[1, -1], [2, -2], [3, -3]])
+        self.assertTrue((htree.normals[5] == normals).all())
+        self.assertTrue((htree.features[5] == features).all())
+    
+    def test_build_hextree(self):
+        self.build_hextree('cpu')
+        if torch.cuda.is_available():
+            self.build_hextree('cuda')
+
+
+if __name__ == "__main__":
+    os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+    unittest.main()
