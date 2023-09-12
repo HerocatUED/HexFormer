@@ -36,19 +36,19 @@ def save_xyz(filename: str, xyz: np.ndarray, color: Union[str, np.ndarray, None]
 
 def read_data(save_raw=True, **kwargs):
     # Read and save raw data
-    points_xyz = np.load('data/points.npy')     # (N, 300, 8192, 3)
-    semantic = np.load('data/semantic.npy')     # (N, 300, 8192)
+    points_xyz = np.load('../data/points.npy')     # (N, 300, 8192, 3)
+    semantic = np.load('../data/semantic.npy')     # (N, 300, 8192)
 
     if save_raw:
-        if not os.path.exists('data/raw'):
-            os.mkdir('data/raw')
+        if not os.path.exists('../data/raw'):
+            os.mkdir('../data/raw')
         for v, frs in zip(kwargs['video_id'], kwargs['frame_id']):
             for fr in frs:
                 mincoord = points_xyz[v].min(axis=(0, 1))
                 maxcoord = points_xyz[v].max(axis=(0, 1))
                 center = (mincoord + maxcoord) * 0.5
                 box_size = (maxcoord - mincoord).max() + 1.0e-6
-                save_xyz(f'data/raw/raw{v}_frame{fr+1}', (points_xyz[v, fr] - center) / box_size + 0.5, color=np.array([252, 233, 79]))  
+                save_xyz(f'../data/raw/raw{v}_frame{fr+1}', (points_xyz[v, fr] - center) / box_size + 0.5, color=np.array([252, 233, 79]))  
 
     # Translate data to txyz format
     n_video, t_video, n_point, _ = points_xyz.shape
@@ -82,8 +82,8 @@ def timing(pcd, depth=7, frame=16):
 def save_pcd(pcd, depth_testset=[5, 6, 7, 8, 9, 10], frame=8, color_mode: str='test_neigh'):
     # Save pointcloud decoded from hextree
 
-    if not os.path.exists('data/visualization'):
-        os.mkdir('data/visualization')
+    if not os.path.exists('../data/visualization'):
+        os.mkdir('../data/visualization')
     point_num = frame * 8192
     for depth in depth_testset:
         htree = hextree.Hextree(depth=depth).to(device)
@@ -126,7 +126,7 @@ def save_pcd(pcd, depth_testset=[5, 6, 7, 8, 9, 10], frame=8, color_mode: str='t
             filename = f'res_depth{depth}_frame{fr}'
             if color_mode.startswith('test_'):
                 filename += '_' + color_mode[5:]
-            save_xyz(f'data/visualization/{filename}', xyz, color)
+            save_xyz(f'../data/visualization/{filename}', xyz, color)
 
 if __name__ == '__main__':
     pcds = read_data(save_raw=True, video_id=[0], frame_id=[[0, 1, 2, 3, 4, 5, 6, 7]])
