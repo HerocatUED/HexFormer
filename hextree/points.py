@@ -299,28 +299,28 @@ class Points:
         else:
             raise ValueError
 
-    def merge_points(points: List['Points'], update_batch_info: bool = True):
-        r''' Merges a list of points into one batch.
+def merge_points(points: List['Points'], update_batch_info: bool = True):
+    r''' Merges a list of points into one batch.
 
-        Args:
-            points (List[Points]): A list of points to merge. The batch size of each
-                points in the list is assumed to be 1, and the :obj:`batch_size`, 
-                :obj:`batch_id`, and :obj:`batch_npt` in the points are ignored.
-        '''
+    Args:
+        points (List[Points]): A list of points to merge. The batch size of each
+            points in the list is assumed to be 1, and the :obj:`batch_size`, 
+            :obj:`batch_id`, and :obj:`batch_npt` in the points are ignored.
+    '''
 
-        out = Points(torch.zeros(1, 4))
-        out.points = torch.cat([p.points for p in points], dim=0)
-        if points[0].normals is not None:
-            out.normals = torch.cat([p.normals for p in points], dim=0)
-        if points[0].features is not None:
-            out.features = torch.cat([p.features for p in points], dim=0)
-        if points[0].labels is not None:
-            out.labels = torch.cat([p.labels for p in points], dim=0)
-        out.device = points[0].device
+    out = Points(torch.zeros(1, 4))
+    out.points = torch.cat([p.points for p in points], dim=0)
+    if points[0].normals is not None:
+        out.normals = torch.cat([p.normals for p in points], dim=0)
+    if points[0].features is not None:
+        out.features = torch.cat([p.features for p in points], dim=0)
+    if points[0].labels is not None:
+        out.labels = torch.cat([p.labels for p in points], dim=0)
+    out.device = points[0].device
 
-        if update_batch_info:
-            out.batch_size = len(points)
-            out.batch_npt = torch.Tensor([p.npt for p in points]).long()
-            out.batch_id = torch.cat([p.points.new_full((p.npt, 1), i)
-                                    for i, p in enumerate(points)], dim=0)
-        return out
+    if update_batch_info:
+        out.batch_size = len(points)
+        out.batch_npt = torch.Tensor([p.npt for p in points]).long()
+        out.batch_id = torch.cat([p.points.new_full((p.npt, 1), i)
+                                for i, p in enumerate(points)], dim=0)
+    return out
