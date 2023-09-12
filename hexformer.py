@@ -10,7 +10,7 @@ import torch
 from typing import Optional, List
 from torch.utils.checkpoint import checkpoint
 
-from hextree import Hextree
+from hextree import Hextree, Points, key2txyz, txyz2key
 from modules import HextreeDropPath
 
 
@@ -72,8 +72,7 @@ class HextreeT(Hextree):
     def build_rel_pos(self, depth: int):  # TODO
         key = self.key(depth, self.nempty)
         key = self.patch_partition(key, depth)
-        t, x, y, z, _ = hextree.key2txyz(
-            key, depth)  # shape of t/x/y/z: (N, 1)
+        t, x, y, z, _ = key2txyz(key, depth)  # shape of t/x/y/z: (N, 1)
         txyz = torch.stack([t, x, y, z], dim=1)  # (N, 4)
 
         txyz = txyz.view(-1, self.patch_size, 4)
@@ -116,38 +115,38 @@ class MLP(torch.nn.Module):
         return data
 
 
-class RPE(torch.nn.Module):  # TODO
+# class RPE(torch.nn.Module):  # TODO
 
-    def __init__(self, patch_size: int, num_heads: int, dilation: int = 1):
-        super().__init__()
-        self.patch_size = patch_size
-        self.num_heads = num_heads
-        self.dilation = dilation
-        self.pos_bnd = self.get_pos_bnd(patch_size)
-        self.rpe_num = 2 * self.pos_bnd + 1
-        self.rpe_table = torch.nn.Parameter(
-            torch.zeros(3*self.rpe_num, num_heads))
-        torch.nn.init.trunc_normal_(self.rpe_table, std=0.02)
+#     def __init__(self, patch_size: int, num_heads: int, dilation: int = 1):
+#         super().__init__()
+#         self.patch_size = patch_size
+#         self.num_heads = num_heads
+#         self.dilation = dilation
+#         self.pos_bnd = self.get_pos_bnd(patch_size)
+#         self.rpe_num = 2 * self.pos_bnd + 1
+#         self.rpe_table = torch.nn.Parameter(
+#             torch.zeros(3*self.rpe_num, num_heads))
+#         torch.nn.init.trunc_normal_(self.rpe_table, std=0.02)
 
-    def get_pos_bnd(self, patch_size: int):
-        return int(0.8 * patch_size * self.dilation**0.5)
+#     def get_pos_bnd(self, patch_size: int):
+#         return int(0.8 * patch_size * self.dilation**0.5)
 
-    def xyz2idx(self, xyz: torch.Tensor):
-        mul = torch.arange(3, device=xyz.device) * self.rpe_num
-        xyz = xyz.clamp(-self.pos_bnd, self.pos_bnd)
-        idx = xyz + (self.pos_bnd + mul)
-        return idx
+#     def xyz2idx(self, xyz: torch.Tensor):
+#         mul = torch.arange(3, device=xyz.device) * self.rpe_num
+#         xyz = xyz.clamp(-self.pos_bnd, self.pos_bnd)
+#         idx = xyz + (self.pos_bnd + mul)
+#         return idx
 
-    def forward(self, xyz):
-        idx = self.xyz2idx(xyz)
-        out = self.rpe_table.index_select(0, idx.reshape(-1))
-        out = out.view(idx.shape + (-1,)).sum(3)
-        out = out.permute(0, 3, 1, 2)  # (N, K, K, H) -> (N, H, K, K)
-        return out
+#     def forward(self, xyz):
+#         idx = self.xyz2idx(xyz)
+#         out = self.rpe_table.index_select(0, idx.reshape(-1))
+#         out = out.view(idx.shape + (-1,)).sum(3)
+#         out = out.permute(0, 3, 1, 2)  # (N, K, K, H) -> (N, H, K, K)
+#         return out
 
-    def extra_repr(self) -> str:
-        return 'num_heads={}, pos_bnd={}, dilation={}'.format(
-                self.num_heads, self.pos_bnd, self.dilation)  # noqa
+#     def extra_repr(self) -> str:
+#         return 'num_heads={}, pos_bnd={}, dilation={}'.format(
+#                 self.num_heads, self.pos_bnd, self.dilation)  # noqa
 
 
 class HextreeAttention(torch.nn.Module):
@@ -169,7 +168,7 @@ class HextreeAttention(torch.nn.Module):
         self.proj = torch.nn.Linear(dim, dim)
         self.proj_drop = torch.nn.Dropout(proj_drop)
         self.softmax = torch.nn.Softmax(dim=-1)
-        self.rpe = RPE(patch_size, num_heads, dilation) if use_rpe else None
+        # self.rpe = RPE(patch_size, num_heads, dilation) if use_rpe else None
 
     def forward(self, data: torch.Tensor, hextree: HextreeT, depth: int):
         H = self.num_heads
