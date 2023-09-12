@@ -1,3 +1,4 @@
+# dataset HOI4D
 # Written by Xiang Wang
 # Modified from https://github.com/hoi4d/HOI4D_SemSeg/blob/main/datasets/seg_base.py
 
@@ -27,9 +28,10 @@ class SegDataset(Dataset):
         self.train = train
         self.num_points = num_points
 
-        # self.pcd = [] # (*, 750, 300, 8192, 3)
-        # self.center = [] # (*, 750, 300, 3)
-        # self.semantic = [] # (*, 750, 300, 8192)
+        # for a single .h5 file
+        # pcd      (750, 300, 8192, 3)
+        # center   (750, 300, 3)
+        # semantic (750, 300, 8192)
         
         self.data_file = []
         if self.train:
