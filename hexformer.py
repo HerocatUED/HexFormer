@@ -7,11 +7,11 @@
 # --------------------------------------------------------
 
 import torch
-from hextree import Hextree
-from modules.hextree_drop import HextreeDropPath
-
 from typing import Optional, List
 from torch.utils.checkpoint import checkpoint
+
+from hextree import Hextree
+from modules import HextreeDropPath
 
 
 class HextreeT(Hextree):
