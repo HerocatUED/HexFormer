@@ -482,7 +482,7 @@ class Hextree:
             txyz[:, 1:] = txyz[:, 1:] * scale - 1.0
         
         # construct Points
-        out = Points(xyz, self.normals[depth], self.features[depth],
+        out = Points(txyz, self.normals[depth], self.features[depth],
                      batch_id=batch_id, batch_size=batch_size)
         return out
 
