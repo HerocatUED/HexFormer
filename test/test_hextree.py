@@ -12,7 +12,7 @@ import numpy as np
 import unittest
 import sys 
 sys.path.append('..')
-import hextree as hextree
+import hextree
 
 
 class TestHextree(unittest.TestCase):

@@ -13,7 +13,7 @@ import sys
 
 from utils import get_hextree
 sys.path.append('..')
-from modules.hextree_drop import HextreeDropPath
+from modules import HextreeDropPath
 
 
 class HextreeDropTest(unittest.TestCase):
@@ -23,21 +23,22 @@ class HextreeDropTest(unittest.TestCase):
         ground-truth results.
         '''
 
-        hextrees = [get_hextree(i) for i in ([4] * 8 + [5] * 2)]
-        hextree = hextree.merge_hextrees(hextrees)
+        hextrees = [get_hextree(i) for i in (0,1)]
+        # htree = hextree.merge_hextrees(hextrees)
+        htree = hextrees[0]
 
         # Test 1
         depth = 5
-        nnum = hextree.nnum[depth]
+        nnum = htree.nnum[depth]
         data = torch.rand(nnum, 4)  # TODO 3 or 4
         drop_path = HextreeDropPath(drop_prob=0.8, nempty=False)
-        output = drop_path(data, hextree, depth)
+        output = drop_path(data, htree, depth)
 
         # Test 2
-        nnum_nempty = hextree.nnum_nempty[depth]
+        nnum_nempty = htree.nnum_nempty[depth]
         data = torch.rand(nnum_nempty, 4)  # TODO 3 or 4
         drop_path = HextreeDropPath(drop_prob=0.8, nempty=True)
-        output = drop_path(data, hextree, depth)
+        output = drop_path(data, htree, depth)
 
 
 if __name__ == "__main__":

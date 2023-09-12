@@ -8,8 +8,9 @@
 
 import torch
 from typing import Optional
-
-from ..hextree import Hextree
+import sys
+sys.path.append('..')
+from hextree import Hextree
 
 
 class HextreeDropPath(torch.nn.Module):

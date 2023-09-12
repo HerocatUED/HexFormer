@@ -90,7 +90,7 @@ def save_pcd(pcd, depth_testset=[5, 6, 7, 8, 9, 10], frame=8, color_mode: str='t
         points = pcd[:point_num].to(device)
         htree.build_hextree(points)
         htree.construct_all_neigh()
-        txyz = torch.stack(sk.key2txyz(htree.keys[-1][htree.children[-1] >= 0], depth=depth), dim=1)[:, :4].numpy()
+        txyz = torch.stack(sk.key2txyz(htree.keys[-1][htree.children[-1] >= 0], depth=depth), dim=1)[:, :4].cpu().numpy()
         center_point = np.random.randint(low=0, high=len(txyz), size=10)
         neighs = htree.get_neigh(depth=depth, kernel='3333', nempty=True)[center_point, :, 1]
         neighs = neighs[neighs >= 0]
