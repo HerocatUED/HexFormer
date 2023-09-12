@@ -1,3 +1,4 @@
+# Visualize the result of semantic segmantation
 # Written by Xiang Wang
 
 import numpy as np

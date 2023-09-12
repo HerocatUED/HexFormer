@@ -1,14 +1,14 @@
 # Written by Xiang Wang
 # Modified from https://github.com/hoi4d/HOI4D_SemSeg/blob/main/datasets/seg_base.py
 
+
 import numpy as np
-import torch
 from pyquaternion import Quaternion
 from torch.utils.data import Dataset
 import h5py
 
-index_to_label = np.arange(0, 49, dtype='int32')
-label_to_index = np.arange(0, 49, dtype='int32')
+index_to_label = np.arange(0, 49, dtype='int16')
+label_to_index = np.arange(0, 49, dtype='int16')
 index_to_class = [str(i) for i in range(0, 49)]
 
 
@@ -20,32 +20,32 @@ index_to_label_vec_func = np.vectorize(index_to_label_func)
 
 
 class SegDataset(Dataset):
-    def __init__(self, root: str, frames_per_clip=3, num_points=8192, train=True):
+    def __init__(self, root='/mnt/sdc/wangx/HOI4D/HOI4D_dataset/seg_data_h5', frames_per_clip=3, num_points=8192, train=True, train_data=1):
         super(SegDataset, self).__init__()
 
         self.frames_per_clip = frames_per_clip
         self.train = train
         self.num_points = num_points
 
-        # for a single .h5 file:
-        # pcd       (750, 300, 8192, 3)
-        # center    (750, 300, 3)
-        # semantic  (750, 300, 8192)
-
+        # self.pcd = [] # (*, 750, 300, 8192, 3)
+        # self.center = [] # (*, 750, 300, 3)
+        # self.semantic = [] # (*, 750, 300, 8192)
+        
         self.data_file = []
         if self.train:
-            for filename in ['train1.h5', 'train2.h5', 'train3.h5', 'train4.h5']:
+            for filename in ['train1_float32.h5', 'train2_float32.h5', 'train3_float32.h5', 'train4_float32.h5']:
                 self.data_file.append(h5py.File(root + '/' + filename, 'r'))
                 print(f'{filename}')
-        else:
+        else: 
             for filename in ['test.h5']:
                 self.data_file.append(h5py.File(root + '/' + filename, 'r'))
                 print(f'{filename}')
 
+
     def __len__(self):
         leng = 0
         if self.train:
-            leng = 2971 * 100  # 750 + 750 + 750 + 721
+            leng = 2971 * 100
         else:
             leng = 500 * 100
         return leng
@@ -62,12 +62,11 @@ class SegDataset(Dataset):
             idx = int(index / 100)
             s = int(idx / 500)
             d = idx % 500
-
+        
         data = self.data_file[s]
         pcd = data['pcd'][d][frame_id:int(frame_id + self.frames_per_clip)]
         rgb = data['pcd'][d][frame_id:int(frame_id + self.frames_per_clip)]
-        semantic = data['semantic'][d][frame_id:int(
-            frame_id + self.frames_per_clip)]
+        semantic = data['semantic'][d][frame_id:int(frame_id + self.frames_per_clip)]
         center_0 = data['center'][d][frame_id]
 
         return pcd, rgb, semantic, center_0
@@ -76,8 +75,7 @@ class SegDataset(Dataset):
         flip = np.random.uniform(0, 1) > 0.5
         if flip:
             pcd = pcd - center
-            jittered_data = np.clip(
-                0.01 * np.random.randn(self.frames_per_clip, self.num_points, 3), -1 * 0.05, 0.05)
+            jittered_data = np.clip(0.01 * np.random.randn(self.frames_per_clip, self.num_points, 3), -1 * 0.05, 0.05)
             jittered_data += pcd
             pcd = pcd + center
 
@@ -101,44 +99,42 @@ class SegDataset(Dataset):
             labels.append(label)
         return labels
 
-    def choice_to_num_points(self, pc, rgb, label):
+    def choice_to_num_points(self, pcd, rgb, label):
+
         # shuffle idx to change point order (change FPS behavior)
         for f in range(self.frames_per_clip):
-            idx = np.arange(pc[f].shape[0])
+            idx = np.arange(pcd[f].shape[0])
             choice_num = self.num_points
-            if pc[f].shape[0] > choice_num:
+            if pcd[f].shape[0] > choice_num:
                 shuffle_idx = np.random.choice(idx, choice_num, replace=False)
             else:
                 shuffle_idx = np.concatenate(
                     [np.random.choice(idx, choice_num - idx.shape[0]), np.arange(idx.shape[0])])
-            pc[f] = pc[f][shuffle_idx]
+            pcd[f] = pcd[f][shuffle_idx]
             rgb[f] = rgb[f][shuffle_idx]
             label[f] = label[f][shuffle_idx]
 
-        pc = np.stack(pc, axis=0)
+        pcd = np.stack(pcd, axis=0)
         rgb = np.stack(rgb, axis=0)
         label = np.stack(label, axis=0)
 
-        return pc, rgb, label
+        return pcd, rgb, label
 
     def __getitem__(self, index):
-        pc, rgb, semantic, center = self.read_training_data_point(index)
+
+        pcd, rgb, semantic, center = self.read_training_data_point(index)
 
         label = self.label_conversion(semantic)
         label = np.array(label)
+
         if self.train:
             pcd = self.augment(pcd, center)
-        rgb = np.swapaxes(rgb, 1, 2)
 
-        return pc.astype(np.float32), rgb.astype(np.float32), label.astype(np.int64)
+        rgb = np.swapaxes(rgb, 1, 2)
+        # print(pcd.shape)
+
+        return pcd.astype(np.float32), rgb.astype(np.float32), label.astype(np.int64)
 
 
 if __name__ == '__main__':
-
-    print("Creating data loaders")
-
-    datasets = SegDataset(
-        root='/mnt/sdc/wangx/HOI4D_dataset/seg_data_h5', frames_per_clip=3, train=True)
-
-    data_loader = torch.utils.data.DataLoader(
-        datasets, batch_size=24, shuffle=True, num_workers=8, pin_memory=False)
+    datasets = SegDataset(root='/mnt/sdc/wangx/HOI4D/HOI4D_dataset/seg_data_h5', frames_per_clip=3, train=True)
