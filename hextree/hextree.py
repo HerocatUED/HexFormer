@@ -10,11 +10,9 @@ import torch
 import torch.nn.functional as F
 from typing import Union, List
 
-import sys 
-sys.path.append('..')
-from torchutils import meshgrid, scatter_add, cumsum, trunc_div
-from points import Points
-from shuffled_key import txyz2key, key2txyz
+from .torchutils import meshgrid, scatter_add, cumsum, trunc_div
+from .points import Points
+from .shuffled_key import txyz2key, key2txyz
 
 
 class Hextree:
