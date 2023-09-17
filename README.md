@@ -4,7 +4,7 @@ Step 1. Hextree
 
 Step 2. HexFormer
 
-TODO: RPE, OctreeDropPath, OctreeConvBnRelu, OctreeConv
+TODO: RPE, **OctreeConv**
 
 Step 3. Expirements
 

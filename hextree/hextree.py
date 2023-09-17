@@ -12,7 +12,7 @@ from typing import Union, List
 
 import sys 
 sys.path.append('..')
-from .torchutils import meshgrid, scatter_add, cumsum, trunc_div
+from .utils import meshgrid, scatter_add, cumsum, trunc_div
 from .points import Points
 from .shuffled_key import txyz2key, key2txyz
 
