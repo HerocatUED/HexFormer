@@ -11,7 +11,7 @@ from typing import Optional, List
 from torch.utils.checkpoint import checkpoint
 
 from hextree import Hextree, Points, key2txyz, txyz2key
-from modules import HextreeDropPath
+from modules import HextreeDropPath, HextreeConv, HextreeConvBn, HextreeConvBnRelu
 
 
 class HextreeT(Hextree):
@@ -292,13 +292,13 @@ class PatchEmbed(torch.nn.Module):
         self.delta_depth = -num_down
         channels = [int(dim * 2**i) for i in range(-self.num_stages, 1)]
 
-        self.convs = torch.nn.ModuleList([ocnn.modules.OctreeConvBnRelu(
+        self.convs = torch.nn.ModuleList([HextreeConvBnRelu(
             in_channels if i == 0 else channels[i], channels[i], kernel_size=[3],
             stride=1, nempty=nempty) for i in range(self.num_stages)])
-        self.downsamples = torch.nn.ModuleList([ocnn.modules.OctreeConvBnRelu(
+        self.downsamples = torch.nn.ModuleList([HextreeConvBnRelu(
             channels[i], channels[i+1], kernel_size=[2], stride=2, nempty=nempty)
             for i in range(self.num_stages)])
-        self.proj = ocnn.modules.OctreeConvBnRelu(
+        self.proj = HextreeConvBnRelu(
             channels[-1], dim, kernel_size=[3], stride=1, nempty=nempty)
 
     def forward(self, data: torch.Tensor, hextree: Hextree, depth: int):
@@ -316,7 +316,7 @@ class Downsample(torch.nn.Module):
                  kernel_size: List[int] = [2], nempty: bool = True):
         super().__init__()
         self.norm = torch.nn.BatchNorm1d(out_channels)
-        self.conv = ocnn.nn.OctreeConv(in_channels, out_channels, kernel_size,
+        self.conv = HextreeConv(in_channels, out_channels, kernel_size,
                                        stride=2, nempty=nempty, use_bias=True)
 
     def forward(self, data: torch.Tensor, hextree: Hextree, depth: int):

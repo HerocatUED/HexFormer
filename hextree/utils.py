@@ -133,7 +133,7 @@ def xavier_uniform_(weights: torch.Tensor):
     torch.nn.init.uniform_(weights, -a, a)
 
 
-def resize_with_last_val(list_in: list, num: int = 3):
+def resize_with_last_val(list_in: list, num: int = 4):
     r''' Resizes the number of elements of :attr:`list_in` to :attr:`num` with
     the last element of :attr:`list_in` if its number of elements is smaller
     than :attr:`num`.
