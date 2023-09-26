@@ -10,8 +10,8 @@ import torch
 from typing import Optional, List
 from torch.utils.checkpoint import checkpoint
 
-from hextree import Hextree, Points, key2txyz, txyz2key
-from modules import HextreeDropPath, HextreeConv, HextreeConvBn, HextreeConvBnRelu
+from hextree import Hextree, Points, key2txyz
+from modules import HextreeDropPath, HextreeConv, HextreeConvBnRelu
 
 
 class HextreeT(Hextree):
