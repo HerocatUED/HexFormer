@@ -4,7 +4,7 @@ Step 1. Hextree
 
 Step 2. HexFormer
 
-TODO: RPE/CPE, Header
+TODO: RPE/CPE, Segmentation Header
 
 VIT/Swin  - rpe(relative positional encoding/embedding)
 

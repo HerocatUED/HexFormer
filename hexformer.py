@@ -237,7 +237,7 @@ class HexFormerBlock(torch.nn.Module):
         self.norm2 = torch.nn.LayerNorm(dim)
         self.mlp = MLP(dim, int(dim * mlp_ratio), dim, activation, proj_drop)
         self.drop_path = HextreeDropPath(drop_path, nempty)
-        self.cpe = OctreeDWConvBn(dim, nempty=nempty)
+        # self.cpe = OctreeDWConvBn(dim, nempty=nempty)
 
     def forward(self, data: torch.Tensor, hextree: HextreeT, depth: int):
         data = self.cpe(data, hextree, depth) + data
