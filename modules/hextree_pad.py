@@ -7,8 +7,9 @@
 # --------------------------------------------------------
 
 import torch
-
-from ..hextree import Hextree
+# import sys
+# sys.path.append('..')
+from hextree import Hextree
 
 
 def hextree_pad(data: torch.Tensor, hextree: Hextree, depth: int, val: float = 0.0):

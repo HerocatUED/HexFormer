@@ -9,8 +9,10 @@
 import torch
 import torch.nn
 
-from ..hextree import Hextree
-from ..hextree.utils import scatter_add
+# import sys
+# sys.path.append('..')
+from hextree import Hextree
+from hextree.utils import scatter_add
 
 
 def hextree2col(data: torch.Tensor, hextree: Hextree, depth: int,

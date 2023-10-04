@@ -8,8 +8,8 @@
 
 import torch
 from typing import Optional
-import sys
-sys.path.append('..')
+# import sys
+# sys.path.append('..')
 from hextree import Hextree
 
 
