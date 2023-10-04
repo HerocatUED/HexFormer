@@ -282,7 +282,6 @@ class HexFormerStage(torch.nn.Module):
         return data
 
 
-# TODO
 class PatchEmbed(torch.nn.Module):
 
     def __init__(self, in_channels: int = 3, dim: int = 96, num_down: int = 2,

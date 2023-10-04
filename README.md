@@ -17,4 +17,4 @@ Step 3. Expirements
 TODO： HOI4D, SemanticKITTI(optional)
 
 
-Potential bugs: hextree.utils, hextree_conv
+Potential bugs: hextree.utils, hextree_conv(test unfinished)
