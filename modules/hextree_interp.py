@@ -1,5 +1,5 @@
 # --------------------------------------------------------
-# Hextree-based Sparse Convolutional Neural Networks
+# Octree-based Sparse Convolutional Neural Networks
 # Copyright (c) 2022 Peng-Shuai Wang <wangps@hotmail.com>
 # Licensed under The MIT License [see LICENSE for details]
 # Written by Peng-Shuai Wang
@@ -12,7 +12,6 @@ from typing import List, Optional
 
 # import sys
 # sys.path.append('..')
-import ocnn
 from hextree import Hextree
 
 
@@ -154,10 +153,10 @@ def hextree_nearest_upsample(data: torch.Tensor, hextree: Hextree, depth: int,
 
   out = data
   if not nempty:
-    out = ocnn.nn.hextree_depad(out, hextree, depth)
+    out = hextree_depad(out, hextree, depth)
   out = out.unsqueeze(1).repeat(1, 8, 1).flatten(end_dim=1)
   if nempty:
-    out = ocnn.nn.hextree_depad(out, hextree, depth+1)  # !!! depth+1
+    out = hextree_depad(out, hextree, depth+1)  # !!! depth+1
   return out
 
 

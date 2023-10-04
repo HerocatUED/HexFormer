@@ -3,15 +3,16 @@
 # Copyright (c) 2023 Peng-Shuai Wang <wangps@hotmail.com>
 # Licensed under The MIT License [see LICENSE for details]
 # Written by Peng-Shuai Wang
+# Hextree version modified by Xiang Wang
 # --------------------------------------------------------
 
-import ocnn
+
 import torch
 
-from ocnn.octree import Octree
+from hextree import Hextree
 from typing import Optional, List, Dict
-
-from .octformer import OctFormer
+from modules import HextreeUpsample, HextreeConvBnRelu, HextreeDeconvBnRelu, HextreeInterp
+from hexformer import HexFormer
 
 
 class SegHeader(torch.nn.Module):
@@ -25,14 +26,14 @@ class SegHeader(torch.nn.Module):
 
     self.conv1x1 = torch.nn.ModuleList([torch.nn.Linear(
         channels[i], fpn_channel) for i in range(self.num_stages-1, -1, -1)])
-    self.upsample = ocnn.nn.OctreeUpsample('nearest', nempty)
-    self.conv3x3 = torch.nn.ModuleList([ocnn.modules.OctreeConvBnRelu(
+    self.upsample = HextreeUpsample('nearest', nempty)
+    self.conv3x3 = torch.nn.ModuleList([HextreeConvBnRelu(
         fpn_channel, fpn_channel, kernel_size=[3],
         stride=1, nempty=nempty) for i in range(self.num_stages)])
-    self.up_conv = torch.nn.ModuleList([ocnn.modules.OctreeDeconvBnRelu(
+    self.up_conv = torch.nn.ModuleList([HextreeDeconvBnRelu(
         fpn_channel, fpn_channel, kernel_size=[3],
         stride=2, nempty=nempty) for i in range(self.num_up)])
-    self.interp = ocnn.nn.OctreeInterp('nearest', nempty)
+    self.interp = HextreeInterp('nearest', nempty)
     self.classifier = torch.nn.Sequential(
         torch.nn.Dropout(dropout[0]),
         torch.nn.Linear(fpn_channel, fpn_channel),
@@ -41,30 +42,30 @@ class SegHeader(torch.nn.Module):
         torch.nn.Dropout(dropout[1]),
         torch.nn.Linear(fpn_channel, out_channels),)
 
-  def forward(self, features: Dict[int, torch.Tensor], octree: Octree,
+  def forward(self, features: Dict[int, torch.Tensor], hextree: Hextree,
               query_pts: torch.Tensor):
     depth = min(features.keys())
     depth_max = max(features.keys())
     assert self.num_stages == len(features)
 
     feature = self.conv1x1[0](features[depth])
-    conv_out = self.conv3x3[0](feature, octree, depth)
-    out = self.upsample(conv_out, octree, depth, depth_max)
+    conv_out = self.conv3x3[0](feature, hextree, depth)
+    out = self.upsample(conv_out, hextree, depth, depth_max)
     for i in range(1, self.num_stages):
       depth_i = depth + i
-      feature = self.upsample(feature, octree, depth_i - 1)
+      feature = self.upsample(feature, hextree, depth_i - 1)
       feature = self.conv1x1[i](features[depth_i]) + feature
-      conv_out = self.conv3x3[i](feature, octree, depth_i)
-      out = out + self.upsample(conv_out, octree, depth_i, depth_max)
+      conv_out = self.conv3x3[i](feature, hextree, depth_i)
+      out = out + self.upsample(conv_out, hextree, depth_i, depth_max)
 
     for i in range(self.num_up):
-      out = self.up_conv[i](out, octree, depth_max + i)  # upsample
-    out = self.interp(out, octree, depth_max + self.num_up, query_pts)
+      out = self.up_conv[i](out, hextree, depth_max + i)  # upsample
+    out = self.interp(out, hextree, depth_max + self.num_up, query_pts)
     out = self.classifier(out)
     return out
 
 
-class OctFormerSeg(torch.nn.Module):
+class HexFormerSeg(torch.nn.Module):
 
   def __init__(
           self, in_channels: int, out_channels: int,
@@ -75,7 +76,7 @@ class OctFormerSeg(torch.nn.Module):
           nempty: bool = True, stem_down: int = 2, head_up: int = 2,
           fpn_channel: int = 168, head_drop: List[float] = [0.0, 0.0], **kwargs):
     super().__init__()
-    self.backbone = OctFormer(
+    self.backbone = HexFormer(
         in_channels, channels, num_blocks, num_heads, patch_size, dilation,
         drop_path, nempty, stem_down)
     self.head = SegHeader(
@@ -88,8 +89,8 @@ class OctFormerSeg(torch.nn.Module):
       if isinstance(m, torch.nn.Linear) and m.bias is not None:
         torch.nn.init.constant_(m.bias, 0)
 
-  def forward(self, data: torch.Tensor, octree: Octree, depth: int,
+  def forward(self, data: torch.Tensor, hextree: Hextree, depth: int,
               query_pts: torch.Tensor):
-    features = self.backbone(data, octree, depth)
-    output = self.head(features, octree, query_pts)
+    features = self.backbone(data, hextree, depth)
+    output = self.head(features, hextree, query_pts)
     return output
