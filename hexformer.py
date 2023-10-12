@@ -240,7 +240,7 @@ class HexFormerBlock(torch.nn.Module):
         # self.cpe = OctreeDWConvBn(dim, nempty=nempty)
 
     def forward(self, data: torch.Tensor, hextree: HextreeT, depth: int):
-        data = self.cpe(data, hextree, depth) + data
+        # data = self.cpe(data, hextree, depth) + data
         attn = self.attention(self.norm1(data), hextree, depth)
         data = data + self.drop_path(attn, hextree, depth)
         ffn = self.mlp(self.norm2(data))

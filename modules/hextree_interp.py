@@ -38,7 +38,7 @@ def hextree_nearest_pts(data: torch.Tensor, hextree: Hextree, depth: int,
     nnum = hextree.nnum_nempty[depth] if nempty else hextree.nnum[depth]
     assert data.shape[0] == nnum, 'The shape of input data is wrong.'
 
-    idx = hextree.search_xyzb(pts, depth, nempty)
+    idx = hextree.search_txyzb(pts, depth, nempty)
     valid = idx > -1   # valid indices
     if bound_check:
         bound = torch.logical_and(
@@ -69,16 +69,16 @@ def hextree_linear_pts(data: torch.Tensor, hextree: Hextree, depth: int,
 
     # 1. Neighborhood searching
     # the value is defined on the center of each voxel
-    xyzf = pts[:, :3] - 0.5
-    xyzi = xyzf.floor()       # the integer part  (N, 3)
-    frac = xyzf - xyzi        # the fraction part (N, 3)
+    txyzf = pts[:, :3] - 0.5
+    txyzi = txyzf.floor()       # the integer part  (N, 3)
+    frac = txyzf - txyzi        # the fraction part (N, 3)
 
-    xyzn = (xyzi.unsqueeze(1) + grid).view(-1, 3)
+    txyzn = (txyzi.unsqueeze(1) + grid).view(-1, 3)
     batch = pts[:, 3].unsqueeze(1).repeat(1, 8).view(-1, 1)
-    idx = hextree.search_xyzb(torch.cat([xyzn, batch], dim=1), depth, nempty)
+    idx = hextree.search_txyzb(torch.cat([txyzn, batch], dim=1), depth, nempty)
     valid = idx > -1  # valid indices
     if bound_check:
-        bound = torch.logical_and(xyzn >= 0, xyzn < 2**depth).all(1)
+        bound = torch.logical_and(txyzn >= 0, txyzn < 2**depth).all(1)
         valid = torch.logical_and(valid, bound)
     idx = idx[valid]
 
@@ -190,8 +190,8 @@ class HextreeUpsample(torch.nn.Module):
         if target_depth == depth + 1 and self.method == 'nearest':
             return hextree_nearest_upsample(data, hextree, depth, self.nempty)
 
-        xyzb = hextree.xyzb(target_depth, self.nempty)
-        pts = torch.stack(xyzb, dim=1).float()
+        txyzb = hextree.txyzb(target_depth, self.nempty)
+        pts = torch.stack(txyzb, dim=1).float()
         pts[:, :3] = (pts[:, :3] + 0.5) * \
             (2**(depth - target_depth))  # !!! rescale
         return self.func(data, hextree, depth, pts, self.nempty)
