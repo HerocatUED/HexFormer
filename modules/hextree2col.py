@@ -16,16 +16,15 @@ from hextree.utils import scatter_add
 
 
 def hextree2col(data: torch.Tensor, hextree: Hextree, depth: int,
-               kernel_size: str = '333', stride: int = 1, nempty: bool = False):
+               kernel_size: str = '3333', stride: int = 1, nempty: bool = False):
   r''' Gathers the neighboring features for convolutions.
 
   Args:
     data (torch.Tensor): The input data.
     hextree (Hextree): The corresponding hextree.
     depth (int): The depth of current hextree.
-    kernel_size (str): The kernel shape, choose from :obj:`333`, :obj:`311`, 
-        :obj:`131`, :obj:`113`, :obj:`222`, :obj:`331`, :obj:`133`, and
-        :obj:`313`.
+    kernel_size (str): The kernel shape, choose from :obj:`[3,3,3,3]`, :obj:`[3,1,1,1]`, :obj:`[1,3,1,1]`, :obj:`[1,1,3,1]`, :obj:`[1,1,1,3]`,
+          :obj:`[2,2,2,2]`, :obj:`[3,3,1,1]`, :obj:`[1,3,3,1]`, and :obj:`[1,1,3,3]`.
     stride (int): The stride of neighborhoods (:obj:`1` or :obj:`2`). If the
         stride is :obj:`2`, it always returns the neighborhood of the first
         siblings, and the number of elements of output tensor is
@@ -43,7 +42,7 @@ def hextree2col(data: torch.Tensor, hextree: Hextree, depth: int,
 
 
 def col2hextree(data: torch.Tensor, hextree: Hextree, depth: int,
-               kernel_size: str = '333', stride: int = 1, nempty: bool = False):
+               kernel_size: str = '3333', stride: int = 1, nempty: bool = False):
   r''' Scatters the convolution features to an hextree.
 
   Please refer to :func:`hextree2col` for the usage of function parameters.

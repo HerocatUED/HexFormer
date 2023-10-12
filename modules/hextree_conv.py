@@ -223,7 +223,7 @@ class HextreeConvFunction(Function):
     @staticmethod
     def forward(ctx, data: torch.Tensor, weights: torch.Tensor, hextree: Hextree,
                 depth: int, in_channels: int, out_channels: int,
-                kernel_size: List[int] = [3, 3, 3], stride: int = 1,
+                kernel_size: List[int] = [3, 3, 3, 3], stride: int = 1,
                 nempty: bool = False, max_buffer: int = int(2e8)):
         hextree_conv = _HextreeConv(
             in_channels, out_channels, kernel_size, stride, nempty, max_buffer)
@@ -260,7 +260,7 @@ class HextreeDeconvFunction(Function):
     @staticmethod
     def forward(ctx, data: torch.Tensor, weights: torch.Tensor, hextree: Hextree,
                 depth: int, in_channels: int, out_channels: int,
-                kernel_size: List[int] = [3, 3, 3], stride: int = 1,
+                kernel_size: List[int] = [3, 3, 3, 3], stride: int = 1,
                 nempty: bool = False, max_buffer: int = int(2e8)):
         hextree_deconv = _HextreeDeconv(
             in_channels, out_channels, kernel_size, stride, nempty, max_buffer)
@@ -302,8 +302,8 @@ class HextreeConv(HextreeConvBase, torch.nn.Module):
       in_channels (int): Number of input channels.
       out_channels (int): Number of output channels.
       kernel_size (List(int)): The kernel shape, choose from :obj:`[3]`, :obj:`[2]`,
-          :obj:`[3,3,3]`, :obj:`[3,1,1]`, :obj:`[1,3,1]`, :obj:`[1,1,3]`,
-          :obj:`[2,2,2]`, :obj:`[3,3,1]`, :obj:`[1,3,3]`, and :obj:`[3,1,3]`.
+          :obj:`[3,3,3,3]`, :obj:`[3,1,1,1]`, :obj:`[1,3,1,1]`, :obj:`[1,1,3,1]`, :obj:`[1,1,1,3]`,
+          :obj:`[2,2,2,2]`, :obj:`[3,3,1,1]`, :obj:`[1,3,3,1]`, and :obj:`[1,1,3,3]`.
       stride (int): The stride of the convolution (:obj:`1` or :obj:`2`).
       nempty (bool): If True, only performs the convolution on non-empty
           hextree nodes.

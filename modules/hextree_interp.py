@@ -25,8 +25,8 @@ def hextree_nearest_pts(data: torch.Tensor, hextree: Hextree, depth: int,
       data (torch.Tensor): The input data.
       hextree (Hextree): The hextree to interpolate.
       depth (int): The depth of the data.
-      pts (torch.Tensor): The coordinates of the points with shape :obj:`(N, 4)`,
-          i.e. :obj:`N x (x, y, z, batch)`.
+      pts (torch.Tensor): The coordinates of the points with shape :obj:`(N, 5)`,
+          i.e. :obj:`N x (t, x, y, z, batch)`.
       nempty (bool): If true, the :attr:`data` only contains features of non-empty 
           hextree nodes
       bound_check (bool): If true, check whether the point is in :obj:`[0, 2^depth)`.
@@ -42,7 +42,7 @@ def hextree_nearest_pts(data: torch.Tensor, hextree: Hextree, depth: int,
     valid = idx > -1   # valid indices
     if bound_check:
         bound = torch.logical_and(
-            pts[:, :3] >= 0, pts[:, :3] < 2**depth).all(1)
+            pts[:, :4] >= 0, pts[:, :4] < 2**depth).all(1)
         valid = torch.logical_and(valid, bound)
 
     size = (pts.shape[0], data.shape[1])
@@ -69,12 +69,12 @@ def hextree_linear_pts(data: torch.Tensor, hextree: Hextree, depth: int,
 
     # 1. Neighborhood searching
     # the value is defined on the center of each voxel
-    txyzf = pts[:, :3] - 0.5
-    txyzi = txyzf.floor()       # the integer part  (N, 3)
-    frac = txyzf - txyzi        # the fraction part (N, 3)
+    txyzf = pts[:, :4] - 0.5
+    txyzi = txyzf.floor()       # the integer part  (N, 4)
+    frac = txyzf - txyzi        # the fraction part (N, 4)
 
-    txyzn = (txyzi.unsqueeze(1) + grid).view(-1, 3)
-    batch = pts[:, 3].unsqueeze(1).repeat(1, 8).view(-1, 1)
+    txyzn = (txyzi.unsqueeze(1) + grid).view(-1, 4)
+    batch = pts[:, 4].unsqueeze(1).repeat(1, 8).view(-1, 1) # TODO: 8 or 10?
     idx = hextree.search_txyzb(torch.cat([txyzn, batch], dim=1), depth, nempty)
     valid = idx > -1  # valid indices
     if bound_check:
@@ -85,11 +85,11 @@ def hextree_linear_pts(data: torch.Tensor, hextree: Hextree, depth: int,
     # 2. Build the sparse matrix
     npt = pts.shape[0]
     ids = torch.arange(npt, device=idx.device)
-    ids = ids.unsqueeze(1).repeat(1, 8).view(-1)
+    ids = ids.unsqueeze(1).repeat(1, 8).view(-1) # TODO: 8 or 10?
     ids = ids[valid]
     indices = torch.stack([ids, idx], dim=0).long()
 
-    # (8, 3) - (N, 1, 3) -> (N, 8, 3)
+    # (8, 4) - (N, 1, 4) -> (N, 8, 4)
     frac = (1.0 - grid) - frac.unsqueeze(dim=1)
     weight = frac.prod(dim=2).abs().view(-1)     # (8*N,)
     weight = weight[valid]
