@@ -164,7 +164,6 @@ class Hextree:
         tmax = torch.max(points[:, 0])
         # if (scale >> 1) < tmax:
         #     points[:, 0] = points[:, 0] / tmax * scale
-
         assert tmax <= (scale << 1)
 
         # get the shuffled key and sort
@@ -187,13 +186,12 @@ class Hextree:
 
             # augmented key
             key_txyz = (pkey[...,1].unsqueeze(-1) << 4) + torch.arange(16, device=self.device)
-            key = torch.stack((pkey[...,0].unsqueeze(-1) + torch.zeros(16, dtype=torch.long, device=self.device), key_txyz), axis=-1)
+            key = torch.stack((pkey[...,0].unsqueeze(-1) + torch.zeros(16, dtype=torch.long), key_txyz), axis=-1)
             self.keys[d] = key.view(-1, 2)
             self.nnum[d] = key[..., 1].numel()
             self.nnum_nempty[d] = node_key[..., 1].numel()
 
             # children
-           
             addr = (pidx << 4) | (node_key[..., 1] % 16)
             children = -torch.ones(
                 self.nnum[d].item(), dtype=torch.int64, device=self.device)
@@ -563,9 +561,9 @@ def merge_hextrees(hextrees: List['Hextree']):
     
     # node num
     batch_nnum = torch.stack(
-        [hextrees[i].nnum for i in range(hextree.batch_size)], dim=1)
+        [hextrees[i].nnum for i in range(hextrees.batch_size)], dim=1)
     batch_nnum_nempty = torch.stack(
-        [hextrees[i].nnum_nempty for i in range(hextree.batch_size)], dim=1)
+        [hextrees[i].nnum_nempty for i in range(hextrees.batch_size)], dim=1)
     hextree.nnum = torch.sum(batch_nnum, dim=1)
     hextree.nnum_nempty = torch.sum(batch_nnum_nempty, dim=1)
     hextree.batch_nnum = batch_nnum
