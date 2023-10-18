@@ -4,7 +4,7 @@ Step 1. Hextree
 
 Step 2. HexFormer
 
-TODO: RPE/CPE, Segmentation Header
+TODO: RPE/CPE, data.get_hoi4d_seg_dataset
 
 VIT/Swin  - rpe(relative positional encoding/embedding)
 
