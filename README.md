@@ -8,9 +8,10 @@ TODO: RPE/CPE, data.get_hoi4d_seg_dataset
 
 VIT/Swin  - rpe(relative positional encoding/embedding)
 
-PVT/CoAt/Twins - conv / cpe(conditional positional encoding/embedding)
+~~ PVT/CoAt/Twins - conv / cpe(conditional positional encoding/embedding) ~~
 
-patch&position embbeding
+patch embedding MLP or Pooling
+RPE: B, MLP
 
 Step 3. Expirements
 
