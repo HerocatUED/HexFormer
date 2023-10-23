@@ -6,7 +6,7 @@
 # Hextree version modified by Xiang Wang
 # --------------------------------------------------------
 
-import data
+from data import get_hoi4d_seg_dataset
 from hexformerseg import HexFormerSeg
 
 
@@ -90,6 +90,6 @@ def get_segmentation_model(flags):
 
 def get_segmentation_dataset(flags):
     if flags.name.lower() == 'hoi4d':
-        return data.get_hoi4d_seg_dataset(flags)
+        return get_hoi4d_seg_dataset(flags)
     else:
         raise ValueError
