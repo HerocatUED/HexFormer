@@ -16,7 +16,7 @@ RPE: B, MLP
 Step 3. Expirements
 
 TODO： HOI4D, SemanticKITTI(optional)
-
+data augmentations
 
 Potential bugs: hextree.utils, hextree_conv
 Unfinished tests: conv, interp

@@ -18,7 +18,7 @@ from .utils import ReadFile, Transform
 
 
 def align_z(points: Points):
-    points.points[:, 2] -= points.points[:, 2].min()
+    points.points[:, 3] -= points.points[:, 3].min()
     return points
 
 
@@ -50,8 +50,6 @@ class HOI4DTransform(Transform):
         # depth 9: voxel size 2cm
         # depth 10: voxel size 2cm; depth 11: voxel size 1cm
         self.scale_factor = 10.24 
-        self.elastic_params = np.array(
-            [[0.05, 0.1], [0.1, 0.2], [0.2, 0.4], [0.4, 0.8]], np.float32)
 
     def __call__(self, sample, idx=None):
 
@@ -71,6 +69,7 @@ class HOI4DTransform(Transform):
 
         # random crop
         if self.flags.distort:
+            raise NotImplementedError
             max_npt = self.flags.max_npt if self.flags.max_npt > 0 else points.npt
             max_npt = min(max_npt, int(points.npt * self.flags.crop_ratio))
             points, crop_mask = rand_crop(points, max_npt)
@@ -81,37 +80,37 @@ class HOI4DTransform(Transform):
         return {'points': points, 'inbox_mask': inbox_mask}
 
 
-def apply_cutmix(points: List[Points], cutmix: float):
-    if cutmix <= 0:
-        return points
+# def apply_cutmix(points: List[Points], cutmix: float):
+#     if cutmix <= 0:
+#         return points
 
-    batch_size = len(points)
-    outputs = [None] * batch_size
-    for i in range(batch_size):
-        j = (i + 1) % batch_size
-        points_a = points[i]
-        points_b = points[j]
+#     batch_size = len(points)
+#     outputs = [None] * batch_size
+#     for i in range(batch_size):
+#         j = (i + 1) % batch_size
+#         points_a = points[i]
+#         points_b = points[j]
 
-        npt_a = points_a.points.shape[0]
-        npt_b = points_b.points.shape[0]
-        na = int(cutmix * npt_a)
-        nb = int((1 - cutmix) * npt_b)
+#         npt_a = points_a.points.shape[0]
+#         npt_b = points_b.points.shape[0]
+#         na = int(cutmix * npt_a)
+#         nb = int((1 - cutmix) * npt_b)
 
-        rand_idx = torch.randint(0, npt_a, size=(1,))
-        rand_pts = points_a.points[rand_idx]
-        dist_a, idx_a = torch.sort(
-            torch.sum((points_a.points - rand_pts)**2, 1))
-        cut_a = idx_a[:na]
+#         rand_idx = torch.randint(0, npt_a, size=(1,))
+#         rand_pts = points_a.points[rand_idx]
+#         dist_a, idx_a = torch.sort(
+#             torch.sum((points_a.points - rand_pts)**2, 1))
+#         cut_a = idx_a[:na]
 
-        dist_b = torch.sum((points_b.points - rand_pts)**2, 1) - dist_a[na]
-        mask_b = dist_b < 0
-        dist_b[mask_b] += 1.0e3
-        dist_b, idx_b = torch.sort(dist_b)
-        cut_b = idx_b[:nb]
+#         dist_b = torch.sum((points_b.points - rand_pts)**2, 1) - dist_a[na]
+#         mask_b = dist_b < 0
+#         dist_b[mask_b] += 1.0e3
+#         dist_b, idx_b = torch.sort(dist_b)
+#         cut_b = idx_b[:nb]
 
-        outputs[i] = merge_points(
-            [points_a[cut_a], points_b[cut_b]], update_batch_info=False)
-    return outputs
+#         outputs[i] = merge_points(
+#             [points_a[cut_a], points_b[cut_b]], update_batch_info=False)
+#     return outputs
 
 
 class CollateBatch:
@@ -129,6 +128,7 @@ class CollateBatch:
         # apply cutmix
         points = outputs['points']
         if self.cutmix > 0:  # and torch.rand(1) > 0.3:
+            raise NotImplementedError
             points = apply_cutmix(points, self.cutmix)
         outputs['points'] = points
         return outputs
@@ -136,9 +136,8 @@ class CollateBatch:
 
 def get_hoi4d_seg_dataset(flags):
     transform = HOI4DTransform(flags)
-    read_file = ReadFile(has_normal=True, has_color=True, has_label=True)
+    read_file = ReadFile(has_normal=False, has_color=False, has_label=True)
     collate_batch = CollateBatch(flags.cutmix)
 
-    dataset = Dataset(flags.location, flags.filelist,
-                      transform, read_file=read_file)
+    dataset = Dataset(flags.location, flags.filelist, transform, read_file=read_file)
     return dataset, collate_batch

@@ -135,11 +135,12 @@ class Transform:
         return points
 
     def transform(self, points: Points, idx: int):
-        r''' Applies the general transformations provided by :obj:`ocnn`.
+        r''' Applies the general transformations.
         '''
 
         # The augmentations including rotation, scaling, and jittering.
         if self.distort:
+            raise NotImplementedError
             rng_angle, rng_scale, rng_jitter, rnd_flip = self.rnd_parameters()
             points.flip(rnd_flip)
             points.rotate(rng_angle)
@@ -147,6 +148,7 @@ class Transform:
             points.scale(rng_scale)
 
         if self.orient_normal:
+            raise NotImplementedError
             points.orient_normal(self.orient_normal)
 
         # !!! NOTE: Clip the point cloud to [-1, 1] before building the hextree
