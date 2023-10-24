@@ -41,34 +41,29 @@ def rand_crop(points: Points, max_npt: int):
 class HOI4DTransform(Transform):
 
     def __init__(self, flags):
-        super().__init__(flags)
+        super().__init__(flags.depth, flags.full_depth, flags.distort)
 
         # The `self.scale_factor` is used to normalize the input point cloud to the
         # range of [-1, 1]. If this parameter is modified, the `self.elastic_params`
         # and the `jittor` in the data augmentation should be scaled accordingly.
-        # self.scale_factor = 5.12    
+        # self.scale_factor = 5.12
         # depth 9: voxel size 2cm
         # depth 10: voxel size 2cm; depth 11: voxel size 1cm
-        self.scale_factor = 10.24 
+        self.scale_factor = 10.24
 
     def __call__(self, sample, idx=None):
+        # construct and normalize points
+        pcds = Points(points=torch.from_numpy(sample['points']),
+                      labels=torch.from_numpy(sample['labels']))
+        bbmin, bbmax = pcds.bbox_xyz()
+        pcds.normalize_xyz(bbmin, bbmax)
 
-        # normalize points
-        # TODO
-        txyz = sample['points']
-        center = (txyz.min(axis=0) + txyz.max(axis=0)) / 2.0
-        txyz = (txyz - center) / self.scale_factor  # xyz in [-1, 1]
-
-        # construct points
-        points = Points(torch.from_numpy(txyz), None, None, torch.from_numpy(sample['labels']))
-
-        # transform provided by `ocnn`,
-        # including rotatation, translation, scaling, and flipping
-        output = self.transform(points, idx)   # points and inbox_mask
+        # transform including rotatation, translation, scaling, and flipping
+        output = self.transform(pcds, idx)   # points and inbox_mask
         points, inbox_mask = output['points'], output['inbox_mask']
 
         # random crop
-        if self.flags.distort:
+        if self.distort:
             raise NotImplementedError
             max_npt = self.flags.max_npt if self.flags.max_npt > 0 else points.npt
             max_npt = min(max_npt, int(points.npt * self.flags.crop_ratio))
@@ -139,5 +134,6 @@ def get_hoi4d_seg_dataset(flags):
     read_file = ReadFile(has_normal=False, has_color=False, has_label=True)
     collate_batch = CollateBatch(flags.cutmix)
 
-    dataset = Dataset(flags.location, flags.filelist, transform, read_file=read_file)
+    dataset = Dataset(flags.location, flags.filelist,
+                      transform, read_file=read_file)
     return dataset, collate_batch

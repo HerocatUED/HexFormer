@@ -186,7 +186,7 @@ class Hextree:
 
             # augmented key
             key_txyz = (pkey[...,1].unsqueeze(-1) << 4) + torch.arange(16, device=self.device)
-            key = torch.stack((pkey[...,0].unsqueeze(-1) + torch.zeros(16, dtype=torch.long), key_txyz), axis=-1)
+            key = torch.stack((pkey[...,0].unsqueeze(-1) + torch.zeros(16, dtype=torch.long, device=self.device), key_txyz), axis=-1)
             self.keys[d] = key.view(-1, 2)
             self.nnum[d] = key[..., 1].numel()
             self.nnum_nempty[d] = node_key[..., 1].numel()

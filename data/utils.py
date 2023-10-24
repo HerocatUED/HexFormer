@@ -95,9 +95,10 @@ class Transform:
           useful when normals are not oriented.
     '''
 
-    def __init__(self, depth: int, full_depth: int, distort: bool, angle: list,
-                 interval: list, scale: float, uniform: bool, jitter: float,
-                 flip: list, orient_normal: str = '', **kwargs):
+    # def __init__(self, depth: int, full_depth: int, distort: bool, angle: list,
+    #              interval: list, scale: float, uniform: bool, jitter: float,
+    #              flip: list, orient_normal: str = '', **kwargs):
+    def __init__(self, depth: int, full_depth: int, distort: bool):
         super().__init__()
 
         # for hextree building
@@ -106,15 +107,15 @@ class Transform:
 
         # for data augmentation
         self.distort = distort
-        self.angle = angle
-        self.interval = interval
-        self.scale = scale
-        self.uniform = uniform
-        self.jitter = jitter
-        self.flip = flip
+        # self.angle = angle
+        # self.interval = interval
+        # self.scale = scale
+        # self.uniform = uniform
+        # self.jitter = jitter
+        # self.flip = flip
 
         # for other transformations
-        self.orient_normal = orient_normal
+        # self.orient_normal = orient_normal
 
     def __call__(self, sample: dict, idx: int):
         r''''''
@@ -147,12 +148,11 @@ class Transform:
             points.translate(rng_jitter)
             points.scale(rng_scale)
 
-        if self.orient_normal:
-            raise NotImplementedError
-            points.orient_normal(self.orient_normal)
+        # if self.orient_normal:
+        #     points.orient_normal(self.orient_normal)
 
         # !!! NOTE: Clip the point cloud to [-1, 1] before building the hextree
-        inbox_mask = points.clip(min=-1, max=1)
+        inbox_mask = points.clip_xyz(min=-1, max=1)
         return {'points': points, 'inbox_mask': inbox_mask}
 
     def points2hextree(self, points: Points):
@@ -163,26 +163,26 @@ class Transform:
         hextree.build_hextree(points)
         return hextree
 
-    def rnd_parameters(self):
-        r''' Generates random parameters for data augmentation.
-        '''
+    # def rnd_parameters(self):
+    #     r''' Generates random parameters for data augmentation.
+    #     '''
 
-        rnd_angle = [None] * 3
-        for i in range(3):
-            rot_num = self.angle[i] // self.interval[i]
-            rnd = torch.randint(low=-rot_num, high=rot_num+1, size=(1,))
-            rnd_angle[i] = rnd * self.interval[i] * (3.14159265 / 180.0)
-        rnd_angle = torch.cat(rnd_angle)
+    #     rnd_angle = [None] * 3
+    #     for i in range(3):
+    #         rot_num = self.angle[i] // self.interval[i]
+    #         rnd = torch.randint(low=-rot_num, high=rot_num+1, size=(1,))
+    #         rnd_angle[i] = rnd * self.interval[i] * (3.14159265 / 180.0)
+    #     rnd_angle = torch.cat(rnd_angle)
 
-        rnd_scale = torch.rand(3) * (2 * self.scale) - self.scale + 1.0
-        if self.uniform:
-            rnd_scale[1] = rnd_scale[0]
-            rnd_scale[2] = rnd_scale[0]
+    #     rnd_scale = torch.rand(3) * (2 * self.scale) - self.scale + 1.0
+    #     if self.uniform:
+    #         rnd_scale[1] = rnd_scale[0]
+    #         rnd_scale[2] = rnd_scale[0]
 
-        rnd_flip = ''
-        for i, c in enumerate('txyz'):
-            if torch.rand([1]) < self.flip[i]:
-                rnd_flip = rnd_flip + c
+    #     rnd_flip = ''
+    #     for i, c in enumerate('txyz'):
+    #         if torch.rand([1]) < self.flip[i]:
+    #             rnd_flip = rnd_flip + c
 
-        rnd_jitter = torch.rand(3) * (2 * self.jitter) - self.jitter
-        return rnd_angle, rnd_scale, rnd_jitter, rnd_flip
+    #     rnd_jitter = torch.rand(3) * (2 * self.jitter) - self.jitter
+    #     return rnd_angle, rnd_scale, rnd_jitter, rnd_flip

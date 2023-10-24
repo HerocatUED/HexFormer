@@ -9,7 +9,7 @@
 SOLVER:
   gpu: 0,1,2,3
   run: train
-  logdir: logs/hoi4d
+  logdir: logs/log
   best_val: max:mIoU_part
 
   ckpt_num: 200
@@ -23,7 +23,7 @@ SOLVER:
   lr: 0.0015
   lr_type: step_warmup
   milestones: (10,18,24)
-  dist_url: tcp://localhost:10001  # for distributed training
+  dist_url: tcp://localhost:10002  # for distributed training
 
 DATA:
   train:
@@ -35,11 +35,11 @@ DATA:
 
     # data augmentations
     distort: False
-    
+    cutmix: 0.0   # no cutmix
     # data loading
     location: data
     filelist: data/train_npz.txt
-    batch_size: 16
+    batch_size: 4
     shuffle: True
     num_workers: 4
 
@@ -52,7 +52,7 @@ DATA:
 
     # data augmentations
     distort: False  # no data augmentation by default
-
+    cutmix: 0.0   # no cutmix
     # data loading
     location: data
     filelist: data/train_npz.txt
@@ -61,7 +61,7 @@ DATA:
     num_workers: 2
 
 MODEL:
-  name: hexformer_seg
+  name: hexsegformer
   # N -> Normal (3 channels);
   # D -> Displacement (1 channel);
   # F -> Color (3 channels)
