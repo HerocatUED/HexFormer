@@ -561,9 +561,9 @@ def merge_hextrees(hextrees: List['Hextree']):
     
     # node num
     batch_nnum = torch.stack(
-        [hextrees[i].nnum for i in range(hextrees.batch_size)], dim=1)
+        [hextrees[i].nnum for i in range(hextree.batch_size)], dim=1)
     batch_nnum_nempty = torch.stack(
-        [hextrees[i].nnum_nempty for i in range(hextrees.batch_size)], dim=1)
+        [hextrees[i].nnum_nempty for i in range(hextree.batch_size)], dim=1)
     hextree.nnum = torch.sum(batch_nnum, dim=1)
     hextree.nnum_nempty = torch.sum(batch_nnum_nempty, dim=1)
     hextree.batch_nnum = batch_nnum

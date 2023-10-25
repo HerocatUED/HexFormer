@@ -2,3 +2,4 @@
 *.npy
 *.npz
 logs
+data/dataset

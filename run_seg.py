@@ -27,7 +27,7 @@ def execute_command(cmds):
 def train():
   cmds = [
       'python segmentation.py',
-      '--config data/seg_hoi4d.yaml',
+      '--config data/dataset/seg_hoi4d.yaml',
       'SOLVER.gpu  {},'.format(args.gpu),
       'SOLVER.alias  {}'.format(args.alias),
       'SOLVER.dist_url tcp://localhost:{}'.format(args.port),]
