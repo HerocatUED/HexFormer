@@ -3,9 +3,6 @@
 Step 1. Hextree
 
 Step 2. HexFormer
-
-
-
 VIT/Swin  - rpe(relative positional encoding/embedding)
 ~~ PVT/CoAt/Twins - conv / cpe(conditional positional encoding/embedding) ~~
 
