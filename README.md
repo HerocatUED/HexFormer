@@ -4,21 +4,23 @@ Step 1. Hextree
 
 Step 2. HexFormer
 
-TODO: RPE/CPE, data.get_hoi4d_seg_dataset
+
 
 VIT/Swin  - rpe(relative positional encoding/embedding)
-
 ~~ PVT/CoAt/Twins - conv / cpe(conditional positional encoding/embedding) ~~
 
-patch embedding MLP or Pooling
-RPE: B, MLP
-
-Step 3. Expirements
-
-TODO： HOI4D, SemanticKITTI(optional)
-data augmentations
+TODO: RPE, patch embedding(Pooling & UpPooling) 
+RPE: +B, MLP*
 
 Potential bugs: hextree.utils, hextree_conv,
 Unfinished tests: conv, interp
 
-torch version: function next() used in thsolver.solver
+**Note** torch version: function next() used in thsolver.solver
+
+Step 3. Expirements
+
+TODO： SemanticKITTI
+data augmentations
+
+
+

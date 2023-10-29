@@ -282,30 +282,49 @@ class HexFormerStage(torch.nn.Module):
         return data
 
 
+# class PatchEmbed(torch.nn.Module):
+
+#     def __init__(self, in_channels: int = 3, dim: int = 96, num_down: int = 2,
+#                  nempty: bool = True, **kwargs):
+#         super().__init__()
+#         self.num_stages = num_down
+#         self.delta_depth = -num_down
+#         channels = [int(dim * 2**i) for i in range(-self.num_stages, 1)]
+
+#         self.convs = torch.nn.ModuleList([HextreeConvBnRelu(
+#             in_channels if i == 0 else channels[i], channels[i], kernel_size=[3],
+#             stride=1, nempty=nempty) for i in range(self.num_stages)])
+#         self.downsamples = torch.nn.ModuleList([HextreeConvBnRelu(
+#             channels[i], channels[i+1], kernel_size=[2], stride=2, nempty=nempty)
+#             for i in range(self.num_stages)])
+#         self.proj = HextreeConvBnRelu(
+#             channels[-1], dim, kernel_size=[3], stride=1, nempty=nempty)
+
+#     def forward(self, data: torch.Tensor, hextree: Hextree, depth: int):
+#         for i in range(self.num_stages):
+#             depth_i = depth - i
+#             data = self.convs[i](data, hextree, depth_i)
+#             data = self.downsamples[i](data, hextree, depth_i)
+#         data = self.proj(data, hextree, depth_i - 1)
+#         return data
+
 class PatchEmbed(torch.nn.Module):
 
-    def __init__(self, in_channels: int = 3, dim: int = 96, num_down: int = 2,
-                 nempty: bool = True, **kwargs):
+    def __init__(self, in_dim: int = 3, dim: int = 96, num_stages: int = 2, **kwargs):
         super().__init__()
-        self.num_stages = num_down
-        self.delta_depth = -num_down
-        channels = [int(dim * 2**i) for i in range(-self.num_stages, 1)]
-
-        self.convs = torch.nn.ModuleList([HextreeConvBnRelu(
-            in_channels if i == 0 else channels[i], channels[i], kernel_size=[3],
-            stride=1, nempty=nempty) for i in range(self.num_stages)])
-        self.downsamples = torch.nn.ModuleList([HextreeConvBnRelu(
-            channels[i], channels[i+1], kernel_size=[2], stride=2, nempty=nempty)
-            for i in range(self.num_stages)])
-        self.proj = HextreeConvBnRelu(
-            channels[-1], dim, kernel_size=[3], stride=1, nempty=nempty)
+        self.num_stages = num_stages
+        
+        self.mlps = torch.nn.ModuleList([MLP(in_dim, dim, in_dim) for _ in range(self.num_stages)])
+        self.norm = torch.nn.LayerNorm(dim)
+        self.downsamples = torch.nn.ModuleList([Pooling() for _ in range(self.num_stages)])
+        self.proj = MLP(in_dim, dim, in_dim*2)
 
     def forward(self, data: torch.Tensor, hextree: Hextree, depth: int):
         for i in range(self.num_stages):
             depth_i = depth - i
-            data = self.convs[i](data, hextree, depth_i)
+            data = self.mlps[i](data)
             data = self.downsamples[i](data, hextree, depth_i)
-        data = self.proj(data, hextree, depth_i - 1)
+        data = self.proj(self.norm(data))
         return data
 
 
