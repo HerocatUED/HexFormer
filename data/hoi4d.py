@@ -3,7 +3,7 @@
 # Copyright (c) 2023 Peng-Shuai Wang <wangps@hotmail.com>
 # Licensed under The MIT License [see LICENSE for details]
 # Written by Peng-Shuai Wang
-# HexFormer version modified by Xiang Wang
+# Hextree version written by Xiang Wang
 # --------------------------------------------------------
 
 
