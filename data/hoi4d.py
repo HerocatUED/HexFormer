@@ -48,7 +48,8 @@ class HOI4DTransform(Transform):
         # and the `jittor` in the data augmentation should be scaled accordingly.
         # self.scale_factor = 5.12
         # depth 9: voxel size 2cm
-        # depth 10: voxel size 2cm; depth 11: voxel size 1cm
+        # depth 10: voxel size 2cm; 
+        # depth 11: voxel size 1cm
         self.scale_factor = 10.24
 
     def __call__(self, sample, idx=None):
