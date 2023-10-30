@@ -33,8 +33,7 @@ class HextreeConvBase:
         self.nempty = nempty
         self.max_buffer = max_buffer  # about 200M
 
-        self.kdim = self.kernel_size[0] * \
-            self.kernel_size[1] * self.kernel_size[2]
+        self.kdim = self.kernel_size[0] * self.kernel_size[1] * self.kernel_size[2] * self.kernel_size[3]
         self.in_conv = in_channels if self.is_conv_layer() else out_channels
         self.out_conv = out_channels if self.is_conv_layer() else in_channels
         self.weights_shape = (self.kdim, self.in_conv, self.out_conv)
@@ -93,9 +92,9 @@ class HextreeConvBase:
             kc = self.kdim * self.in_conv            # make `max_buffer` be divided
             max_buffer = self.max_buffer // kc * kc  # by `kc` with no remainder
             self.buffer_n = (ideal_size + max_buffer - 1) // max_buffer
-            self.buffer_h = (self.buffer_h + self.buffer_n -
-                             1) // self.buffer_n
-        self.buffer_shape = (self.buffer_h, self.kdim, self.in_conv)
+            self.buffer_h = (self.buffer_h + self.buffer_n - 1) // self.buffer_n
+        # self.buffer_shape = (self.buffer_h, self.kdim, self.in_conv)
+        self.buffer_shape = (self.buffer_h, self.kdim, 2, self.in_conv) # 2 indicates shape of shuffled key
 
     def check_and_init(self, data: torch.Tensor):
         r''' Checks the input data and initializes the shape of output data.
@@ -132,11 +131,14 @@ class HextreeConvBase:
             neigh_i = self.neigh[start:end]
             valid = neigh_i >= 0
             buffer.fill_(0)
+            # print('valid',valid.shape)
+            # print('neigh',neigh_i.shape)
+            # print('data',data.shape)
+            # print('buffer',buffer.shape)
             buffer[valid] = data[neigh_i[valid]]
 
             # The sub-matrix gemm
-            out[start:end] = torch.mm(
-                buffer.flatten(1, 2), weights.flatten(0, 1))
+            out[start:end] = torch.mm(buffer.flatten(1, 2), weights.flatten(0, 1))
 
         return out
 
