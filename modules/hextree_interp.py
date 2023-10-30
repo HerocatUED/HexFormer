@@ -13,7 +13,7 @@ from typing import List, Optional
 # import sys
 # sys.path.append('..')
 from hextree import Hextree
-from hextree_pad import hextree_depad
+from .hextree_pad import hextree_depad
 
 
 def hextree_nearest_pts(data: torch.Tensor, hextree: Hextree, depth: int,
