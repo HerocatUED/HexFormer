@@ -385,7 +385,7 @@ class Hextree:
         # I choose `torch.bucketize` here because it has fewer dimension checks,
         # resulting in slightly better performance according to the docs of
         # pytorch-1.9.1, since `key` is always 1-D sorted sequence.
-        idx = torch.bucketize(query, key)
+        idx = torch.searchsorted(key.transpose(1,0), query.transpose(1,0)).transpose(1,0)
 
         valid = idx < key.shape[0]  # invalid if out of bound
         found = key[idx[valid]] == query[valid]
@@ -575,7 +575,8 @@ def merge_hextrees(hextrees: List['Hextree']):
         # key
         keys = [None] * hextree.batch_size 
         for i in range(hextree.batch_size):
-            key = hextrees[i].keys[d] 
+            keys[i] = hextrees[i].keys[d] 
+        hextree.keys[d] = torch.cat(keys, dim=0)
 
         # children
         children = [None] * hextree.batch_size
