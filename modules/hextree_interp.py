@@ -42,7 +42,7 @@ def hextree_nearest_pts(data: torch.Tensor, hextree: Hextree, depth: int,
     valid = idx > -1   # valid indices
     if bound_check:
         bound = torch.logical_and(
-            pts[:, :4] >= 0, pts[:, :4] < 2**depth).all(1)
+            pts[:, 1:4] >= 0, pts[:, 1:4] < 2**depth).all(1)
         valid = torch.logical_and(valid, bound)
 
     size = (pts.shape[0], data.shape[1])
@@ -64,17 +64,19 @@ def hextree_linear_pts(data: torch.Tensor, hextree: Hextree, depth: int,
 
     device = data.device
     grid = torch.tensor(
-        [[0, 0, 0], [0, 0, 1], [0, 1, 0], [0, 1, 1],
-         [1, 0, 0], [1, 0, 1], [1, 1, 0], [1, 1, 1]], device=device)
+        [[0, 0, 0, 0], [0, 0, 0, 1], [0, 0, 1, 0], [0, 0, 1, 1], 
+         [0, 1, 0, 0], [0, 1, 0, 1], [0, 1, 1, 0], [0, 1, 1, 1], 
+         [1, 0, 0, 0], [1, 0, 0, 1], [1, 0, 1, 0], [1, 0, 1, 1], 
+         [1, 1, 0, 0], [1, 1, 0, 1], [1, 1, 1, 0], [1, 1, 1, 1]], device=device)
 
     # 1. Neighborhood searching
     # the value is defined on the center of each voxel
-    txyzf = pts[:, :4] - 0.5
+    txyzf = pts[:, :4] - torch.tensor([0, 0.5, 0.5, 0.5], device=device)
     txyzi = txyzf.floor()       # the integer part  (N, 4)
     frac = txyzf - txyzi        # the fraction part (N, 4)
 
     txyzn = (txyzi.unsqueeze(1) + grid).view(-1, 4)
-    batch = pts[:, 4].unsqueeze(1).repeat(1, 8).view(-1, 1) # TODO: 8 or 10?
+    batch = pts[:, 4].unsqueeze(1).repeat(1, 16).view(-1, 1) 
     idx = hextree.search_txyzb(torch.cat([txyzn, batch], dim=1), depth, nempty)
     valid = idx > -1  # valid indices
     if bound_check:
@@ -85,13 +87,13 @@ def hextree_linear_pts(data: torch.Tensor, hextree: Hextree, depth: int,
     # 2. Build the sparse matrix
     npt = pts.shape[0]
     ids = torch.arange(npt, device=idx.device)
-    ids = ids.unsqueeze(1).repeat(1, 8).view(-1) # TODO: 8 or 10?
+    ids = ids.unsqueeze(1).repeat(1, 16).view(-1) 
     ids = ids[valid]
     indices = torch.stack([ids, idx], dim=0).long()
 
-    # (8, 4) - (N, 1, 4) -> (N, 8, 4)
+    # (16, 4) - (N, 1, 4) -> (N, 16, 4)
     frac = (1.0 - grid) - frac.unsqueeze(dim=1)
-    weight = frac.prod(dim=2).abs().view(-1)     # (8*N,)
+    weight = frac.prod(dim=2).abs().view(-1)     # (16*N,)
     weight = weight[valid]
 
     h = data.shape[0]
@@ -127,7 +129,7 @@ class HextreeInterp(torch.nn.Module):
         # rescale points from [-1, 1] to [0, 2^depth]
         if self.rescale_pts:
             scale = 2 ** (depth - 1)
-            pts[:, :3] = (pts[:, :3] + 1.0) * scale
+            pts[:, 1:4] = (pts[:, 1:4] + 1.0) * scale
 
         return self.func(data, hextree, depth, pts, self.nempty, self.bound_check)
 
@@ -158,7 +160,7 @@ def hextree_nearest_upsample(data: torch.Tensor, hextree: Hextree, depth: int,
     out = data
     if not nempty:
         out = hextree_depad(out, hextree, depth)
-    out = out.unsqueeze(1).repeat(1, 8, 1).flatten(end_dim=1)
+    out = out.unsqueeze(1).repeat(1, 16, 1).flatten(end_dim=1)
     if nempty:
         out = hextree_depad(out, hextree, depth+1)  # !!! depth+1
     return out
@@ -190,10 +192,12 @@ class HextreeUpsample(torch.nn.Module):
         if target_depth == depth + 1 and self.method == 'nearest':
             return hextree_nearest_upsample(data, hextree, depth, self.nempty)
 
+        # hextree_linear_upsample is not implemented
+
         txyzb = hextree.txyzb(target_depth, self.nempty)
         pts = torch.stack(txyzb, dim=1).float()
-        pts[:, :3] = (pts[:, :3] + 0.5) * \
-            (2**(depth - target_depth))  # !!! rescale
+        # we don't interp on t
+        pts[:, 1:4] = (pts[:, 1:4] + 0.5) * (2**(depth - target_depth))  # !!! rescale
         return self.func(data, hextree, depth, pts, self.nempty)
 
     def extra_repr(self) -> str:

@@ -385,10 +385,14 @@ class Hextree:
         # I choose `torch.bucketize` here because it has fewer dimension checks,
         # resulting in slightly better performance according to the docs of
         # pytorch-1.9.1, since `key` is always 1-D sorted sequence.
-        idx = torch.searchsorted(key.transpose(1,0), query.transpose(1,0)).transpose(1,0)
+        
+        # idx = torch.searchsorted(key.transpose(1,0), query.transpose(1,0))
+        key_ = key[:, 1]
+        query_ = query[:, 1]
+        idx = torch.bucketize(query_, key_)
 
-        valid = idx < key.shape[0]  # invalid if out of bound
-        found = key[idx[valid]] == query[valid]
+        valid = idx < key_.shape[0]  # invalid if out of bound
+        found = key_[idx[valid]] == query_[valid]
         valid[valid.clone()] = found
         idx[valid.logical_not()] = -1
         return idx
