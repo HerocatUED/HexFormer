@@ -12,7 +12,7 @@ from typing import Union, List
 
 import sys 
 sys.path.append('..')
-from .torchutils import meshgrid, scatter_add, cumsum, trunc_div
+from .utils import meshgrid, scatter_add, cumsum, trunc_div
 from .points import Points
 from .shuffled_key import txyz2key, key2txyz
 
@@ -164,7 +164,6 @@ class Hextree:
         tmax = torch.max(points[:, 0])
         # if (scale >> 1) < tmax:
         #     points[:, 0] = points[:, 0] / tmax * scale
-
         assert tmax <= (scale << 1)
 
         # get the shuffled key and sort
@@ -193,7 +192,6 @@ class Hextree:
             self.nnum_nempty[d] = node_key[..., 1].numel()
 
             # children
-           
             addr = (pidx << 4) | (node_key[..., 1] % 16)
             children = -torch.ones(
                 self.nnum[d].item(), dtype=torch.int64, device=self.device)
@@ -387,10 +385,14 @@ class Hextree:
         # I choose `torch.bucketize` here because it has fewer dimension checks,
         # resulting in slightly better performance according to the docs of
         # pytorch-1.9.1, since `key` is always 1-D sorted sequence.
-        idx = torch.bucketize(query, key)
+        
+        # idx = torch.searchsorted(key.transpose(1,0), query.transpose(1,0))
+        key_ = key[:, 1]
+        query_ = query[:, 1]
+        idx = torch.bucketize(query_, key_)
 
-        valid = idx < key.shape[0]  # invalid if out of bound
-        found = key[idx[valid]] == query[valid]
+        valid = idx < key_.shape[0]  # invalid if out of bound
+        found = key_[idx[valid]] == query_[valid]
         valid[valid.clone()] = found
         idx[valid.logical_not()] = -1
         return idx
@@ -577,7 +579,8 @@ def merge_hextrees(hextrees: List['Hextree']):
         # key
         keys = [None] * hextree.batch_size 
         for i in range(hextree.batch_size):
-            key = hextrees[i].keys[d] 
+            keys[i] = hextrees[i].keys[d] 
+        hextree.keys[d] = torch.cat(keys, dim=0)
 
         # children
         children = [None] * hextree.batch_size

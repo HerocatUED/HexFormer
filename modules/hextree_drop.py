@@ -3,13 +3,13 @@
 # Copyright (c) 2022 Peng-Shuai Wang <wangps@hotmail.com>
 # Licensed under The MIT License [see LICENSE for details]
 # Written by Peng-Shuai Wang
-# Hextree version modified by Xiang Wang
+# Hextree version written by Xiang Wang
 # --------------------------------------------------------
 
 import torch
 from typing import Optional
-import sys
-sys.path.append('..')
+# import sys
+# sys.path.append('..')
 from hextree import Hextree
 
 

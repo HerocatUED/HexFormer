@@ -10,8 +10,8 @@ import torch
 from typing import Optional, List
 from torch.utils.checkpoint import checkpoint
 
-from hextree import Hextree, Points, key2txyz, txyz2key
-from modules import HextreeDropPath
+from hextree import Hextree, Points, key2txyz
+from modules import HextreeDropPath, HextreeConv, HextreeConvBnRelu, HextreeMaxPool
 
 
 class HextreeT(Hextree):
@@ -21,7 +21,7 @@ class HextreeT(Hextree):
                  start_depth: Optional[int] = None, **kwargs):
         super().__init__(hextree.depth, hextree.full_depth)
         self.__dict__.update(hextree.__dict__)
-
+        
         self.patch_size = patch_size
         self.dilation = dilation  # TODO dilation as a list
         self.nempty = nempty
@@ -169,6 +169,7 @@ class HextreeAttention(torch.nn.Module):
         self.proj_drop = torch.nn.Dropout(proj_drop)
         self.softmax = torch.nn.Softmax(dim=-1)
         # self.rpe = RPE(patch_size, num_heads, dilation) if use_rpe else None
+        self.use_rpe = False
 
     def forward(self, data: torch.Tensor, hextree: HextreeT, depth: int):
         H = self.num_heads
@@ -237,10 +238,10 @@ class HexFormerBlock(torch.nn.Module):
         self.norm2 = torch.nn.LayerNorm(dim)
         self.mlp = MLP(dim, int(dim * mlp_ratio), dim, activation, proj_drop)
         self.drop_path = HextreeDropPath(drop_path, nempty)
-        self.cpe = OctreeDWConvBn(dim, nempty=nempty)
+        # self.cpe = OctreeDWConvBn(dim, nempty=nempty)
 
     def forward(self, data: torch.Tensor, hextree: HextreeT, depth: int):
-        data = self.cpe(data, hextree, depth) + data
+        # data = self.cpe(data, hextree, depth) + data
         attn = self.attention(self.norm1(data), hextree, depth)
         data = data + self.drop_path(attn, hextree, depth)
         ffn = self.mlp(self.norm2(data))
@@ -282,47 +283,66 @@ class HexFormerStage(torch.nn.Module):
         return data
 
 
-# TODO
+# class PatchEmbed(torch.nn.Module):
+
+#     def __init__(self, in_channels: int = 3, dim: int = 96, num_down: int = 2,
+#                  nempty: bool = True, **kwargs):
+#         super().__init__()
+#         self.num_stages = num_down
+#         self.delta_depth = -num_down
+#         channels = [int(dim * 2**i) for i in range(-self.num_stages, 1)]
+
+#         self.convs = torch.nn.ModuleList([HextreeConvBnRelu(
+#             in_channels if i == 0 else channels[i], channels[i], kernel_size=[3],
+#             stride=1, nempty=nempty) for i in range(self.num_stages)])
+#         self.downsamples = torch.nn.ModuleList([HextreeConvBnRelu(
+#             channels[i], channels[i+1], kernel_size=[2], stride=2, nempty=nempty)
+#             for i in range(self.num_stages)])
+#         self.proj = HextreeConvBnRelu(
+#             channels[-1], dim, kernel_size=[3], stride=1, nempty=nempty)
+
+#     def forward(self, data: torch.Tensor, hextree: Hextree, depth: int):
+#         for i in range(self.num_stages):
+#             depth_i = depth - i
+#             data = self.convs[i](data, hextree, depth_i)
+#             data = self.downsamples[i](data, hextree, depth_i)
+#         data = self.proj(data, hextree, depth_i - 1)
+#         return data
+
 class PatchEmbed(torch.nn.Module):
 
-    def __init__(self, in_channels: int = 3, dim: int = 96, num_down: int = 2,
-                 nempty: bool = True, **kwargs):
+    def __init__(self, in_dim: int = 4, dim: int = 96, num_stages: int = 2, nempty: bool = True, **kwargs):
         super().__init__()
-        self.num_stages = num_down
-        self.delta_depth = -num_down
+        self.num_stages = num_stages
         channels = [int(dim * 2**i) for i in range(-self.num_stages, 1)]
-
-        self.convs = torch.nn.ModuleList([ocnn.modules.OctreeConvBnRelu(
-            in_channels if i == 0 else channels[i], channels[i], kernel_size=[3],
-            stride=1, nempty=nempty) for i in range(self.num_stages)])
-        self.downsamples = torch.nn.ModuleList([ocnn.modules.OctreeConvBnRelu(
-            channels[i], channels[i+1], kernel_size=[2], stride=2, nempty=nempty)
-            for i in range(self.num_stages)])
-        self.proj = ocnn.modules.OctreeConvBnRelu(
-            channels[-1], dim, kernel_size=[3], stride=1, nempty=nempty)
+        
+        self.mlps = torch.nn.ModuleList([MLP(in_dim if i == 0 else channels[i-1], channels[i], channels[i]) for i in range(self.num_stages)])
+        self.norm = torch.nn.LayerNorm(channels[-2])
+        self.downsamples = torch.nn.ModuleList([HextreeMaxPool(nempty, return_indices=False) for _ in range(self.num_stages)])
+        self.proj = MLP(channels[-2], 2*dim, channels[-1])
 
     def forward(self, data: torch.Tensor, hextree: Hextree, depth: int):
         for i in range(self.num_stages):
             depth_i = depth - i
-            data = self.convs[i](data, hextree, depth_i)
+            data = self.mlps[i](data)
             data = self.downsamples[i](data, hextree, depth_i)
-        data = self.proj(data, hextree, depth_i - 1)
+        data = self.proj(self.norm(data))
         return data
 
 
-class Downsample(torch.nn.Module):
+# class Downsample(torch.nn.Module):
 
-    def __init__(self, in_channels: int, out_channels: int,
-                 kernel_size: List[int] = [2], nempty: bool = True):
-        super().__init__()
-        self.norm = torch.nn.BatchNorm1d(out_channels)
-        self.conv = ocnn.nn.OctreeConv(in_channels, out_channels, kernel_size,
-                                       stride=2, nempty=nempty, use_bias=True)
+#     def __init__(self, in_channels: int, out_channels: int,
+#                  kernel_size: List[int] = [2], nempty: bool = True):
+#         super().__init__()
+#         self.norm = torch.nn.BatchNorm1d(out_channels)
+#         self.conv = HextreeConv(in_channels, out_channels, kernel_size,
+#                                        stride=2, nempty=nempty, use_bias=True)
 
-    def forward(self, data: torch.Tensor, hextree: Hextree, depth: int):
-        data = self.conv(data, hextree, depth)
-        data = self.norm(data)
-        return data
+#     def forward(self, data: torch.Tensor, hextree: Hextree, depth: int):
+#         data = self.conv(data, hextree, depth)
+#         data = self.norm(data)
+#         return data
 
 
 class HexFormer(torch.nn.Module):
@@ -341,16 +361,17 @@ class HexFormer(torch.nn.Module):
         self.stem_down = stem_down
         drop_ratio = torch.linspace(0, drop_path, sum(num_blocks)).tolist()
 
-        self.patch_embed = PatchEmbed(
-            in_channels, channels[0], stem_down, nempty)
+        self.patch_embed = PatchEmbed(in_channels, channels[0], stem_down, nempty)
         self.layers = torch.nn.ModuleList([HexFormerStage(
             dim=channels[i], num_heads=num_heads[i], patch_size=patch_size,
             drop_path=drop_ratio[sum(num_blocks[:i]):sum(num_blocks[:i+1])],
             dilation=dilation, nempty=nempty, num_blocks=num_blocks[i],)
             for i in range(self.num_stages)])
-        self.downsamples = torch.nn.ModuleList([Downsample(
-            channels[i], channels[i + 1], kernel_size=[2],
-            nempty=nempty) for i in range(self.num_stages - 1)])
+        # self.downsamples = torch.nn.ModuleList([Downsample(
+        #     channels[i], channels[i + 1], kernel_size=[2],
+        #     nempty=nempty) for i in range(self.num_stages - 1)])
+        self.feature_up = torch.nn.ModuleList([MLP(channels[i], int((channels[i]+channels[i+1])/2), channels[i+1]) for i in range(self.num_stages - 1)])
+        self.downsamples = torch.nn.ModuleList([HextreeMaxPool(nempty) for i in range(self.num_stages - 1)])
 
     def forward(self, data: torch.Tensor, hextree: Hextree, depth: int):
         data = self.patch_embed(data, hextree, depth)
@@ -363,5 +384,6 @@ class HexFormer(torch.nn.Module):
             data = self.layers[i](data, hextree, depth_i)
             features[depth_i] = data
             if i < self.num_stages - 1:
+                data = self.feature_up[i](data)
                 data = self.downsamples[i](data, hextree, depth_i)
         return features
