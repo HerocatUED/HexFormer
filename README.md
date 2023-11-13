@@ -7,7 +7,7 @@ Step 2. HexFormer
 VIT/Swin  - rpe(relative positional encoding/embedding)
 ~~ PVT/CoAt/Twins - conv / cpe(conditional positional encoding/embedding) ~~
 
-TODO: RPE, patch embedding(Pooling & UpPooling) 
+TODO: RPE, **patch embedding**
 RPE: +B, MLP*
 
 Potential bugs: hextree.utils, hextree_conv,
@@ -21,7 +21,10 @@ octree_linear_upsample is not implemented;
 
 Step 3. Expirements
 
-TODO： SemanticKITTI
+TODO： 
+
+SemanticKITTI
+
 data augmentations
 
 

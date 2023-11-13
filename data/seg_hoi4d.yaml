@@ -1,0 +1,80 @@
+# --------------------------------------------------------
+# OctFormer: Octree-based Transformers for 3D Point Clouds
+# Copyright (c) 2023 Peng-Shuai Wang <wangps@hotmail.com>
+# Licensed under The MIT License [see LICENSE for details]
+# Written by Peng-Shuai Wang
+# Hextree version modified by Xiang Wang
+# --------------------------------------------------------
+
+SOLVER:
+  gpu: 0,1,2,3
+  run: train
+  logdir: logs/log_3
+  best_val: max:mIoU_part
+
+  ckpt_num: 200
+  max_epoch: 80
+  test_every_epoch: 2
+  log_per_iter: 1
+
+  weight_decay: 0.05
+  type: adamw_attn
+
+  lr: 0.001
+  lr_type: step_warmup
+  warmup_epoch: 5
+  milestones: (30, 50, 70)
+  dist_url: tcp://localhost:10002  # for distributed training
+
+DATA:
+  train:
+    name: hoi4d
+
+    # hextree building
+    depth: 11
+    full_depth: 2
+
+    # data augmentations
+    distort: False
+    cutmix: 0.0   # no cutmix
+    # data loading
+    location: data
+    filelist: data/train_data.txt
+    batch_size: 1
+    shuffle: True
+    num_workers: 4
+
+  test:
+    name: hoi4d
+
+    # hextree building
+    depth: 11
+    full_depth: 2
+
+    # data augmentations
+    distort: False  # no data augmentation by default
+    cutmix: 0.0   # no cutmix
+    # data loading
+    location: data
+    filelist: data/validation_data.txt
+    batch_size: 1
+    shuffle: False
+    num_workers: 2
+
+MODEL:
+  name: hexsegformer_small
+  # N -> Normal (3 channels);
+  # D -> Displacement (1 channel);
+  # F -> Color (3 channels);
+  # P -> Position (4 channels);
+  feature: P
+  channel: 4
+  nout: 49
+  nempty: True
+  interp: nearest
+  sync_bn: True
+  find_unused_parameters: False
+
+LOSS:
+  mask: 0
+  num_class: 49
