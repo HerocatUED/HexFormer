@@ -56,7 +56,7 @@ def float_64to32():
     print("Done.")
 
 
-def trans(clip_length: int = 5):
+def trans_hoi4d(clip_length: int = 5):
     points_xyz = np.load('points.npy')     # (N_video, 300, 8192, 3)
     semantic = np.load('semantic.npy')     # (N_video, 300, 8192)
 
@@ -70,18 +70,36 @@ def trans(clip_length: int = 5):
     points_txyz = torch.Tensor(points_txyz.reshape([N, -1, 4]))   # (N, 2457600, 4)
     semantic = torch.Tensor(semantic.reshape([N, -1]))            # (N, 2457600)
 
-    f = open('./dataset/train_npz.txt', 'w')
+    f = open('./train_npz.txt', 'w')
     file_list = ''
     for i in range(N):
-        np.savez(f'./dataset/train_{i}.npz',
+        np.savez(f'./train_{i}.npz',
                  points=points_txyz[i], labels=semantic[i],)
-        file_list += f'./dataset/train_{i}.npz\n'
+        file_list += f'./train_{i}.npz\n'
     f.write(file_list)
     f.close()
+    
+def trans_visualize():
+    points = np.load("../logs/log_withRPE_SingleVideo_hoi4d/result_sample/points_5.npz")
+    points = np.array(points['arr_0'][:8192, 1:])
+    print("points", np.shape(points))
+    pred = np.load("../logs/log_withRPE_SingleVideo_hoi4d/result_sample/pred_5.npz")
+    pred = np.array(pred['arr_0'][:8192])
+    print("pred", np.shape(pred))
+    label = np.load("../logs/log_withRPE_SingleVideo_hoi4d/result_sample/label_5.npz")
+    label = np.array(label['arr_0'][:8192])
+    print("label", np.shape(label))
+    prediction = np.concatenate([points, np.expand_dims(pred, 1)], axis=-1)
+    groundtruth = np.concatenate([points, np.expand_dims(label, 1)], axis=-1)
+    np.save("./visualize/prediction.npy", prediction)
+    np.save("./visualize/groundtruth.npy", groundtruth)
 
 
 if __name__ == '__main__':
     # float_64to32()
-    trans()
+    
+    # trans_hoi4d()
+    
+    trans_visualize()
     # x = np.load('dataset/train_0.npz')
     # print(np.shape(x['points']))
