@@ -27,9 +27,9 @@ def save_pcd(batch, logit, path, rand_id:float):
     print(f"saving to {path}")
     if not os.path.exists(path):
         os.makedirs(path)
-    np.savez(path+f'/points_{rand_id}.npz', batch['points'].points.cpu().numpy())
-    np.savez(path+f'/label_{rand_id}.npz', batch['points'].labels.cpu().numpy())
-    np.savez(path+f'/pred_{rand_id}.npz', pred.cpu().numpy())
+    np.savez(path+'/points_{:.2f}.npz'.format(rand_id), batch['points'].points.cpu().numpy())
+    np.savez(path+'/label_{:.2f}.npz'.format(rand_id), batch['points'].labels.cpu().numpy())
+    np.savez(path+'/pred_{:.2f}.npz'.format(rand_id), pred.cpu().numpy())
 
 class SegSolver(Solver):
 
@@ -104,7 +104,7 @@ class SegSolver(Solver):
         num_class = self.FLAGS.LOSS.num_class
         IoU, insc, union = self.IoU_per_shape(logit, label, num_class)
         
-        # randomly save 1/20 data for visualization
+        # randomly save 1/10 data for visualization
         rand_id = np.random.uniform()
         if batch['epoch'] == self.FLAGS.SOLVER.max_epoch-1 and rand_id < 0.1:
             save_pcd(batch, logit, self.logdir+'/result_sample', rand_id)

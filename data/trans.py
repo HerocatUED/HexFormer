@@ -79,27 +79,28 @@ def trans_hoi4d(clip_length: int = 5):
     f.write(file_list)
     f.close()
     
-def trans_visualize():
-    points = np.load("../logs/log_withRPE_SingleVideo_hoi4d/result_sample/points_5.npz")
-    points = np.array(points['arr_0'][:8192, 1:])
-    print("points", np.shape(points))
-    pred = np.load("../logs/log_withRPE_SingleVideo_hoi4d/result_sample/pred_5.npz")
-    pred = np.array(pred['arr_0'][:8192])
-    print("pred", np.shape(pred))
-    label = np.load("../logs/log_withRPE_SingleVideo_hoi4d/result_sample/label_5.npz")
-    label = np.array(label['arr_0'][:8192])
-    print("label", np.shape(label))
-    prediction = np.concatenate([points, np.expand_dims(pred, 1)], axis=-1)
-    groundtruth = np.concatenate([points, np.expand_dims(label, 1)], axis=-1)
-    np.save("./visualize/prediction.npy", prediction)
-    np.save("./visualize/groundtruth.npy", groundtruth)
+def trans_visualize(rand_ids):
+    for i, rand_id in enumerate(rand_ids):
+        points = np.load(f"../logs/log_visualize_hoi4d/result_sample/points_{rand_id}.npz")
+        points = np.array(points['arr_0'][:8192, 1:])
+        print("points", np.shape(points))
+        pred = np.load(f"../logs/log_visualize_hoi4d/result_sample/pred_{rand_id}.npz")
+        pred = np.array(pred['arr_0'][:8192])
+        print("pred", np.shape(pred))
+        label = np.load(f"../logs/log_visualize_hoi4d/result_sample/label_{rand_id}.npz")
+        label = np.array(label['arr_0'][:8192])
+        print("label", np.shape(label))
+        prediction = np.concatenate([points, np.expand_dims(pred, 1)], axis=-1)
+        groundtruth = np.concatenate([points, np.expand_dims(label, 1)], axis=-1)
+        np.save(f"./visualize/prediction_{i}.npy", prediction)
+        np.save(f"./visualize/groundtruth_{i}.npy", groundtruth)
 
 
 if __name__ == '__main__':
     # float_64to32()
     
     # trans_hoi4d()
-    
-    trans_visualize()
+    rand_ids = [0.0527, 0.0777, 0.0905]
+    trans_visualize(rand_ids)
     # x = np.load('dataset/train_0.npz')
     # print(np.shape(x['points']))

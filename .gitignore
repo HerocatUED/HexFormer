@@ -3,3 +3,5 @@
 *.npz
 logs
 data/dataset
+data/config
+data/visualize

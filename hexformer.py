@@ -169,7 +169,7 @@ class HextreeAttention(torch.nn.Module):
         self.proj_drop = torch.nn.Dropout(proj_drop)
         self.softmax = torch.nn.Softmax(dim=-1)
         self.rpe = RPE(patch_size, num_heads, dilation) if use_rpe else None
-        self.use_rpe = use_rpe
+        self.use_rpe = False
 
     def forward(self, data: torch.Tensor, hextree: HextreeT, depth: int):
         H = self.num_heads
