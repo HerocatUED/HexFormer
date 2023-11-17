@@ -96,8 +96,7 @@ class HexFormerSeg(torch.nn.Module):
         self.backbone = HexFormer(
             in_channels, channels, num_blocks, num_heads, patch_size, dilation,
             drop_path, nempty, stem_down)
-        self.head = SegHeader(
-            out_channels, channels, fpn_channel, nempty, head_up, head_drop)
+        self.head = SegHeader(out_channels, channels, fpn_channel, nempty, head_up, head_drop)
         self.apply(self.init_weights)
 
     def init_weights(self, m):

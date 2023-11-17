@@ -1,5 +1,6 @@
-# Convert a double-precision dataset to single-precision
+# Convert dataset file to another format
 # Written by Xiang Wang
+
 import torch
 import h5py
 import numpy as np
@@ -85,12 +86,12 @@ def xyz2txyz(clip_length: int = 5):
     train_list = ''
     val_list = ''
     for i in range(N):
-        np.savez(f'./dataset/train_{i}.npz',
+        np.savez(f'./dataset/data_{i}.npz',
                  points=points_txyz[i], labels=semantic[i],)
         if i % 5 == 0:
-            train_list += f'./dataset/train_{i}.npz\n'
+            val_list += f'./dataset/data_{i}.npz\n'
         else:
-            val_list += f'./dataset/train_{i}.npz\n'
+            train_list += f'./dataset/data_{i}.npz\n'
     f_train.write(train_list)
     f_train.close()
     f_val.write(val_list)
@@ -116,9 +117,10 @@ def trans_visualize(rand_ids, logdir):
 if __name__ == '__main__':
     # float_64to32()
     
-    # rand_ids = [0.07, 0.09]
-    # logdir = 'SingleVideo'
-    # trans_visualize(rand_ids, logdir)
-    
     # h52npy(50)
-    xyz2txyz(8)
+    
+    # xyz2txyz(8)
+    
+    rand_ids = [0.000]
+    logdir = 'single_data_1'
+    trans_visualize(rand_ids, logdir)
