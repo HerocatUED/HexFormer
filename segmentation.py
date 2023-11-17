@@ -27,9 +27,9 @@ def save_pcd(batch, logit, path, rand_id:float):
     print(f"saving to {path}")
     if not os.path.exists(path):
         os.makedirs(path)
-    np.savez(path+'/points_{:.2f}.npz'.format(rand_id), batch['points'].points.cpu().numpy())
-    np.savez(path+'/label_{:.2f}.npz'.format(rand_id), batch['points'].labels.cpu().numpy())
-    np.savez(path+'/pred_{:.2f}.npz'.format(rand_id), pred.cpu().numpy())
+    np.savez(path+'/points_{:.3f}.npz'.format(rand_id), batch['points'].points.cpu().numpy())
+    np.savez(path+'/label_{:.3f}.npz'.format(rand_id), batch['points'].labels.cpu().numpy())
+    np.savez(path+'/pred_{:.3f}.npz'.format(rand_id), pred.cpu().numpy())
 
 class SegSolver(Solver):
 

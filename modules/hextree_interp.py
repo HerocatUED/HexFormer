@@ -42,7 +42,7 @@ def hextree_nearest_pts(data: torch.Tensor, hextree: Hextree, depth: int,
     valid = idx > -1   # valid indices
     if bound_check:
         bound = torch.logical_and(
-            pts[:, 1:4] >= 0, pts[:, 1:4] < 2**depth).all(1)
+            pts[:, :4] >= 0, pts[:, :4] < 2**depth).all(1)
         valid = torch.logical_and(valid, bound)
 
     size = (pts.shape[0], data.shape[1])
@@ -126,7 +126,7 @@ class HextreeInterp(torch.nn.Module):
                 pts: torch.Tensor):
         r''''''
 
-        # rescale points from [-1, 1] to [0, 2^depth]
+        # rescale points from [-1, 1] to [0, 2^depth], NOTE: do not rescale t!!!
         if self.rescale_pts:
             scale = 2 ** (depth - 1)
             pts[:, 1:4] = (pts[:, 1:4] + 1.0) * scale
@@ -196,8 +196,8 @@ class HextreeUpsample(torch.nn.Module):
 
         txyzb = hextree.txyzb(target_depth, self.nempty)
         pts = torch.stack(txyzb, dim=1).float()
-        # we don't interp on t
-        pts[:, 1:4] = (pts[:, 1:4] + 0.5) * (2**(depth - target_depth))  # !!! rescale
+        
+        pts[:, :4] = (pts[:, :4] + 0.5) * (2**(depth - target_depth))  # !!! rescale
         return self.func(data, hextree, depth, pts, self.nempty)
 
     def extra_repr(self) -> str:
