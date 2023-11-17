@@ -371,7 +371,7 @@ class HexFormer(torch.nn.Module):
         self.feature_up = torch.nn.ModuleList([MLP(channels[i], int(
             (channels[i]+channels[i+1])/2), channels[i+1]) for i in range(self.num_stages - 2)])
         self.downsamples = torch.nn.ModuleList(
-            [HextreeMaxPool(nempty) for i in range(self.num_stages - 1)])
+            [HextreeMaxPool(nempty, return_indices=False) for _ in range(self.num_stages - 1)])
 
     def forward(self, data: torch.Tensor, hextree: Hextree, depth: int):
         data = self.patch_embed(data, hextree, depth)

@@ -110,8 +110,8 @@ def trans_visualize(rand_ids, logdir):
         print("label", np.shape(label))
         prediction = np.concatenate([points, np.expand_dims(pred, 1)], axis=-1)
         groundtruth = np.concatenate([points, np.expand_dims(label, 1)], axis=-1)
-        np.save(f"./visualize/prediction_{i+2}.npy", prediction)
-        np.save(f"./visualize/groundtruth_{i+2}.npy", groundtruth)
+        np.save(f"./visualize/prediction_{i}.npy", prediction)
+        np.save(f"./visualize/groundtruth_{i}.npy", groundtruth)
 
 
 if __name__ == '__main__':
@@ -121,6 +121,9 @@ if __name__ == '__main__':
     
     # xyz2txyz(8)
     
-    rand_ids = [0.000]
-    logdir = 'single_data_1'
-    trans_visualize(rand_ids, logdir)
+    # rand_ids = [0]
+    # logdir = 'single_data_1'
+    # trans_visualize(rand_ids, logdir)
+    
+    for i in range(0):
+        print(i)
