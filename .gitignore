@@ -3,3 +3,6 @@
 *.npz
 logs
 data/dataset
+data/config
+data/visualize
+dataset_frame2

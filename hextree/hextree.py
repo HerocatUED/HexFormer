@@ -365,7 +365,6 @@ class Hextree:
           depth (int): The depth of the hextree layer. nemtpy (bool): If true, only
               searches the non-empty hextree nodes.
         '''
-
         key = txyz2key(query[:, 0], query[:, 1], query[:, 2], query[:, 3], query[:, 4], depth)
         idx = self.search_key(key, depth, nempty)
         return idx
@@ -379,7 +378,6 @@ class Hextree:
         depth (int): The depth of the hextree layer. nemtpy (bool): If true, only
             searches the non-empty hextree nodes.
         '''
-
         key = self.key(depth, nempty)
         # `torch.bucketize` is similar to `torch.searchsorted`.
         # I choose `torch.bucketize` here because it has fewer dimension checks,
@@ -387,8 +385,10 @@ class Hextree:
         # pytorch-1.9.1, since `key` is always 1-D sorted sequence.
         
         # idx = torch.searchsorted(key.transpose(1,0), query.transpose(1,0))
-        key_ = key[:, 1]
-        query_ = query[:, 1]
+        # key_ = key[:, 1]
+        # query_ =query[:, 1]
+        key_ = (key[:, 0] << 48) | key[:, 1]
+        query_ = (query[:, 0] << 48) | query[:, 1]
         idx = torch.bucketize(query_, key_)
 
         valid = idx < key_.shape[0]  # invalid if out of bound

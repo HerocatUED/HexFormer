@@ -1,17 +1,18 @@
-# Convert a double-precision dataset to single-precision
+# Convert dataset file to another format
 # Written by Xiang Wang
+
 import torch
 import h5py
 import numpy as np
 from tqdm import tqdm
 
 
-def float_64to32():
+def float64to32():
     chunk_size = 30
 
     for filename in ['train1', 'train2', 'train3', 'train4']:
-        with h5py.File('../HOI4D_dataset/seg_data_h5'+'/'+filename+'.h5', 'r') as f:
-            with h5py.File('../HOI4D_dataset/seg_data_h5'+'/'+filename+'_float32.h5', 'w') as new_f:
+        with h5py.File('/mnt/sdc/wangx/HOI4D/HOI4D_dataset/seg_data_h5'+'/'+filename+'.h5', 'r') as f:
+            with h5py.File('/mnt/sdc/wangx/HOI4D/HOI4D_dataset/seg_data_h5'+'/'+filename+'_float32.h5', 'w') as new_f:
                 for dataset_name in ['center', 'semantic', 'pcd']:
 
                     print(dataset_name)
@@ -56,10 +57,19 @@ def float_64to32():
     print("Done.")
 
 
-def trans(clip_length: int = 5):
-    points_xyz = np.load('points.npy')     # (N_video, 300, 8192, 3)
-    semantic = np.load('semantic.npy')     # (N_video, 300, 8192)
+def h52npy(n_video):
+    with h5py.File('/mnt/sdc/wangx/HOI4D/HOI4D_dataset/seg_data_h5'+'/train1_float32.h5', 'r') as f:
+        for dataset_name in ['semantic', 'pcd']:
+            print(dataset_name)
+            data = np.array(f[dataset_name][:n_video, :160])
+            print(f'{dataset_name}', np.shape(data))
+            np.save(f'./dataset/{dataset_name}', data)
 
+
+def xyz2txyz(dataset_name: str, config_name: str, clip_length: int):
+    points_xyz = np.load('./dataset/points.npy')
+    semantic = np.load('./dataset/semantic.npy')    
+    
     # Translate data to txyz format
     n_video, t_video, n_point, _ = points_xyz.shape
     points_txyz = np.concatenate([np.zeros([n_video, t_video, n_point, 1]), points_xyz], axis=-1)
@@ -67,21 +77,53 @@ def trans(clip_length: int = 5):
 
     clip_rate = int(t_video / clip_length)
     N = clip_rate * n_video
-    points_txyz = torch.Tensor(points_txyz.reshape([N, -1, 4]))   # (N, 2457600, 4)
-    semantic = torch.Tensor(semantic.reshape([N, -1]))            # (N, 2457600)
+    # print(clip_rate, n_video)
+    points_txyz = torch.Tensor(points_txyz.reshape([N, -1, 4]))  
+    semantic = torch.Tensor(semantic.reshape([N, -1]))           
 
-    f = open('./dataset/train_npz.txt', 'w')
-    file_list = ''
+    f_train = open(f'./{config_name}/train_data.txt', 'w')
+    f_val = open(f'./{config_name}/val_data.txt', 'w')
+    train_list = ''
+    val_list = ''
     for i in range(N):
-        np.savez(f'./dataset/train_{i}.npz',
+        np.savez(f'./{dataset_name}/data_{i}.npz',
                  points=points_txyz[i], labels=semantic[i],)
-        file_list += f'./dataset/train_{i}.npz\n'
-    f.write(file_list)
-    f.close()
+        if i % 5 == 0:
+            val_list += f'./{dataset_name}/data_{i}.npz\n'
+        else:
+            train_list += f'./{dataset_name}/data_{i}.npz\n'
+    f_train.write(train_list)
+    f_train.close()
+    f_val.write(val_list)
+    f_val.close()
+    
+def trans_visualize(rand_ids, logdir):
+    for i, rand_id in enumerate(rand_ids):
+        points = np.load(f"../logs/log_{logdir}_hoi4d/result_sample/points_{rand_id}.npz")
+        points = np.array(points['arr_0'][:8192, 1:])
+        print("points", np.shape(points))
+        pred = np.load(f"../logs/log_{logdir}_hoi4d/result_sample/pred_{rand_id}.npz")
+        pred = np.array(pred['arr_0'][:8192])
+        print("pred", np.shape(pred))
+        label = np.load(f"../logs/log_{logdir}_hoi4d/result_sample/label_{rand_id}.npz")
+        label = np.array(label['arr_0'][:8192])
+        print("label", np.shape(label))
+        prediction = np.concatenate([points, np.expand_dims(pred, 1)], axis=-1)
+        groundtruth = np.concatenate([points, np.expand_dims(label, 1)], axis=-1)
+        np.save(f"./visualize/prediction_{i}.npy", prediction)
+        np.save(f"./visualize/groundtruth_{i}.npy", groundtruth)  
 
 
 if __name__ == '__main__':
     # float_64to32()
-    trans()
-    # x = np.load('dataset/train_0.npz')
-    # print(np.shape(x['points']))
+    
+    # h52npy(50)
+    
+    # xyz2txyz(dataset_name='dataset', config_name='config', clip_length=4)
+    
+    rand_ids = [0.043, 0.317, 0.389]
+    logdir = 'frame2'
+    trans_visualize(rand_ids, logdir)
+    
+    # for i in range(0):
+    #     print(i)

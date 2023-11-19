@@ -22,6 +22,15 @@ from modules import InputFeature
 torch.multiprocessing.set_sharing_strategy('file_system')
 
 
+def save_pcd(batch, logit, path, rand_id:float):
+    pred = logit.argmax(dim=1)
+    print(f"saving to {path}")
+    if not os.path.exists(path):
+        os.makedirs(path)
+    np.savez(path+'/points_{:.3f}.npz'.format(rand_id), batch['points'].points.cpu().numpy())
+    np.savez(path+'/label_{:.3f}.npz'.format(rand_id), batch['points'].labels.cpu().numpy())
+    np.savez(path+'/pred_{:.3f}.npz'.format(rand_id), pred.cpu().numpy())
+
 class SegSolver(Solver):
 
     def get_model(self, flags):
@@ -94,6 +103,11 @@ class SegSolver(Solver):
         accu = self.accuracy(logit, label)
         num_class = self.FLAGS.LOSS.num_class
         IoU, insc, union = self.IoU_per_shape(logit, label, num_class)
+        
+        # randomly save 1/10 data for visualization
+        rand_id = np.random.uniform()
+        if batch['epoch'] == self.FLAGS.SOLVER.max_epoch-1 and rand_id < 0.1:
+            save_pcd(batch, logit, self.logdir+'/result_sample', rand_id)
 
         names = ['test/loss', 'test/accu', 'test/mIoU'] + \
                 ['test/intsc_%d' % i for i in range(num_class)] + \

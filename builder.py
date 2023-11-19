@@ -47,6 +47,18 @@ def hexsegformer_small(in_channels, out_channels, **kwargs):
         stem_down=2, head_up=2,
         fpn_channel=168,
         head_drop=[0.5, 0.5])
+    
+def hexsegformer_toy(in_channels, out_channels, **kwargs):
+    return HexFormerSeg(
+        in_channels, out_channels,
+        channels=[96, 96],
+        num_blocks=[2, 2],
+        num_heads=[6, 6],
+        patch_size=32, dilation=4,
+        drop_path=0.5, nempty=True,
+        stem_down=1, head_up=1,
+        fpn_channel=168,
+        head_drop=[0.5, 0.5])
 
 
 # def hexsegformer_cls(in_channels, out_channels, nemtpy, **kwargs):
@@ -69,6 +81,7 @@ def get_segmentation_model(flags):
         'hexsegformer': hexsegformer,
         'hexsegformer_large': hexsegformer_large,
         'hexsegformer_small': hexsegformer_small,
+        'hexsegformer_toy': hexsegformer_toy,
     }
 
     return networks[flags.name.lower()](**params)
