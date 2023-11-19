@@ -3,7 +3,6 @@
 # Copyright (c) 2022 Peng-Shuai Wang <wangps@hotmail.com>
 # Licensed under The MIT License [see LICENSE for details]
 # Written by Peng-Shuai Wang
-# Hextree version written by Xiang Wang
 # --------------------------------------------------------
 
 import torch
@@ -65,8 +64,8 @@ _key_lut = KeyLUT()
 
 
 def txyz2key(t: torch.Tensor, x: torch.Tensor, y: torch.Tensor, z: torch.Tensor,
-             b: Optional[Union[torch.Tensor, int]] = None, depth: int = 16):
-    r'''Encodes :attr:`t`, :attr:`x`, :attr:`y`, :attr:`z` coordinates to the shuffled keys
+             b: Optional[Union[torch.Tensor, int]] = None, depth: int = 14):
+    r'''Encodes :attr:`x`, :attr:`y`, :attr:`z` coordinates to the shuffled keys
     based on pre-computed look up tables. The speed of this function is much
     faster than the method based on for-loop.
 
@@ -76,12 +75,13 @@ def txyz2key(t: torch.Tensor, x: torch.Tensor, y: torch.Tensor, z: torch.Tensor,
       y (torch.Tensor): The y coordinate.
       z (torch.Tensor): The z coordinate.
       b (torch.Tensor or int): The batch index of the coordinates, and should be 
-          smaller than 2**62. If :attr:`b` is :obj:`torch.Tensor`, the size of
+          smaller than 128. If :attr:`b` is :obj:`torch.Tensor`, the size of
           :attr:`b` must be the same as :attr:`x`, :attr:`y`, and :attr:`z`.
-      depth (int): The depth of the shuffled key, and must be smaller than 17 (< 17).
+      depth (int): The depth of the shuffled key, and must be smaller than 15 (< 15).
     '''
-    assert depth < 17
-    
+    assert depth < 15, 'depth out of range[1, 14], maximum depth is 14'
+    assert (b < 128).all(), 'batch id out of range[0, 127],  maximum 127, that is batch size should smaller than 128(<=128)' 
+
     ET, EX, EY, EZ = _key_lut.encode_lut(x.device)
     t, x, y, z = t.long(), x.long(), y.long(), z.long()
 
@@ -95,28 +95,27 @@ def txyz2key(t: torch.Tensor, x: torch.Tensor, y: torch.Tensor, z: torch.Tensor,
 
     if b is not None:
         b = b.long()
-    else: b = torch.zeros_like(key)
-    
-    key = torch.stack((b, key), axis=-1)
+        key = b << 56 | key
+
     return key
 
 
-def key2txyz(key: torch.Tensor, depth: int = 16):
+def key2txyz(key: torch.Tensor, depth: int = 14):
     r'''Decodes the shuffled key to :attr:`t`, attr:`x`, :attr:`y`, :attr:`z` coordinates
     and the batch index based on pre-computed look up tables.
 
     Args:
       key (torch.Tensor): The shuffled key.
-      depth (int): The depth of the shuffled key, and must be smaller than 17 (< 17).
+      depth (int): The depth of the shuffled key, and must be smaller than 15 (< 15).
     '''
-    assert depth < 17
-
-    b = key[..., 0]
-    key = key[..., 1]
+    assert depth < 15, 'depth out of range[1, 14], maximum depth is 14'
 
     DT, DX, DY, DZ = _key_lut.decode_lut(key.device)
     t, x, y, z = torch.zeros_like(key), torch.zeros_like(key), torch.zeros_like(
         key), torch.zeros_like(key)
+
+    b = key >> 56
+    key = key & ((1 << 56) - 1)
 
     n = (depth + 1) // 2
     for i in range(n):
