@@ -24,9 +24,6 @@ octree_linear_upsample is not implemented;
 Step 3. Expirements
 
 TODO： 
-
-SemanticKITTI
-
 data augmentations
 
 

@@ -12,9 +12,11 @@ import numpy as np
 import unittest
 
 import sys
+
+from unused import hextree2col
 sys.path.append('..')
-from modules import HextreeConv, HextreeDeconv, hextree2col, col2hextree
-from .utils import get_batch_hextree
+from modules import HextreeConv, HextreeDeconv, col2hextree
+from ..test.utils import get_batch_hextree
 
 # TODO
 

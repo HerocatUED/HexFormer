@@ -45,7 +45,7 @@ class SegHeader(torch.nn.Module):
     def forward(self, features: Dict[int, torch.Tensor], hextree: Hextree,
                 query_pts: torch.Tensor):
         depth = min(features.keys())
-        depth_max = max(features.keys())
+        depth_max = max(features.keys())+self.num_up
         assert self.num_stages == len(features)
         feature = self.conv1x1[0](features[depth])
         out = self.upsample(feature, hextree, depth, depth_max)
