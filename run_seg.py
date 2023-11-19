@@ -34,24 +34,19 @@ def train():
   execute_command(cmds)
 
 
-# def test():
-#   # get the predicted probabilities for each point
-#   ckpt = ('logs/scannet/octformer_{}/best_model.pth'.format(args.alias)
-#           if args.ckpt == '\'\'' else args.ckpt)   # use args.ckpt if provided
-#   cmds = [
-#       'python segmentation.py',
-#       '--config configs/seg_scannet.yaml',
-#       'LOSS.mask -255',       # to keep all points
-#       'SOLVER.gpu  {},'.format(args.gpu),
-#       'SOLVER.run evaluate',
-#       'SOLVER.eval_epoch 72',  # voting with 72 predictions
-#       'SOLVER.alias test_{}'.format(args.alias),
-#       'SOLVER.ckpt {}'.format(ckpt),
-#       'DATA.test.batch_size 1',
-#       'DATA.test.location', 'data/scannet.npz/test',
-#       'DATA.test.filelist', 'data/scannet.npz/scannetv2_test_npz.txt',
-#       'DATA.test.distort True', ]
-#   execute_command(cmds)
+def test():
+  # get the predicted probabilities for each point
+  ckpt = (args.ckpt)   # use args.ckpt if provided
+  cmds = [
+      'python segmentation.py',
+      '--config data/configs/seg_hoi4d.yaml',
+      'LOSS.mask -255',       # to keep all points
+      'SOLVER.gpu  {},'.format(args.gpu),
+      'SOLVER.run evaluate',
+      'SOLVER.eval_epoch 72',  # voting with 72 predictions
+      'SOLVER.alias test_{}'.format(args.alias),
+      'SOLVER.ckpt {}'.format(ckpt),]
+  execute_command(cmds)
 
 #   # map the probabilities to labels
 #   cmds = [

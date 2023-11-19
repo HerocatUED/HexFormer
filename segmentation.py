@@ -22,14 +22,17 @@ from modules import InputFeature
 torch.multiprocessing.set_sharing_strategy('file_system')
 
 
-def save_pcd(batch, logit, path, rand_id:float):
+def save_pcd(batch, logit, path, rand_id: float):
     pred = logit.argmax(dim=1)
     print(f"saving to {path}")
     if not os.path.exists(path):
         os.makedirs(path)
-    np.savez(path+'/points_{:.3f}.npz'.format(rand_id), batch['points'].points.cpu().numpy())
-    np.savez(path+'/label_{:.3f}.npz'.format(rand_id), batch['points'].labels.cpu().numpy())
+    np.savez(path+'/points_{:.3f}.npz'.format(rand_id),
+             batch['points'].points.cpu().numpy())
+    np.savez(path+'/label_{:.3f}.npz'.format(rand_id),
+             batch['points'].labels.cpu().numpy())
     np.savez(path+'/pred_{:.3f}.npz'.format(rand_id), pred.cpu().numpy())
+
 
 class SegSolver(Solver):
 
@@ -102,17 +105,18 @@ class SegSolver(Solver):
         loss = self.loss_function(logit, label)
         accu = self.accuracy(logit, label)
         num_class = self.FLAGS.LOSS.num_class
-        IoU, insc, union = self.IoU_per_shape(logit, label, num_class)
-        
+        mIoU, IoU, insc, union = self.IoU_per_shape(logit, label, num_class)
+
         # randomly save 1/10 data for visualization
         rand_id = np.random.uniform()
         if batch['epoch'] == self.FLAGS.SOLVER.max_epoch-1 and rand_id < 0.1:
             save_pcd(batch, logit, self.logdir+'/result_sample', rand_id)
 
-        names = ['test/loss', 'test/accu', 'test/mIoU'] + \
+        names = ['test/loss', 'test/accu', 'test/mIoU']+ \
+                ['test/IoU_%d' % i for i in range(num_class)] + \
                 ['test/intsc_%d' % i for i in range(num_class)] + \
-                ['test/union_%d' % i for i in range(num_class)]
-        tensors = [loss, accu, IoU] + insc + union
+                ['test/union_%d' % i for i in range(num_class)] 
+        tensors = [loss, accu, mIoU]+ IoU + insc + union 
         return dict(zip(names, tensors))
 
     def eval_step(self, batch):
@@ -185,20 +189,21 @@ class SegSolver(Solver):
     def IoU_per_shape(self, logit, label, class_num):
         pred = logit.argmax(dim=1)
 
-        IoU, valid_part_num, esp = 0.0, 0.0, 1.0e-10
-        intsc, union = [None] * class_num, [None] * class_num
+        mIoU, valid_part_num, esp = 0.0, 0.0, 1.0e-10
+        IoU, intsc, union = [None] * class_num, [None] * class_num, [None] * class_num
         for k in range(class_num):
             pk, lk = pred.eq(k), label.eq(k)
             intsc[k] = torch.sum(torch.logical_and(pk, lk).float())
             union[k] = torch.sum(torch.logical_or(pk, lk).float())
+            IoU[k] = intsc[k] / union[k]
 
             valid = torch.sum(lk.any()) > 0
             valid_part_num += valid.item()
-            IoU += valid * intsc[k] / (union[k] + esp)
+            mIoU += valid * intsc[k] / (union[k] + esp)
 
         # Calculate the shape IoU for ShapeNet
-        IoU /= valid_part_num + esp
-        return IoU, intsc, union
+        mIoU /= valid_part_num + esp
+        return mIoU, IoU, intsc, union
 
 
 if __name__ == "__main__":

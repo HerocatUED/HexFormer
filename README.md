@@ -10,6 +10,7 @@ VIT/Swin  - rpe(relative positional encoding/embedding)
 TODO: **patch embedding**
 RPE: +B(done), MLP*
 loss design(lower weight for classes that have higher acc)
+thsolver.solver: LOSS.mask?
 
 Potential bugs: hextree.utils, hextree_conv,
 Unfinished tests: conv, interp, 
