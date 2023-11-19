@@ -69,7 +69,7 @@ class HextreeT(Hextree):
             attn_mask != 0, self.invalid_mask_value)
         return attn_mask
 
-    def build_rel_pos(self, depth: int):  # TODO
+    def build_rel_pos(self, depth: int):
         key = self.key(depth, self.nempty)
         key = self.patch_partition(key, depth)
         t, x, y, z, _ = key2txyz(key, depth)  # shape of t/x/y/z: (N, 1)
@@ -167,7 +167,6 @@ class HextreeAttention(torch.nn.Module):
         self.proj = torch.nn.Linear(dim, dim)
         self.proj_drop = torch.nn.Dropout(proj_drop)
         self.softmax = torch.nn.Softmax(dim=-1)
-        self.use_rpe = False
         self.rpe = RPE(patch_size, num_heads, dilation) if self.use_rpe else None
 
     def forward(self, data: torch.Tensor, hextree: HextreeT, depth: int):

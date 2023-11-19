@@ -80,7 +80,8 @@ def txyz2key(t: torch.Tensor, x: torch.Tensor, y: torch.Tensor, z: torch.Tensor,
       depth (int): The depth of the shuffled key, and must be smaller than 15 (< 15).
     '''
     assert depth < 15, 'depth out of range[1, 14], maximum depth is 14'
-    assert (b < 128).all(), 'batch id out of range[0, 127],  maximum 127, that is batch size should smaller than 128(<=128)' 
+    if b is not None:
+        assert (b < 128).all(), 'batch id out of range[0, 127],  maximum 127, that is batch size should smaller than 128(<=128)' 
 
     ET, EX, EY, EZ = _key_lut.encode_lut(x.device)
     t, x, y, z = t.long(), x.long(), y.long(), z.long()

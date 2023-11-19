@@ -9,11 +9,11 @@
 SOLVER:
   gpu: 0,1,2,3
   run: train
-  logdir: logs/log_frame2
+  logdir: logs/log_frame2_withRPE
   best_val: max:mIoU_part
 
   ckpt_num: 200
-  max_epoch: 70
+  max_epoch: 60
   test_every_epoch: 1
   log_per_iter: 1
 
