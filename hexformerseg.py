@@ -21,7 +21,7 @@ class SegHeader(torch.nn.Module):
             self, out_channels: int, channels: List[int], fpn_channel: int,
             nempty: bool, num_up: int = 1, dropout: List[float] = [0.0, 0.0]):
         super().__init__()
-        # self.num_up = num_up
+        self.num_up = num_up
         self.num_stages = len(channels)
 
         self.conv1x1 = torch.nn.ModuleList([torch.nn.Linear(
@@ -45,7 +45,7 @@ class SegHeader(torch.nn.Module):
     def forward(self, features: Dict[int, torch.Tensor], hextree: Hextree,
                 query_pts: torch.Tensor):
         depth = min(features.keys())
-        depth_max = max(features.keys())
+        depth_max = max(features.keys())+self.num_up
         assert self.num_stages == len(features)
         feature = self.conv1x1[0](features[depth])
         out = self.upsample(feature, hextree, depth, depth_max)

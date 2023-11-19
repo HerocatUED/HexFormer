@@ -66,10 +66,10 @@ def h52npy(n_video):
             np.save(f'./dataset/{dataset_name}', data)
 
 
-def xyz2txyz(clip_length: int = 5):
-    points_xyz = np.load('./dataset/pcd.npy')
+def xyz2txyz(dataset_name: str, config_name: str, clip_length: int):
+    points_xyz = np.load('./dataset/points.npy')
     semantic = np.load('./dataset/semantic.npy')    
-
+    
     # Translate data to txyz format
     n_video, t_video, n_point, _ = points_xyz.shape
     points_txyz = np.concatenate([np.zeros([n_video, t_video, n_point, 1]), points_xyz], axis=-1)
@@ -81,17 +81,17 @@ def xyz2txyz(clip_length: int = 5):
     points_txyz = torch.Tensor(points_txyz.reshape([N, -1, 4]))  
     semantic = torch.Tensor(semantic.reshape([N, -1]))           
 
-    f_train = open('./config/train_data.txt', 'w')
-    f_val = open('./config/val_data.txt', 'w')
+    f_train = open(f'./{config_name}/train_data.txt', 'w')
+    f_val = open(f'./{config_name}/val_data.txt', 'w')
     train_list = ''
     val_list = ''
     for i in range(N):
-        np.savez(f'./dataset/data_{i}.npz',
+        np.savez(f'./{dataset_name}/data_{i}.npz',
                  points=points_txyz[i], labels=semantic[i],)
         if i % 5 == 0:
-            val_list += f'./dataset/data_{i}.npz\n'
+            val_list += f'./{dataset_name}/data_{i}.npz\n'
         else:
-            train_list += f'./dataset/data_{i}.npz\n'
+            train_list += f'./{dataset_name}/data_{i}.npz\n'
     f_train.write(train_list)
     f_train.close()
     f_val.write(val_list)
@@ -111,7 +111,7 @@ def trans_visualize(rand_ids, logdir):
         prediction = np.concatenate([points, np.expand_dims(pred, 1)], axis=-1)
         groundtruth = np.concatenate([points, np.expand_dims(label, 1)], axis=-1)
         np.save(f"./visualize/prediction_{i}.npy", prediction)
-        np.save(f"./visualize/groundtruth_{i}.npy", groundtruth)
+        np.save(f"./visualize/groundtruth_{i}.npy", groundtruth)  
 
 
 if __name__ == '__main__':
@@ -119,11 +119,11 @@ if __name__ == '__main__':
     
     # h52npy(50)
     
-    # xyz2txyz(8)
+    # xyz2txyz(dataset_name='dataset', config_name='config', clip_length=4)
     
-    # rand_ids = [0]
-    # logdir = 'single_data_1'
-    # trans_visualize(rand_ids, logdir)
+    rand_ids = [0.043, 0.317, 0.389]
+    logdir = 'frame2'
+    trans_visualize(rand_ids, logdir)
     
-    for i in range(0):
-        print(i)
+    # for i in range(0):
+    #     print(i)
