@@ -63,7 +63,8 @@ class SegSolver(Solver):
     def model_forward(self, batch):
         hextree, points = batch['hextree'], batch['points']
         data = self.get_input_feature(hextree)
-        query_pts = torch.cat([points.points, points.batch_id], dim=1)
+        query_pts = torch.cat([points.points, torch.zeros((points.points.shape[0], 1)).to(self.device)], dim=1)
+        # query_pts = torch.cat([points.points, points.batch_id], dim=1)
 
         logit = self.model(data, hextree, hextree.depth, query_pts)
         label_mask = points.labels > self.FLAGS.LOSS.mask  # filter labels
@@ -99,7 +100,8 @@ class SegSolver(Solver):
         loss = self.loss_function(logit, label)
         accu = self.accuracy(logit, label)
         num_class = self.FLAGS.LOSS.num_class
-        mIoU, IoU, insc, union = self.IoU_per_shape(logit, label, num_class)
+        mIoU, IoU = self.IoU_per_shape(logit, label, num_class)
+        # mIoU, IoU, insc, union = self.IoU_per_shape(logit, label, num_class)
 
         # randomly save 1/10 data for visualization
         rand_id = np.random.uniform()
@@ -110,7 +112,8 @@ class SegSolver(Solver):
                 ['test/IoU_%d' % i for i in range(num_class)] + \
                 ['test/intsc_%d' % i for i in range(num_class)] + \
                 ['test/union_%d' % i for i in range(num_class)] 
-        tensors = [loss, accu, mIoU]+ IoU + insc + union 
+        tensors = [loss, accu, mIoU]+ IoU
+        # tensors = [loss, accu, mIoU]+ IoU + insc + union 
         return dict(zip(names, tensors))
 
     def eval_step(self, batch):
@@ -197,7 +200,8 @@ class SegSolver(Solver):
 
         # Calculate the shape IoU for ShapeNet
         mIoU /= valid_part_num + esp
-        return mIoU, IoU, intsc, union
+        # return mIoU, IoU, intsc, union
+        return mIoU, IoU
 
 
 if __name__ == "__main__":

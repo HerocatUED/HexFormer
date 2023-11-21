@@ -9,13 +9,13 @@
 SOLVER:
   gpu: 0,1,2,3
   run: train
-  logdir: logs/log_frame2_withRPE
+  logdir: logs/log_frame8
   best_val: max:mIoU_part
 
   ckpt_num: 200
-  max_epoch: 60
-  test_every_epoch: 1
-  log_per_iter: 1
+  max_epoch: 80
+  test_every_epoch: 10
+  log_per_iter: 10
 
   weight_decay: 0.05
   type: adamw_attn
@@ -39,7 +39,7 @@ DATA:
     cutmix: 0.0   # no cutmix
     # data loading
     location: data
-    filelist: data/dataset_frame2/train_data.txt
+    filelist: data/config/train_data.txt
     batch_size: 1
     shuffle: True
     num_workers: 1
@@ -56,13 +56,13 @@ DATA:
     cutmix: 0.0   # no cutmix
     # data loading
     location: data
-    filelist: data/dataset_frame2/val_data.txt
+    filelist: data/config/val_data.txt
     batch_size: 1
     shuffle: False
     num_workers: 1
 
 MODEL:
-  name: hexsegformer_toy
+  name: hexsegformer_small
   # N -> Normal (3 channels);
   # D -> Displacement (1 channel);
   # F -> Color (3 channels);

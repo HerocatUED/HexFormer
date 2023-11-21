@@ -39,7 +39,7 @@ class HextreeDropPath(torch.nn.Module):
             rnd_tensor.div_(keep_prob)
 
         if batch_id is None:
-            batch_id = hextree.batch_id(depth, self.nempty)
+            batch_id = hextree.batch_id(depth, self.nempty, masked=True)
         drop_mask = rnd_tensor[batch_id]
         output = data * drop_mask
         return output

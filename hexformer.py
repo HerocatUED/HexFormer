@@ -5,7 +5,7 @@ from typing import Optional, List
 from torch.utils.checkpoint import checkpoint
 
 from hextree import Hextree, key2txyz
-from modules import HextreeDropPath, HextreeAvgPoolXYZ
+from modules import HextreeDropPath, HextreeAvgPoolXYZ, HextreeMaxPool
 
 
 class HextreeT(Hextree):
@@ -26,8 +26,8 @@ class HextreeT(Hextree):
 
         self.block_num = patch_size * dilation
         self.nnum_t = self.nnum_nempty if nempty else self.nnum
-        self.nnum_a = ((self.nnum_t / self.block_num).ceil()
-                       * self.block_num).int()
+        # self.nnum_a = ((self.nnum_t / self.block_num).ceil()
+        #                * self.block_num).int()
 
         num = self.max_depth + 1
         self.batch_idx = [None] * num
@@ -35,16 +35,22 @@ class HextreeT(Hextree):
         self.dilate_mask = [None] * num
         self.rel_pos = [None] * num
         self.dilate_pos = [None] * num
-        self.build_t()
+        self.build_t(max_depth)
 
-    def build_t(self):
-        for d in range(self.start_depth, self.max_depth + 1):
-            self.build_batch_idx(d)
-            self.build_attn_mask(d)
-            self.build_rel_pos(d)
+    def build_t(self, depth):
+        '''
+        Note: build Hextree after AvgPoolXYZ !!!
+        '''
+        # for d in range(self.start_depth, self.max_depth + 1):
+        for i, k in enumerate(self.masked_keys):
+            print(i, k)
+        self.nnum_t[depth] = self.masked_keys[depth].shape[0]
+        self.build_batch_idx(depth)
+        self.build_attn_mask(depth)
+        self.build_rel_pos(depth)
 
     def build_batch_idx(self, depth: int):
-        batch = self.batch_id(depth, self.nempty)
+        batch = self.batch_id(depth, self.nempty, masked=True)
         self.batch_idx[depth] = self.patch_partition(
             batch, depth, self.batch_size)
 
@@ -64,7 +70,7 @@ class HextreeT(Hextree):
         return attn_mask
 
     def build_rel_pos(self, depth: int):
-        key = self.key(depth, self.nempty)
+        key = self.key(depth, self.nempty, masked=True)
         key = self.patch_partition(key, depth)
         t, x, y, z, _ = key2txyz(key, depth)  # shape of t/x/y/z: (N, 1)
         txyz = torch.stack([t, x, y, z], dim=1)  # (N, 4)
@@ -77,7 +83,7 @@ class HextreeT(Hextree):
         self.dilate_pos[depth] = txyz.unsqueeze(2) - txyz.unsqueeze(1)
 
     def patch_partition(self, data: torch.Tensor, depth: int, fill_value=0):
-        num = self.nnum_a[depth] - self.nnum_t[depth]
+        num = self.block_num - self.nnum_t[depth] % self.block_num
         tail = data.new_full((num,) + data.shape[1:], fill_value)
         return torch.cat([data, tail], dim=0)
 
@@ -281,7 +287,8 @@ class PatchEmbed(torch.nn.Module):
         self.mlps = torch.nn.ModuleList(
             [MLP(in_dim if i == 0 else channels[i-1], channels[i], channels[i]) for i in range(self.num_stages)])
         self.norm = torch.nn.LayerNorm(channels[-2])
-        self.downsample = HextreeAvgPoolXYZ(nempty=nempty)
+        self.downsample = HextreeAvgPoolXYZ()
+        # self.downsample = HextreeMaxPool(nempty)
         self.proj = MLP(channels[-2], 2*dim, channels[-1])
 
     def forward(self, data: torch.Tensor, hextree: Hextree, depth: int):
@@ -289,6 +296,7 @@ class PatchEmbed(torch.nn.Module):
             depth_i = depth - i
             data = self.mlps[i](data)
             data = self.downsample(data, hextree, depth_i)
+            
         data = self.proj(self.norm(data))
         return data
 
@@ -318,7 +326,8 @@ class HexFormer(torch.nn.Module):
             for i in range(self.num_stages)])
         self.feature_up = torch.nn.ModuleList([MLP(channels[i], int(
             (channels[i]+channels[i+1])/2), channels[i+1]) for i in range(self.num_stages - 2)])
-        self.downsample = HextreeAvgPoolXYZ(nempty=nempty)
+        self.downsample = HextreeAvgPoolXYZ()
+        # self.downsample = HextreeMaxPool(nempty)
 
     def forward(self, data: torch.Tensor, hextree: Hextree, depth: int):
         data = self.patch_embed(data, hextree, depth)
@@ -332,6 +341,7 @@ class HexFormer(torch.nn.Module):
             features[depth_i] = data
             if i < self.num_stages - 1:
                 data = self.downsample(data, hextree, depth_i)
+                hextree.build_t(depth_i-1)
                 if i < self.num_stages - 2:
                     data = self.feature_up[i](data)
         return features

@@ -22,13 +22,13 @@ class HextreeDropTest(unittest.TestCase):
         # Test 1
         depth = 5
         nnum = htree.nnum[depth]
-        data = torch.rand(nnum, 4)  # TODO 3 or 4
+        data = torch.rand(nnum, 4)
         drop_path = HextreeDropPath(drop_prob=0.8, nempty=False)
         output = drop_path(data, htree, depth)
 
         # Test 2
         nnum_nempty = htree.nnum_nempty[depth]
-        data = torch.rand(nnum_nempty, 4)  # TODO 3 or 4
+        data = torch.rand(nnum_nempty, 4)
         drop_path = HextreeDropPath(drop_prob=0.8, nempty=True)
         output = drop_path(data, htree, depth)
 

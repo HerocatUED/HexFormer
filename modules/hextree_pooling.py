@@ -42,10 +42,12 @@ def hextree_avg_pool_xyz(data: torch.Tensor, htree: Hextree, depth: int):
     for d in range(htree.depth, depth, -1):
         keys_masked = keys_masked & mask_lut[htree.depth - d + 1]
         keys_masked = torch.unique(keys_masked, dim=0)
+        htree.masked_keys[d-1] = keys_masked.clone()
     keys_masked = keys_masked & mask_lut[htree.depth - depth + 1]
     keys_masked, idx, count = torch.unique(
         keys_masked, sorted=True, return_inverse=True, return_counts=True, dim=0
     )
+    htree.masked_keys[depth-1] = keys_masked.clone()
     out = scatter_add(dim=0, index=idx, src=data) / count.unsqueeze(1)
     return out
 

@@ -63,14 +63,17 @@ class Hextree:
         return self.children[depth] >= 0
 
     # properties 
-    def key(self, depth: int, nempty: bool = False):
+    def key(self, depth: int, nempty: bool = False, masked: bool = False):
         r''' Returns the shuffled key of each hextree node.
 
         Args:
             depth (int): The depth of the hextree.
             nempty (bool): If True, returns the results of non-empty hextree nodes.
+            masked (bool): If True, returns masked key corresponding to AvgPoolXYZ
         '''
-
+        
+        if masked:
+            return self.masked_keys[depth]
         key = self.keys[depth]
         if nempty:
             mask = self.nempty_mask(depth)
@@ -88,7 +91,7 @@ class Hextree:
         key = self.key(depth, nempty)
         return key2txyz(key, depth)
     
-    def batch_id(self, depth: int, nempty: bool = False):
+    def batch_id(self, depth: int, nempty: bool = False, masked: bool = False):
         r''' Returns the batch indices of each hextree node.
 
         Args:
@@ -96,7 +99,7 @@ class Hextree:
             nempty (bool): If True, returns the results of non-empty hextree nodes.
         '''
 
-        batch_id = self.key(depth, nempty) >> 56
+        batch_id = self.key(depth, nempty, masked) >> 56
         return batch_id
 
     def search_txyzb(self, query: torch.Tensor, depth: int, nempty: bool = False):
@@ -191,6 +194,7 @@ class Hextree:
         # hextree features in each hextree layers
         num = self.depth + 1
         self.keys = [None] * num 
+        self.masked_keys = [None] * num
         self.children = [None] * num 
         self.neighs = [None] * num 
         self.features = [None] * num 
@@ -523,7 +527,7 @@ class Hextree:
         if isinstance(device, str):
           device = torch.device(device)
 
-        #  If on the save device, directly retrun self
+        #  If on the same device, directly retrun self
         if self.device == device:
           return self
 
@@ -534,6 +538,7 @@ class Hextree:
         # Construct a new hextree on the specified device
         hextree = Hextree(self.depth, self.full_depth, self.batch_size, device)
         hextree.keys = list_to_device(self.keys)
+        hextree.masked_keys = list_to_device(self.masked_keys)
         hextree.children = list_to_device(self.children)
         hextree.neighs = list_to_device(self.neighs)
         hextree.features = list_to_device(self.features)

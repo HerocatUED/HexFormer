@@ -5,7 +5,7 @@ import torch
 
 from hextree import Hextree
 from typing import Optional, List, Dict
-from modules import HextreeInterp, HextreeAvgUnpoolXYZ
+from modules import HextreeInterp, HextreeAvgUnpoolXYZ, HextreeUpsample
 from hexformer import HexFormer
 
 
@@ -20,7 +20,8 @@ class SegHeader(torch.nn.Module):
 
         self.conv1x1 = torch.nn.ModuleList([torch.nn.Linear(
             channels[i], fpn_channel) for i in range(self.num_stages-1, -1, -1)])
-        self.upsample = HextreeAvgUnpoolXYZ(nempty=nempty)
+        self.upsample = HextreeAvgUnpoolXYZ()
+        # self.upsample = HextreeUpsample('nearest', nempty)
         # self.conv3x3 = torch.nn.ModuleList([HextreeConvBnRelu(
         #     fpn_channel, fpn_channel, kernel_size=[3],
         #     stride=1, nempty=nempty) for i in range(self.num_stages)])
@@ -42,15 +43,20 @@ class SegHeader(torch.nn.Module):
         depth_max = max(features.keys())+self.num_up
         assert self.num_stages == len(features)
         feature = self.conv1x1[0](features[depth])
-        out = self.upsample(feature, hextree, depth)
+        # print('feature', feature.shape)
+        out = self.upsample(feature, hextree, depth_max-1)
+        # print('out', out.shape)
         # out = self.upsample(feature, hextree, depth, depth_max)
         for i in range(1, self.num_stages):
             depth_i = depth + i
+            print(i, depth_i, depth, depth_max)
             feature = self.upsample(feature, hextree, depth_i - 1)
+            # print('feature', feature.shape)
             feature = self.conv1x1[i](features[depth_i]) + feature
-            out = out + self.upsample(feature, hextree, depth_i)
+            out = out + self.upsample(feature, hextree, depth_max-1)
             # out = out + self.upsample(feature, hextree, depth_i, depth_max)
 
+        # out = self.upsample(out, hextree, depth_max-1)
         out = self.interp(out, hextree, depth_max, query_pts)
         out = self.classifier(out)
         return out

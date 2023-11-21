@@ -189,7 +189,7 @@ class HextreeUpsample(torch.nn.Module):
         txyzb = hextree.txyzb(target_depth, self.nempty)
         pts = torch.stack(txyzb, dim=1).float()
         
-        pts[:, :4] = (pts[:, :4] + 0.5) * (2**(depth - target_depth))  # !!! rescale
+        pts[:, 1:4] = (pts[:, 1:4] + 0.5) * (2**(depth - target_depth))  # !!! rescale
         return self.func(data, hextree, depth, pts, self.nempty)
 
     def extra_repr(self) -> str:

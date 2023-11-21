@@ -47,8 +47,7 @@ class HOI4DTransform(Transform):
         # construct and normalize points
         pcds = Points(points=torch.from_numpy(sample['points']),
                       labels=torch.from_numpy(sample['labels']))
-        bbmin, bbmax = pcds.bbox_xyz()
-        pcds.normalize_xyz(bbmin, bbmax)
+        pcds.normalize_xyz(keep_shape=True)
 
         # transform including rotatation, translation, scaling, and flipping
         output = self.transform(pcds, idx)   # points and inbox_mask
