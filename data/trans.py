@@ -1,5 +1,4 @@
 # Convert dataset file to another format
-# Written by Xiang Wang
 
 import torch
 import h5py
@@ -8,6 +7,9 @@ from tqdm import tqdm
 
 
 def float64to32():
+    '''
+    convert h5 files from float64 to float32 to save memory
+    '''
     chunk_size = 30
 
     for filename in ['train1', 'train2', 'train3', 'train4']:
@@ -58,6 +60,9 @@ def float64to32():
 
 
 def h52npy(n_video):
+    '''
+    convert h5 file of HOI4D to npy files
+    '''
     with h5py.File('/mnt/sdc/wangx/HOI4D/HOI4D_dataset/seg_data_h5'+'/train1_float32.h5', 'r') as f:
         for dataset_name in ['semantic', 'pcd']:
             print(dataset_name)
@@ -67,6 +72,9 @@ def h52npy(n_video):
 
 
 def xyz2txyz(dataset_name: str, config_name: str, clip_length: int):
+    '''
+    construct dataset files
+    '''
     points_xyz = np.load('./dataset/points.npy')
     semantic = np.load('./dataset/semantic.npy')    
     
@@ -98,6 +106,9 @@ def xyz2txyz(dataset_name: str, config_name: str, clip_length: int):
     f_val.close()
     
 def trans_visualize(rand_ids, logdir):
+    '''
+    script for visualization
+    '''
     for i, rand_id in enumerate(rand_ids):
         points = np.load(f"../logs/log_{logdir}_hoi4d/result_sample/points_{rand_id}.npz")
         points = np.array(points['arr_0'][:8192, 1:])

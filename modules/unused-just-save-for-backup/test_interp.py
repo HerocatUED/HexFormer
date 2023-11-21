@@ -1,4 +1,3 @@
-
 # import os
 # import torch
 # import unittest
@@ -30,13 +29,6 @@
 #         hextree_test = self.build_hextree("cpu")
 #         feature = feature_init('P')
 #         out = self.upsample(feature, hextree, depth, depth_max)
-
-# --------------------------------------------------------
-# Octree-based Sparse Convolutional Neural Networks
-# Copyright (c) 2022 Peng-Shuai Wang <wangps@hotmail.com>
-# Licensed under The MIT License [see LICENSE for details]
-# Written by Peng-Shuai Wang
-# --------------------------------------------------------
 
 import os
 import torch

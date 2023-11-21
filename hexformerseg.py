@@ -1,17 +1,11 @@
-# --------------------------------------------------------
-# OctFormer: Octree-based Transformers for 3D Point Clouds
-# Copyright (c) 2023 Peng-Shuai Wang <wangps@hotmail.com>
-# Licensed under The MIT License [see LICENSE for details]
-# Written by Peng-Shuai Wang
-# Hextree version written by Xiang Wang
-# --------------------------------------------------------
+# HexFormer for Segmentation Task
 
 
 import torch
 
 from hextree import Hextree
 from typing import Optional, List, Dict
-from modules import HextreeUpsample, HextreeInterp, HextreeMaxUnpool
+from modules import HextreeInterp, HextreeAvgUnpoolXYZ
 from hexformer import HexFormer
 
 
@@ -26,7 +20,7 @@ class SegHeader(torch.nn.Module):
 
         self.conv1x1 = torch.nn.ModuleList([torch.nn.Linear(
             channels[i], fpn_channel) for i in range(self.num_stages-1, -1, -1)])
-        self.upsample = HextreeUpsample('nearest', nempty) #TODO nearest
+        self.upsample = HextreeAvgUnpoolXYZ(nempty=nempty)
         # self.conv3x3 = torch.nn.ModuleList([HextreeConvBnRelu(
         #     fpn_channel, fpn_channel, kernel_size=[3],
         #     stride=1, nempty=nempty) for i in range(self.num_stages)])
@@ -48,12 +42,14 @@ class SegHeader(torch.nn.Module):
         depth_max = max(features.keys())+self.num_up
         assert self.num_stages == len(features)
         feature = self.conv1x1[0](features[depth])
-        out = self.upsample(feature, hextree, depth, depth_max)
+        out = self.upsample(feature, hextree, depth)
+        # out = self.upsample(feature, hextree, depth, depth_max)
         for i in range(1, self.num_stages):
             depth_i = depth + i
             feature = self.upsample(feature, hextree, depth_i - 1)
             feature = self.conv1x1[i](features[depth_i]) + feature
-            out = out + self.upsample(feature, hextree, depth_i, depth_max)
+            out = out + self.upsample(feature, hextree, depth_i)
+            # out = out + self.upsample(feature, hextree, depth_i, depth_max)
 
         out = self.interp(out, hextree, depth_max, query_pts)
         out = self.classifier(out)

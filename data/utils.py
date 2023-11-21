@@ -1,10 +1,4 @@
-# --------------------------------------------------------
-# OctFormer: Octree-based Transformers for 3D Point Clouds
-# Copyright (c) 2023 Peng-Shuai Wang <wangps@hotmail.com>
-# Licensed under The MIT License [see LICENSE for details]
-# Written by Peng-Shuai Wang
-# Hextree version written by Xiang Wang
-# --------------------------------------------------------
+# utils for data preprocess
 
 import torch
 import numpy as np

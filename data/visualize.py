@@ -1,11 +1,10 @@
 # Visualize the result of semantic segmantation
-# Written by Xiang Wang
 
 import numpy as np
 import matplotlib.pyplot as plt
 
 def visualize_point_cloud(points, mode):
-    # 使用49个不同的颜色
+    # 49 for hoi4d
     colors = plt.cm.jet(np.linspace(0, 1, 49))
 
     fig = plt.figure(figsize=(9, 7))
@@ -31,7 +30,6 @@ def print_range(pcds):
     print('z:', np.max(z), np.min(z))
 
 if __name__ == '__main__':
-    # 示例点云数据
     pcds = np.load('train1_train1_sample.npy')
     points = pcds[0]
     # print_range(pcds)
@@ -42,8 +40,8 @@ if __name__ == '__main__':
     # print_range(pcds_gt)
     visualize_point_cloud(points_gt, 'groundtruth')
     
-    plt.draw()  # 画图
+    plt.draw()
     plt.show()
     # plt.savefig('out1_0.png')
-    # plt.pause(10)  # 显示10秒
-    # plt.close()  # 关闭图形
+    # plt.pause(10)
+    # plt.close() 

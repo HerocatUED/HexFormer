@@ -1,10 +1,3 @@
-# --------------------------------------------------------
-# Octree-based Sparse Convolutional Neural Networks
-# Copyright (c) 2022 Peng-Shuai Wang <wangps@hotmail.com>
-# Licensed under The MIT License [see LICENSE for details]
-# Written by Peng-Shuai Wang
-# --------------------------------------------------------
-
 import torch
 from typing import Optional, Union
 
@@ -16,7 +9,7 @@ class KeyLUT:
         r512 = torch.arange(512, dtype=torch.int64)
         zero = torch.zeros(256, dtype=torch.int64)
         device = torch.device('cpu')
-
+        # encode table and decode table
         self._encode = {device: (self.txyz2key(r256, zero, zero, zero, 8),
                                  self.txyz2key(zero, r256, zero, zero, 8),
                                  self.txyz2key(zero, zero, r256, zero, 8),
@@ -79,9 +72,9 @@ def txyz2key(t: torch.Tensor, x: torch.Tensor, y: torch.Tensor, z: torch.Tensor,
           :attr:`b` must be the same as :attr:`x`, :attr:`y`, and :attr:`z`.
       depth (int): The depth of the shuffled key, and must be smaller than 15 (< 15).
     '''
-    assert depth < 15, 'depth out of range[1, 14], maximum depth is 14'
+    assert 1 <= depth <=14, 'depth out of range[1, 14], maximum depth is 14'
     if b is not None:
-        assert (b < 128).all(), 'batch id out of range[0, 127],  maximum 127, that is batch size should smaller than 128(<=128)' 
+        assert (b < 128).all().logical_and((b >= 0).all()), 'batch id out of range[0, 127], or batch size should not be surpass 128(<=128)' 
 
     ET, EX, EY, EZ = _key_lut.encode_lut(x.device)
     t, x, y, z = t.long(), x.long(), y.long(), z.long()
@@ -118,6 +111,7 @@ def key2txyz(key: torch.Tensor, depth: int = 14):
     b = key >> 56
     key = key & ((1 << 56) - 1)
 
+    # decode: 8 bit/step
     n = (depth + 1) // 2
     for i in range(n):
         k = key >> (i * 8) & 255

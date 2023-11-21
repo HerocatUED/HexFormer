@@ -1,11 +1,3 @@
-# --------------------------------------------------------
-# OctFormer: Octree-based Transformers for 3D Point Clouds
-# Copyright (c) 2023 Peng-Shuai Wang <wangps@hotmail.com>
-# Licensed under The MIT License [see LICENSE for details]
-# Written by Peng-Shuai Wang
-# Hextree version written by Xiang Wang
-# --------------------------------------------------------
-
 import torch
 from hextree import Hextree
 from .hextree_pad import hextree_pad
@@ -16,14 +8,12 @@ class InputFeature(torch.nn.Module):
 
     Args:
       feature (str): A string used to indicate which features to extract from the
-          input hexree. If the character :obj:`N` is in :attr:`feature`, the
-          normal signal is extracted (3 channels). Similarly, if :obj:`D` is in
-          :attr:`feature`, the local displacement is extracted (1 channels). If
-          :obj:`L` is in :attr:`feature`, the local coordinates of the averaged
-          points in each hexree node is extracted (3 channels). If :attr:`P` is in
-          :attr:`feature`, the global coordinates are extracted (3 channels). If
-          :attr:`F` is in :attr:`feature`, other features (like colors) are
-          extracted (k channels).
+          input hexree. 
+          If the character :obj:`N` is in :attr:`feature`, the normal signal is extracted (3 channels). 
+          If :obj:`D` is in :attr:`feature`, the local displacement is extracted (1 channels). 
+          If :obj:`L` is in :attr:`feature`, the local coordinates of the averaged points in each hexree node is extracted (3 channels).
+          If :attr:`P` is in :attr:`feature`, the global coordinates are extracted (4 channels). 
+          If :attr:`F` is in :attr:`feature`, other features (like colors) are extracted (k channels).
       nempty (bool): If false, gets the features of all hexree nodes. 
     '''
 

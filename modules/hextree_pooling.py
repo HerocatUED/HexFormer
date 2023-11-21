@@ -1,11 +1,3 @@
-# --------------------------------------------------------
-# Octree-based Sparse Convolutional Neural Networks
-# Copyright (c) 2022 Peng-Shuai Wang <wangps@hotmail.com>
-# Licensed under The MIT License [see LICENSE for details]
-# Written by Peng-Shuai Wang
-# Modified by Ruihuan Wang
-# --------------------------------------------------------
-
 import torch
 from typing import List
 from hextree import Hextree
@@ -14,6 +6,72 @@ from hextree.utils import meshgrid, scatter_add, resize_with_last_val, list2str
 
 from .hextree_pad import hextree_pad, hextree_depad
 
+class ScatterMaskLUT:
+    def __init__(self):
+        device = torch.device('cpu')
+        self._encode = {device: torch.tensor([
+            0x7fffffffffffffff, 0x7ffffffffffffff8, 0x7fffffffffffff88, 0x7ffffffffffff888,
+            0x7fffffffffff8888, 0x7ffffffffff88888, 0x7fffffffff888888, 0x7ffffffff8888888,
+            0x7fffffff88888888, 0x7ffffff888888888, 0x7fffff8888888888, 0x7ffff88888888888,
+            0x7fff888888888888, 0x7ff8888888888888, 0x7f88888888888888
+        ], dtype=torch.int64)}
+
+    def encode_lut(self, device=torch.device('cpu')):
+        if device not in self._encode:
+            cpu = torch.device('cpu')
+            self._encode[device] = tuple(e.to(device)
+                                         for e in self._encode[cpu])
+        return self._encode[device]
+
+_scatter_mask_lut = ScatterMaskLUT()
+
+def hextree_avg_pool_xyz(data: torch.Tensor, htree: Hextree, depth: int):
+    r''' Performs hextree average pooling with kernel size 2 and stride 2
+    on xyz axes.
+
+    Args:
+        data (torch.Tensor): The input tensor to be pooled, must corresponds to non-empty nodes 
+        htree (Hextree): The corresponding hextree
+        depth (int): The corresponding depth of hextree. After each pooling, 
+            the depth is decreased by 1. Note that 
+            :func:`hextree_avg_pool_xyz(depth=d)` matches 
+            :func:`hextree_avg_unpool_xyz(depth=d-1)`
+    '''
+    keys_masked = htree.key(-1, nempty=True)
+    mask_lut = _scatter_mask_lut.encode_lut(data.device)
+    for d in range(htree.depth, depth, -1):
+        keys_masked = keys_masked & mask_lut[htree.depth - d + 1]
+        keys_masked = torch.unique(keys_masked, dim=0)
+    keys_masked = keys_masked & mask_lut[htree.depth - depth + 1]
+    keys_masked, idx, count = torch.unique(
+        keys_masked, sorted=True, return_inverse=True, return_counts=True, dim=0
+    )
+    out = scatter_add(dim=0, index=idx, src=data) / count.unsqueeze(1)
+    return out
+
+def hextree_avg_unpool_xyz(data: torch.Tensor, htree: Hextree, depth:int):
+    r''' Performs hextree average unpooling with kernel size 2 and stride 2
+    on xyz axes.
+
+    Args:
+        data (torch.Tensor): The input tensor to be pooled, must corresponds to non-empty nodes 
+        htree (Hextree): The corresponding hextree
+        depth (int): The corresponding depth of hextree. After each pooling, 
+            the depth is increased by 1. Note that 
+            :func:`hextree_avg_pool_xyz(depth=d)` matches 
+            :func:`hextree_avg_unpool_xyz(depth=d-1)`
+    '''
+    keys_masked = htree.key(-1, nempty=True)
+    mask_lut = _scatter_mask_lut.encode_lut(data.device)
+    for d in range(htree.depth, depth+1, -1):
+        keys_masked = keys_masked & mask_lut[htree.depth - d + 1]
+        keys_masked = torch.unique(keys_masked, dim=0)
+    keys_masked = keys_masked & mask_lut[htree.depth - depth + 1]
+    keys_masked, idx = torch.unique(
+        keys_masked, sorted=True, return_inverse=True, dim=0
+    )
+    out = data[idx]
+    return out
 
 def hextree_max_pool(data: torch.Tensor, hextree: Hextree, depth: int,
                      nempty: bool = False, return_indices: bool = False):
@@ -130,15 +188,28 @@ class HextreeMaxUnpool(HextreePoolBase):
         return hextree_max_unpool(data, indices, hextree, depth, self.nempty)
 
 
-class HextreeAvgPool(HextreePoolBase):
-  r''' Performs hextree average pooling.
+class HextreeAvgPoolXYZ(HextreePoolBase):
+    r''' Performs hextree average pooling on xyz axes.
 
-  Please refer to :func:`hextree_avg_pool` for details.
-  '''
-  def __init__(self, nempty: bool = False):
-      super().__init__(kernel_size=[2], stride=2, nempty=nempty)
-      
-  def forward(self, data: torch.Tensor, hextree: Hextree, depth: int):
-    r''''''
+    Please refer to :func:`hextree_avg_pool_xyz` for details.
+    '''
+    def __init__(self):
+        super().__init__(kernel_size=[2], stride=2, nempty=True)
+        
+    def forward(self, data: torch.Tensor, hextree: Hextree, depth: int):
+        r''''''
 
-    return hextree_avg_pool(data, hextree, depth, self.nempty)
+        return hextree_avg_pool_xyz(data, hextree, depth)
+    
+class HextreeAvgUnpoolXYZ(HextreePoolBase):
+    r''' Performs hextree average pooling.
+
+    Please refer to :func:`hextree_avg_unpool_xyz` for details.
+    '''
+    def __init__(self):
+        super().__init__(kernel_size=[2], stride=2, nempty=True)
+        
+    def forward(self, data: torch.Tensor, hextree: Hextree, depth: int):
+        r''''''
+
+        return hextree_avg_unpool_xyz(data, hextree, depth)

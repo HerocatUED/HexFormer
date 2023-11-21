@@ -1,11 +1,3 @@
-# --------------------------------------------------------
-# Octree-based Sparse Convolutional Neural Networks
-# Copyright (c) 2022 Peng-Shuai Wang <wangps@hotmail.com>
-# Licensed under The MIT License [see LICENSE for details]
-# Written by Peng-Shuai Wang
-# Hextree version written by Xiang Wang
-# --------------------------------------------------------
-
 import torch
 from typing import Optional
 # import sys
@@ -41,8 +33,7 @@ class HextreeDropPath(torch.nn.Module):
 
         batch_size = hextree.batch_size
         keep_prob = 1 - self.drop_prob
-        rnd_tensor = torch.rand(
-            batch_size, 1, dtype=data.dtype, device=data.device)
+        rnd_tensor = torch.rand(batch_size, 1, dtype=data.dtype, device=data.device)
         rnd_tensor = torch.floor(rnd_tensor + keep_prob)
         if keep_prob > 0.0 and self.scale_by_keep:
             rnd_tensor.div_(keep_prob)

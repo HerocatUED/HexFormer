@@ -27,5 +27,7 @@ Step 3. Expirements
 TODO： 
 data augmentations
 
+tidy up scripts and utils
+
 
 

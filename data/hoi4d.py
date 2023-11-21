@@ -1,10 +1,4 @@
-# --------------------------------------------------------
-# OctFormer: Octree-based Transformers for 3D Point Clouds
-# Copyright (c) 2023 Peng-Shuai Wang <wangps@hotmail.com>
-# Licensed under The MIT License [see LICENSE for details]
-# Written by Peng-Shuai Wang
-# Hextree version written by Xiang Wang
-# --------------------------------------------------------
+# build HOI4D dataset for Solver
 
 
 import torch
@@ -47,9 +41,6 @@ class HOI4DTransform(Transform):
         # range of [-1, 1]. If this parameter is modified, the `self.elastic_params`
         # and the `jittor` in the data augmentation should be scaled accordingly.
         # self.scale_factor = 5.12
-        # depth 9: voxel size 2cm
-        # depth 10: voxel size 2cm; 
-        # depth 11: voxel size 1cm
         self.scale_factor = 10.24
 
     def __call__(self, sample, idx=None):
