@@ -39,11 +39,12 @@ class HextreeT(Hextree):
 
     def build_t(self, depth):
         '''
-        Note: build Hextree after AvgPoolXYZ !!!
+        Note: build HextreeT after AvgPoolXYZ !!!
         '''
         # for d in range(self.start_depth, self.max_depth + 1):
-        for i, k in enumerate(self.masked_keys):
-            print(i, k)
+        # for i, k in enumerate(self.masked_keys):
+        #     print(i, k)
+        
         self.nnum_t[depth] = self.masked_keys[depth].shape[0]
         self.build_batch_idx(depth)
         self.build_attn_mask(depth)

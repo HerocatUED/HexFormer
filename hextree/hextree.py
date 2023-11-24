@@ -129,7 +129,6 @@ class Hextree:
         depth (int): The depth of the hextree layer. nemtpy (bool): If true, only
             searches the non-empty hextree nodes.
         '''
-
         key = self.key(depth, nempty)
         # `torch.bucketize` is similar to `torch.searchsorted`.
         # I choose `torch.bucketize` here because it has fewer dimension checks,

@@ -43,20 +43,21 @@ class SegHeader(torch.nn.Module):
         depth_max = max(features.keys())+self.num_up
         assert self.num_stages == len(features)
         feature = self.conv1x1[0](features[depth])
-        # print('feature', feature.shape)
-        out = self.upsample(feature, hextree, depth_max-1)
-        # print('out', out.shape)
-        # out = self.upsample(feature, hextree, depth, depth_max)
+        
+        # out = self.upsample(feature, hextree, depth_max-1)
+        # for i in range(1, self.num_stages):
+        #     depth_i = depth + i
+        #     feature = self.upsample(feature, hextree, depth_i - 1)
+        #     feature = self.conv1x1[i](features[depth_i]) + feature
+        #     out = out + self.upsample(feature, hextree, depth_max-1)
+        #     # out = out + self.upsample(feature, hextree, depth_i, depth_max)
+
         for i in range(1, self.num_stages):
             depth_i = depth + i
-            print(i, depth_i, depth, depth_max)
             feature = self.upsample(feature, hextree, depth_i - 1)
-            # print('feature', feature.shape)
             feature = self.conv1x1[i](features[depth_i]) + feature
-            out = out + self.upsample(feature, hextree, depth_max-1)
-            # out = out + self.upsample(feature, hextree, depth_i, depth_max)
 
-        # out = self.upsample(out, hextree, depth_max-1)
+        out = self.upsample(feature, hextree, depth_max-1)
         out = self.interp(out, hextree, depth_max, query_pts)
         out = self.classifier(out)
         return out

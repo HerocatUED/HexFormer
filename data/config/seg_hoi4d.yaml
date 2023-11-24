@@ -14,7 +14,7 @@ SOLVER:
 
   ckpt_num: 200
   max_epoch: 80
-  test_every_epoch: 10
+  test_every_epoch: 40
   log_per_iter: 10
 
   weight_decay: 0.05
@@ -40,7 +40,7 @@ DATA:
     # data loading
     location: data
     filelist: data/config/train_data.txt
-    batch_size: 1
+    batch_size: 2
     shuffle: True
     num_workers: 1
 
@@ -48,7 +48,7 @@ DATA:
     name: hoi4d
 
     # hextree building
-    depth: 11
+    depth: 10
     full_depth: 2
 
     # data augmentations
@@ -62,7 +62,7 @@ DATA:
     num_workers: 1
 
 MODEL:
-  name: hexsegformer_small
+  name: hexsegformer_toy
   # N -> Normal (3 channels);
   # D -> Displacement (1 channel);
   # F -> Color (3 channels);

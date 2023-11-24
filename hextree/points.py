@@ -19,7 +19,8 @@ class Points:
             shape of :obj:`(N, 1)`, default :obj:`None`
         :obj:`batch_size` (:obj:`int`): The batch size, default 1
 
-        Currently `batch_size` and `batch_id` are all ignored, i.e. batch_size is always viewed as 1.
+        Currently `batch_size` and `batch_id` are all ignored, i.e. batch_size is always viewed as 1
+        when buiding `Points` from raw data, and they are automatically set after `merge_points`
     '''
 
     def __init__(self, points: torch.Tensor,
@@ -35,15 +36,15 @@ class Points:
         self.features = features
         self.labels = labels
         # TODO: Allow batch operation
-        self.batch_id = None 
-        self.batch_size = 1
+        self.batch_id = None        # valid after `merge_points`
+        self.batch_size = 1         # valid after `merge_points`
         # self.batch_id = batch_id
         # self.batch_size = batch_size
 
         self.device = points.device
 
         # TODO: Allow batch operation
-        self.batch_npt = None
+        self.batch_npt = None       # valid after `merge_points`
         # self.batch_npt = None   
     
     # Properties
@@ -276,7 +277,7 @@ class Points:
 
         # Construct a new Points on the specified device
         points = Points(torch.zeros(1, 3, device=device))
-        points.batch_npt = self.batch_npt
+        # points.batch_npt = self.batch_npt
         points.points = self.points.to(device, non_blocking=non_blocking)
         if self.normals is not None:
             points.normals = self.normals.to(device, non_blocking=non_blocking)
@@ -350,11 +351,11 @@ def merge_points(points: List['Points'], update_batch_info: bool = True):
         out.labels = torch.cat([p.labels for p in points], dim=0)
     out.device = points[0].device
 
-    # TODO: Allow batch operation
     if update_batch_info:
-        # out.batch_size = ...
-        # out.batch_npt = ...
-        # out.batch_id = ...
-        pass
+        out.batch_size = len(points)
+        # out.batch_npt = torch.Tensor([p.npt for p in points]).long()
+        out.batch_id = torch.cat([
+            p.points.new_full((p.npt, 1), i)
+            for i, p in enumerate(points)], dim=0).long()
 
     return out

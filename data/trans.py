@@ -131,13 +131,13 @@ if __name__ == '__main__':
     
     # float_64to32()
     
-    h52npy(dataset_name='dataset_frame8', n_video=50, n_frame=160)
+    # h52npy(dataset_name='dataset_frame8', n_video=50, n_frame=160)
     
-    xyz2txyz(dataset_name='dataset_frame8', config_name='config', clip_length=8)
+    # xyz2txyz(dataset_name='dataset_frame8', config_name='config', clip_length=8)
     
     # rand_ids = [0.043, 0.317, 0.389]
     # logdir = 'frame2'
     # trans_visualize(rand_ids, logdir)
     
-    # for i in range(0):
-    #     print(i)
+    for i in range(4,0,-1):
+        print(i)

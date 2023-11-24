@@ -6,7 +6,7 @@ import argparse
 parser = argparse.ArgumentParser()
 parser.add_argument('--run', type=str, required=False, default='train')
 parser.add_argument('--alias', type=str, required=False, default='hoi4d')
-parser.add_argument('--gpu', type=str, required=False, default='0,1,2,3')
+parser.add_argument('--gpu', type=str, required=False, default='5')
 parser.add_argument('--port', type=str, required=False, default='10008')
 parser.add_argument('--ckpt', type=str, required=False, default='\'\'')
 args = parser.parse_args()
