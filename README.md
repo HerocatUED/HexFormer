@@ -29,5 +29,5 @@ data augmentations
 
 tidy up scripts and utils
 
-
+update to pytorch speedup 
 

@@ -58,6 +58,30 @@ class TestHextree(unittest.TestCase):
         for d in range(6):
             self.assertTrue((htree.keys[d] == keys[d]).all())
 
+        # test masked_counts
+        masked_counts = [
+            torch.Tensor([1, 1]),
+            torch.Tensor([2, 1]),
+            torch.Tensor([1, 1, 1]),
+            torch.Tensor([1, 1, 1]),
+            torch.Tensor([1, 1, 1]),
+            torch.Tensor([1, 1, 1]),
+        ]
+        for d in range(6):
+            self.assertTrue((htree.masked_counts[d] == masked_counts[d]).all())
+
+        # test scatter_idx
+        scatter_idx = [
+            torch.Tensor([0, 1]),
+            torch.Tensor([0, 0, 1]),
+            torch.Tensor([0, 1, 2]),
+            torch.Tensor([0, 1, 2]),
+            torch.Tensor([0, 1, 2]),
+            torch.Tensor([0, 1, 2]),
+        ]
+        for d in range(6):
+            self.assertTrue((htree.scatter_idx[d] == scatter_idx[d]).all())
+
         # test the children 
         children = [
             torch.Tensor([0]),
@@ -136,6 +160,28 @@ class TestHextree(unittest.TestCase):
         for d in range(6):
             self.assertTrue((htree.keys[d] == keys[d]).all())
         
+        masked_counts = [
+            torch.Tensor([1, 1, 1, 1]),
+            torch.Tensor([2, 1, 2, 1]),
+            torch.Tensor([1, 1, 1, 1, 1, 1]),
+            torch.Tensor([1, 1, 1, 1, 1, 1]),
+            torch.Tensor([1, 1, 1, 1, 1, 1]),
+            torch.Tensor([1, 1, 1, 1, 1, 1]),
+        ]
+        for d in range(6):
+            self.assertTrue((htree.masked_counts[d] == masked_counts[d]).all())
+
+        scatter_idx = [
+            torch.Tensor([0, 1, 2, 3]),
+            torch.Tensor([0, 0, 1, 2, 2, 3]),
+            torch.Tensor([0, 1, 2, 3, 4, 5]),
+            torch.Tensor([0, 1, 2, 3, 4, 5]),
+            torch.Tensor([0, 1, 2, 3, 4, 5]),
+            torch.Tensor([0, 1, 2, 3, 4, 5]),
+        ]
+        for d in range(6):
+            self.assertTrue((htree.scatter_idx[d] == scatter_idx[d]).all())
+
         children = [
             torch.Tensor([0, 1]),
             torch.Tensor([0, -1, -1, -1, -1, -1, 1, -1, -1, -1, -1, -1, -1, -1, -1, -1,

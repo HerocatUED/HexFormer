@@ -5,6 +5,7 @@ from typing import Union, List
 from .utils import meshgrid, scatter_add, cumsum, trunc_div
 from .points import Points
 from .shuffled_key import txyz2key, key2txyz
+from .key_mask import key2masked
 
 
 class Hextree:
@@ -63,17 +64,14 @@ class Hextree:
         return self.children[depth] >= 0
 
     # properties 
-    def key(self, depth: int, nempty: bool = False, masked: bool = False):
+    def key(self, depth: int, nempty: bool = False):
         r''' Returns the shuffled key of each hextree node.
 
         Args:
             depth (int): The depth of the hextree.
             nempty (bool): If True, returns the results of non-empty hextree nodes.
-            masked (bool): If True, returns masked key corresponding to AvgPoolXYZ
         '''
-        
-        if masked:
-            return self.masked_keys[depth]
+
         key = self.keys[depth]
         if nempty:
             mask = self.nempty_mask(depth)
@@ -91,7 +89,7 @@ class Hextree:
         key = self.key(depth, nempty)
         return key2txyz(key, depth)
     
-    def batch_id(self, depth: int, nempty: bool = False, masked: bool = False):
+    def batch_id(self, depth: int, nempty: bool = False):
         r''' Returns the batch indices of each hextree node.
 
         Args:
@@ -99,7 +97,7 @@ class Hextree:
             nempty (bool): If True, returns the results of non-empty hextree nodes.
         '''
 
-        batch_id = self.key(depth, nempty, masked) >> 56
+        batch_id = self.key(depth, nempty) >> 56
         return batch_id
 
     def search_txyzb(self, query: torch.Tensor, depth: int, nempty: bool = False):
@@ -129,6 +127,7 @@ class Hextree:
         depth (int): The depth of the hextree layer. nemtpy (bool): If true, only
             searches the non-empty hextree nodes.
         '''
+
         key = self.key(depth, nempty)
         # `torch.bucketize` is similar to `torch.searchsorted`.
         # I choose `torch.bucketize` here because it has fewer dimension checks,
@@ -193,12 +192,17 @@ class Hextree:
         # hextree features in each hextree layers
         num = self.depth + 1
         self.keys = [None] * num 
-        self.masked_keys = [None] * num
         self.children = [None] * num 
         self.neighs = [None] * num 
         self.features = [None] * num 
         self.normals = [None] * num 
         self.points = [None] * num 
+
+        # Attributes only for xyz pooling
+        # len(scatter_idx[d]) == len(masked_counts[d+1]) 
+        #                     >= len(self.key(d, nempty=True))
+        self.masked_counts = [None] * num
+        self.scatter_idx = [None] * num 
 
         # hextree node numbers in each hextree layers
         # TODO: decide whether to settle them to 'gpu' or not
@@ -287,6 +291,9 @@ class Hextree:
 
             # cache pkey for the next iteration
             node_key = pkey
+        
+        # build scatter idx
+        self.build_scatter_idx()
 
         # set the children for the layer full_layer,
         # now the node_keys are the key for full_layer
@@ -402,6 +409,18 @@ class Hextree:
         # update neighs
         if update_neigh:
             self.construct_neigh(depth)
+
+    def build_scatter_idx(self):
+        r''' Sets attributes `masked_counts` and `scatter_idx`
+        '''
+        key_masked = self.key(-1, nempty=True)
+        for d in range(self.depth, -1, -1):
+            key_masked = key2masked(key_masked, steps=self.depth-d+1)
+            key_masked, idx, count = torch.unique(
+                key_masked, sorted=True, return_inverse=True, return_counts=True, dim=0
+            )
+            self.masked_counts[d] = count
+            self.scatter_idx[d] = idx
 
     def construct_neigh(self, depth: int):
         r''' Constructs the :obj:`3x3x3x3` neighbors for each hextree node.
@@ -526,7 +545,7 @@ class Hextree:
         if isinstance(device, str):
           device = torch.device(device)
 
-        #  If on the same device, directly retrun self
+        #  If on the save device, directly retrun self
         if self.device == device:
           return self
 
@@ -537,7 +556,8 @@ class Hextree:
         # Construct a new hextree on the specified device
         hextree = Hextree(self.depth, self.full_depth, self.batch_size, device)
         hextree.keys = list_to_device(self.keys)
-        hextree.masked_keys = list_to_device(self.masked_keys)
+        hextree.masked_counts = list_to_device(self.masked_counts)
+        hextree.scatter_idx = list_to_device(self.scatter_idx)
         hextree.children = list_to_device(self.children)
         hextree.neighs = list_to_device(self.neighs)
         hextree.features = list_to_device(self.features)
@@ -561,7 +581,7 @@ class Hextree:
 
 
 def merge_hextrees(hextrees: List['Hextree']):
-    r''' Merges a list of hextrees into one batch.
+    r''' Merges a list of hextrees (batch_size = 1) into one batch.
 
     Args:
         hextrees (List[Hextree]): A list of hextrees to merge.
@@ -595,6 +615,22 @@ def merge_hextrees(hextrees: List['Hextree']):
             key = hextrees[i].keys[d] & ((1 << 56) - 1) # clear the highest bits
             keys[i] = key | (i << 56)
         hextree.keys[d] = torch.cat(keys, dim=0)
+
+        # masked_counts
+        masked_counts = [None] * hextree.batch_size
+        for i in range(hextree.batch_size):
+            masked_counts[i] = hextrees[i].masked_counts[d]
+        hextree.masked_counts[d] = torch.cat(masked_counts, dim=0)
+
+        # scatter_idx
+        scatter_idx = [None] * hextree.batch_size
+        running_length = torch.tensor(0, dtype=torch.long, device=hextree.device)
+        for i in range(hextree.batch_size):
+            scatter_id = hextrees[i].scatter_idx[d]
+            scatter_id += running_length
+            running_length += masked_counts[i].shape[0]
+            scatter_idx[i] = scatter_id
+        hextree.scatter_idx[d] = torch.cat(scatter_idx, dim=0)
 
         # children
         children = [None] * hextree.batch_size
