@@ -1,4 +1,6 @@
 import torch
+
+
 class KeyMaskLUT:
     def __init__(self):
         device = torch.device('cpu')
@@ -15,6 +17,7 @@ class KeyMaskLUT:
             self._encode[device] = tuple(e.to(device)
                                          for e in self._encode[cpu])
         return self._encode[device]
+
 
 _scatter_mask_lut = KeyMaskLUT()
 

@@ -1,12 +1,12 @@
 SOLVER:
   gpu: 0,1,2,3
   run: train
-  logdir: logs/log_frame2_batchsize8
+  logdir: logs/log_debug
   best_val: max:mIoU_part
 
   ckpt_num: 200
-  max_epoch: 80
-  test_every_epoch: 5
+  max_epoch: 20
+  test_every_epoch: 100
   log_per_iter: 10
 
   weight_decay: 0.05
@@ -54,7 +54,7 @@ DATA:
     num_workers: 1
 
 MODEL:
-  name: hexsegformer_toy
+  name: hexsegformer_small
   # N -> Normal (3 channels);
   # D -> Displacement (1 channel);
   # F -> Color (3 channels);

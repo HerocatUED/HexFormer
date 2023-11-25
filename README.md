@@ -13,9 +13,9 @@ loss design(lower weight for classes that have higher acc)
 thsolver.solver: LOSS.mask?
 
 Potential bugs: hextree.utils, hextree_conv,
-Unfinished tests: conv, interp, 
-Pooling, Interp, didn't operate on dimention *t*
+Unfinished tests: conv
 
+batch_id & key after pooling mask
 **Note** 
 
 torch version: function next() used in thsolver.solver;

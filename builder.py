@@ -38,7 +38,7 @@ def hexsegformer_small(in_channels, out_channels, **kwargs):
         num_heads=[6, 12, 24, 24],
         patch_size=32, dilation=4,
         drop_path=0.5, nempty=True,
-        stem_down=2, head_up=2,
+        stem_down=1, head_up=1,
         fpn_channel=168,
         head_drop=[0.5, 0.5])
     

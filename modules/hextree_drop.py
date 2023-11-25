@@ -2,7 +2,7 @@ import torch
 from typing import Optional
 # import sys
 # sys.path.append('..')
-from hextree import Hextree
+from hextree import Hextree, key2masked
 
 
 class HextreeDropPath(torch.nn.Module):
@@ -39,7 +39,7 @@ class HextreeDropPath(torch.nn.Module):
             rnd_tensor.div_(keep_prob)
 
         if batch_id is None:
-            batch_id = hextree.batch_id(depth, self.nempty, masked=True)
+            batch_id = hextree.batch_id_masked(depth, self.nempty)
         drop_mask = rnd_tensor[batch_id]
         output = data * drop_mask
         return output
