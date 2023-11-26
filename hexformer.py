@@ -48,7 +48,6 @@ class HextreeT(Hextree):
         self.build_rel_pos(depth)
         self.build_batch_idx(depth)
         self.build_attn_mask(depth)
-        # print(f"depth: {depth}, {self.nnum_t}")
         
 
     def build_batch_idx(self, depth: int):
@@ -75,8 +74,8 @@ class HextreeT(Hextree):
         key = self.key_masked(depth, self.nempty)
         self.nnum_t[depth] = key.shape[0]
         key = self.patch_partition(key, depth)
-        t, x, y, z, _ = key2txyz(key, depth)  # shape of t/x/y/z: (N, 1)
-        txyz = torch.stack([t, x, y, z], dim=1)  # (N, 4)
+        t, x, y, z, _ = key2txyz(key, depth) 
+        txyz = torch.stack([t, x, y, z], dim=1)  
 
         txyz = txyz.view(-1, self.patch_size, 4)
         self.rel_pos[depth] = txyz.unsqueeze(2) - txyz.unsqueeze(1)

@@ -63,8 +63,7 @@ class SegSolver(Solver):
     def model_forward(self, batch):
         hextree, points = batch['hextree'], batch['points']
         data = self.get_input_feature(hextree)
-        query_pts = torch.cat([points.points, torch.zeros((points.points.shape[0], 1)).to(self.device)], dim=1)
-        # query_pts = torch.cat([points.points, points.batch_id], dim=1)
+        query_pts = torch.cat([points.points, points.batch_id], dim=1)
 
         logit = self.model(data, hextree, hextree.depth, query_pts)
         label_mask = points.labels > self.FLAGS.LOSS.mask  # filter labels
@@ -100,20 +99,16 @@ class SegSolver(Solver):
         loss = self.loss_function(logit, label)
         accu = self.accuracy(logit, label)
         num_class = self.FLAGS.LOSS.num_class
-        # mIoU, IoU = self.IoU_per_shape(logit, label, num_class)
-        mIoU, IoU, insc, union = self.IoU_per_shape(logit, label, num_class)
+        mIoU, IoU = self.IoU_per_shape(logit, label, num_class)
 
         # randomly save 1/10 data for visualization
         rand_id = np.random.uniform()
         if batch['epoch'] == self.FLAGS.SOLVER.max_epoch-1 and rand_id < 0.1:
             save_pcd(batch, logit, self.logdir+'/result_sample', rand_id)
 
-        names = ['test/loss', 'test/accu', 'test/mIoU']+ \
-                ['test/IoU_%d' % i for i in range(num_class)] + \
-                ['test/intsc_%d' % i for i in range(num_class)] + \
-                ['test/union_%d' % i for i in range(num_class)] 
-        # tensors = [loss, accu, mIoU] + IoU
-        tensors = [loss, accu, mIoU] + IoU + insc + union 
+        names = ['test/loss', 'test/accu', 'test/mIoU'] + \
+                ['test/IoU_%d' % i for i in range(num_class)]
+        tensors = [loss, accu, mIoU] + IoU
         return dict(zip(names, tensors))
 
     def eval_step(self, batch):
@@ -165,9 +160,7 @@ class SegSolver(Solver):
         mask = self.FLAGS.LOSS.mask + 1
         num_class = self.FLAGS.LOSS.num_class
         for i in range(mask, num_class):
-            instc_i = avg['test/intsc_%d' % i]
-            union_i = avg['test/union_%d' % i]
-            iou_part += instc_i / (union_i + 1.0e-10)
+            iou_part += avg['test/IoU_%d' % i]
         iou_part = iou_part / (num_class - mask)
 
         avg_tracker.update({'test/mIoU_part': torch.Tensor([iou_part])})
@@ -192,7 +185,7 @@ class SegSolver(Solver):
             pk, lk = pred.eq(k), label.eq(k)
             intsc[k] = torch.sum(torch.logical_and(pk, lk).float())
             union[k] = torch.sum(torch.logical_or(pk, lk).float())
-            IoU[k] = intsc[k] / union[k]
+            IoU[k] = intsc[k] / (union[k] + esp)
 
             valid = torch.sum(lk.any()) > 0
             valid_part_num += valid.item()
@@ -200,8 +193,7 @@ class SegSolver(Solver):
 
         # Calculate the shape IoU for ShapeNet
         mIoU /= valid_part_num + esp
-        return mIoU, IoU, intsc, union
-        # return mIoU, IoU
+        return mIoU, IoU
 
 
 if __name__ == "__main__":

@@ -40,9 +40,10 @@ class SegHeader(torch.nn.Module):
     def forward(self, features: Dict[int, torch.Tensor], hextree: Hextree,
                 query_pts: torch.Tensor):
         depth = min(features.keys())
-        depth_max = max(features.keys())+self.num_up
+        depth_max = max(features.keys())
         assert self.num_stages == len(features)
         feature = self.conv1x1[0](features[depth])
+        # print(depth, depth_max, depth_max+self.num_up)
         
         # out = self.upsample(feature, hextree, depth_max-1)
         # for i in range(1, self.num_stages):
@@ -54,11 +55,14 @@ class SegHeader(torch.nn.Module):
 
         for i in range(1, self.num_stages):
             depth_i = depth + i
+            # print(f"upsample from {depth_i-1}")
             feature = self.upsample(feature, hextree, depth_i - 1)
             feature = self.conv1x1[i](features[depth_i]) + feature
 
-        out = self.upsample(feature, hextree, depth_max-1)
-        out = self.interp(out, hextree, depth_max, query_pts)
+        for i in range(self.num_up):
+            # print(f"up from {depth_max+i}")
+            feature = self.upsample(feature, hextree, depth_max + i)
+        out = self.interp(feature, hextree, depth_max+self.num_up, query_pts)
         out = self.classifier(out)
         return out
 
