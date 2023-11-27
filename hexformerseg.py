@@ -21,13 +21,6 @@ class SegHeader(torch.nn.Module):
         self.conv1x1 = torch.nn.ModuleList([torch.nn.Linear(
             channels[i], fpn_channel) for i in range(self.num_stages-1, -1, -1)])
         self.upsample = HextreeAvgUnpoolXYZ()
-        # self.upsample = HextreeUpsample('nearest', nempty)
-        # self.conv3x3 = torch.nn.ModuleList([HextreeConvBnRelu(
-        #     fpn_channel, fpn_channel, kernel_size=[3],
-        #     stride=1, nempty=nempty) for i in range(self.num_stages)])
-        # self.up_conv = torch.nn.ModuleList([HextreeDeconvBnRelu(
-        #     fpn_channel, fpn_channel, kernel_size=[3],
-        #     stride=2, nempty=nempty) for i in range(self.num_up)])
         self.interp = HextreeInterp('nearest', nempty)
         self.classifier = torch.nn.Sequential(
             torch.nn.Dropout(dropout[0]),
@@ -44,7 +37,7 @@ class SegHeader(torch.nn.Module):
         assert self.num_stages == len(features)
         feature = self.conv1x1[0](features[depth])
         # print(depth, depth_max, depth_max+self.num_up)
-        
+
         # out = self.upsample(feature, hextree, depth_max-1)
         # for i in range(1, self.num_stages):
         #     depth_i = depth + i
@@ -55,38 +48,14 @@ class SegHeader(torch.nn.Module):
 
         for i in range(1, self.num_stages):
             depth_i = depth + i
-            # print(f"upsample from {depth_i-1}")
             feature = self.upsample(feature, hextree, depth_i - 1)
             feature = self.conv1x1[i](features[depth_i]) + feature
 
         for i in range(self.num_up):
-            # print(f"up from {depth_max+i}")
             feature = self.upsample(feature, hextree, depth_max + i)
         out = self.interp(feature, hextree, depth_max+self.num_up, query_pts)
         out = self.classifier(out)
         return out
-
-    # def forward(self, features: Dict[int, torch.Tensor], hextree: Hextree,
-    #             query_pts: torch.Tensor):
-    #     depth = min(features.keys())
-    #     depth_max = max(features.keys())
-    #     assert self.num_stages == len(features)
-
-    #     feature = self.conv1x1[0](features[depth])
-    #     conv_out = self.conv3x3[0](feature, hextree, depth)
-    #     out = self.upsample(conv_out, hextree, depth, depth_max)
-    #     for i in range(1, self.num_stages):
-    #         depth_i = depth + i
-    #         feature = self.upsample(feature, hextree, depth_i - 1)
-    #         feature = self.conv1x1[i](features[depth_i]) + feature
-    #         conv_out = self.conv3x3[i](feature, hextree, depth_i)
-    #         out = out + self.upsample(conv_out, hextree, depth_i, depth_max)
-
-    #     for i in range(self.num_up):
-    #         out = self.up_conv[i](out, hextree, depth_max + i)  # upsample
-    #     out = self.interp(out, hextree, depth_max + self.num_up, query_pts)
-    #     out = self.classifier(out)
-    #     return out
 
 
 class HexFormerSeg(torch.nn.Module):
@@ -103,7 +72,8 @@ class HexFormerSeg(torch.nn.Module):
         self.backbone = HexFormer(
             in_channels, channels, num_blocks, num_heads, patch_size, dilation,
             drop_path, nempty, stem_down)
-        self.head = SegHeader(out_channels, channels, fpn_channel, nempty, head_up, head_drop)
+        self.head = SegHeader(out_channels, channels,
+                              fpn_channel, nempty, head_up, head_drop)
         self.apply(self.init_weights)
 
     def init_weights(self, m):
