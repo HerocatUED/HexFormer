@@ -1,6 +1,4 @@
 import torch
-# import sys
-# sys.path.append('..')
 from hextree import Hextree
 
 

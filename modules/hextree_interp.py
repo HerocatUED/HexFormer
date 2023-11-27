@@ -2,8 +2,6 @@ import torch
 import torch.sparse
 from typing import List, Optional
 
-# import sys
-# sys.path.append('..')
 from hextree import Hextree
 from .hextree_pad import hextree_depad
 

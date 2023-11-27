@@ -4,108 +4,8 @@ import torch
 from typing import Optional, List
 from torch.utils.checkpoint import checkpoint
 
-from hextree import Hextree, key2txyz, key2masked
-from modules import HextreeDropPath, HextreeAvgPoolXYZ, HextreeMaxPool
-
-
-class HextreeT(Hextree):
-
-    def __init__(self, hextree: Hextree, patch_size: int = 24, dilation: int = 4,
-                 nempty: bool = True, max_depth: Optional[int] = None,
-                 start_depth: Optional[int] = None, **kwargs):
-        super().__init__(hextree.depth, hextree.full_depth)
-        self.__dict__.update(hextree.__dict__)
-
-        self.patch_size = patch_size
-        self.dilation = dilation  # TODO dilation as a list
-        self.nempty = nempty
-        self.max_depth = max_depth or self.depth
-        self.start_depth = start_depth or self.full_depth
-        self.invalid_mask_value = -1e3
-        assert self.start_depth > 1
-
-        self.block_num = patch_size * dilation
-        self.nnum_t = self.nnum_nempty if nempty else self.nnum
-        # self.nnum_a = ((self.nnum_t / self.block_num).ceil()
-        #                * self.block_num).int()
-
-        num = self.max_depth + 1
-        self.batch_idx = [None] * num
-        self.patch_mask = [None] * num
-        self.dilate_mask = [None] * num
-        self.rel_pos = [None] * num
-        self.dilate_pos = [None] * num
-        self.build_t(max_depth)
-
-    def build_t(self, depth):
-        '''
-        Note: build HextreeT after AvgPoolXYZ !!!
-        '''
-        # for d in range(self.start_depth, self.max_depth + 1):
-        # for i, k in enumerate(self.masked_keys):
-        #     print(i, k)
-        
-        self.build_rel_pos(depth)
-        self.build_batch_idx(depth)
-        self.build_attn_mask(depth)
-        
-
-    def build_batch_idx(self, depth: int):
-        batch = self.batch_id_masked(depth, self.nempty)
-        self.batch_idx[depth] = self.patch_partition(
-            batch, depth, self.batch_size)
-
-    def build_attn_mask(self, depth: int):
-        batch = self.batch_idx[depth]
-        mask = batch.view(-1, self.patch_size)
-        self.patch_mask[depth] = self._calc_attn_mask(mask)
-
-        mask = batch.view(-1, self.patch_size, self.dilation)
-        mask = mask.transpose(1, 2).reshape(-1, self.patch_size)
-        self.dilate_mask[depth] = self._calc_attn_mask(mask)
-
-    def _calc_attn_mask(self, mask: torch.Tensor):
-        attn_mask = mask.unsqueeze(2) - mask.unsqueeze(1)
-        attn_mask = attn_mask.masked_fill(
-            attn_mask != 0, self.invalid_mask_value)
-        return attn_mask
-
-    def build_rel_pos(self, depth: int):
-        key = self.key_masked(depth, self.nempty)
-        self.nnum_t[depth] = key.shape[0]
-        key = self.patch_partition(key, depth)
-        t, x, y, z, _ = key2txyz(key, depth) 
-        txyz = torch.stack([t, x, y, z], dim=1)  
-
-        txyz = txyz.view(-1, self.patch_size, 4)
-        self.rel_pos[depth] = txyz.unsqueeze(2) - txyz.unsqueeze(1)
-
-        txyz = txyz.view(-1, self.patch_size, self.dilation, 4)
-        txyz = txyz.transpose(1, 2).reshape(-1, self.patch_size, 4)
-        self.dilate_pos[depth] = txyz.unsqueeze(2) - txyz.unsqueeze(1)
-
-    def patch_partition(self, data: torch.Tensor, depth: int, fill_value=0):
-        assert data.shape[0] == self.nnum_t[depth]
-        num = self.block_num - self.nnum_t[depth] % self.block_num
-        tail = data.new_full((num,) + data.shape[1:], fill_value)
-        return torch.cat([data, tail], dim=0)
-
-    def patch_reverse(self, data: torch.Tensor, depth: int):
-        return data[:self.nnum_t[depth]]
-    
-    def key_masked(self, depth: int, nempty: bool):
-        key_masked = self.key(-1, nempty=True)
-        for d in range(self.depth, depth, -1):
-            key_masked = key2masked(key_masked, steps=self.depth-d+1)
-            key_masked, _, _ = torch.unique(
-                key_masked, sorted=True, return_inverse=True, return_counts=True, dim=0
-            )
-        return key_masked
-    
-    def batch_id_masked(self, depth: int, nempty: bool):
-        key = self.key_masked(depth, self.nempty)
-        batch_masked = key >> 56
-        return batch_masked
+from hextree import Hextree
+from modules import HextreeDropPath, HextreeAvgPoolXYZ, HextreeT
 
 
 class MLP(torch.nn.Module):
@@ -305,7 +205,6 @@ class PatchEmbed(torch.nn.Module):
             [MLP(in_dim if i == 0 else channels[i-1], channels[i], channels[i]) for i in range(self.num_stages)])
         self.norm = torch.nn.LayerNorm(channels[-2])
         self.downsample = HextreeAvgPoolXYZ()
-        # self.downsample = HextreeMaxPool(nempty)
         self.proj = MLP(channels[-2], 2*dim, channels[-1])
 
     def forward(self, data: torch.Tensor, hextree: Hextree, depth: int):
@@ -344,14 +243,12 @@ class HexFormer(torch.nn.Module):
         self.feature_up = torch.nn.ModuleList([MLP(channels[i], int(
             (channels[i]+channels[i+1])/2), channels[i+1]) for i in range(self.num_stages - 2)])
         self.downsample = HextreeAvgPoolXYZ()
-        # self.downsample = HextreeMaxPool(nempty)
 
     def forward(self, data: torch.Tensor, hextree: Hextree, depth: int):
         data = self.patch_embed(data, hextree, depth)
         depth = depth - self.stem_down   # current hextree depth
         hextree = HextreeT(hextree, self.patch_size, self.dilation, self.nempty,
                            max_depth=depth, start_depth=depth-self.num_stages+1)
-        # print(f'data shape: {data.shape[0]}')
         features = {}
         for i in range(self.num_stages):
             depth_i = depth - i
@@ -359,7 +256,6 @@ class HexFormer(torch.nn.Module):
             features[depth_i] = data
             if i < self.num_stages - 1:
                 data = self.downsample(data, hextree, depth_i)
-                hextree.build_t(depth_i-1)
                 if i < self.num_stages - 2:
                     data = self.feature_up[i](data)
         return features

@@ -1,8 +1,6 @@
 import torch
 from typing import Optional
-# import sys
-# sys.path.append('..')
-from hextree import Hextree, key2masked
+from .hextreeT import HextreeT
 
 
 class HextreeDropPath(torch.nn.Module):
@@ -24,7 +22,7 @@ class HextreeDropPath(torch.nn.Module):
         self.nempty = nempty
         self.scale_by_keep = scale_by_keep
 
-    def forward(self, data: torch.Tensor, hextree: Hextree, depth: int,
+    def forward(self, data: torch.Tensor, hextree: HextreeT, depth: int,
                 batch_id: Optional[torch.Tensor] = None):
         r''''''
 
