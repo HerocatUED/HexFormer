@@ -45,9 +45,9 @@ def hexsegformer_small(in_channels, out_channels, **kwargs):
 def hexsegformer_toy(in_channels, out_channels, **kwargs):
     return HexFormerSeg(
         in_channels, out_channels,
-        channels=[96, 192, 384, 384],
-        num_blocks=[2, 2, 18, 2],
-        num_heads=[6, 12, 24, 24],
+        channels=[48, 96, 192, 384, 384],
+        num_blocks=[2, 2, 2, 6, 2],
+        num_heads=[6, 6, 12, 24, 24],
         patch_size=32, dilation=4,
         drop_path=0.5, nempty=True,
         stem_down=1, head_up=1,
