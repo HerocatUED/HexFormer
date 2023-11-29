@@ -21,11 +21,11 @@ def save_pcd(batch, logit, path, rand_id: float):
     print(f"saving to {path}")
     if not os.path.exists(path):
         os.makedirs(path)
-    np.savez(path+'/points_{:.3f}.npz'.format(rand_id),
+    np.savez(path+'/points_{:.4f}.npz'.format(rand_id),
              batch['points'].points.cpu().numpy())
-    np.savez(path+'/label_{:.3f}.npz'.format(rand_id),
+    np.savez(path+'/label_{:.4f}.npz'.format(rand_id),
              batch['points'].labels.cpu().numpy())
-    np.savez(path+'/pred_{:.3f}.npz'.format(rand_id), pred.cpu().numpy())
+    np.savez(path+'/pred_{:.4f}.npz'.format(rand_id), pred.cpu().numpy())
 
 
 class SegSolver(Solver):
@@ -55,7 +55,7 @@ class SegSolver(Solver):
             points = [pts.cuda(non_blocking=True) for pts in batch['points']]
             hextrees = [points2hextree(pts) for pts in points]
             hextree = merge_hextrees(hextrees)
-            hextree.construct_all_neigh()
+            # hextree.construct_all_neigh()
             batch['points'] = merge_points(points)
             batch['hextree'] = hextree
         return batch
@@ -101,9 +101,9 @@ class SegSolver(Solver):
         num_class = self.FLAGS.LOSS.num_class
         mIoU, IoU = self.IoU_per_shape(logit, label, num_class)
 
-        # randomly save 1/10 data for visualization
+        # randomly save 1/100 data for visualization
         rand_id = np.random.uniform()
-        if batch['epoch'] == self.FLAGS.SOLVER.max_epoch-1 and rand_id < 0.1:
+        if batch['epoch'] == self.FLAGS.SOLVER.max_epoch-1 and rand_id < 0.01:
             save_pcd(batch, logit, self.logdir+'/result_sample', rand_id)
 
         names = ['test/loss', 'test/accu', 'test/mIoU'] + \

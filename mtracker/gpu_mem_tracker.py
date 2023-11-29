@@ -48,7 +48,7 @@ class MemTracker(object):
                 if self.verbose:
                     print('A trivial exception occured: {}'.format(e))
 
-    def track(self):
+    def track(self, info:str):
         """
         Track the GPU memory usage
         """
@@ -69,13 +69,21 @@ class MemTracker(object):
                 ts_list = [tensor.size() for tensor in self.get_tensors()]
                 new_tensor_sizes = {(type(x), tuple(x.size()), ts_list.count(x.size()), np.prod(np.array(x.size()))*4/1000**2)
                                     for x in self.get_tensors()}
+                total_mem_increase = 0.0
+                total_mem_decrease = 0.0
                 for t, s, n, m in new_tensor_sizes - self.last_tensor_sizes:
-                    f.write(f'+ | {str(n)} * Size:{str(s):<20} | Memory: {str(m*n)[:6]} M | {str(t):<20}\n')
+                    total_mem_increase += m*n
+                    # f.write(f'+ | {str(n)} * Size:{str(s):<20} | Memory: {str(m*n)[:6]} M | {str(t):<20}\n')
                 for t, s, n, m in self.last_tensor_sizes - new_tensor_sizes:
-                    f.write(f'- | {str(n)} * Size:{str(s):<20} | Memory: {str(m*n)[:6]} M | {str(t):<20} \n')
+                    total_mem_decrease += m*n
+                    # f.write(f'- | {str(n)} * Size:{str(s):<20} | Memory: {str(m*n)[:6]} M | {str(t):<20} \n')
                 self.last_tensor_sizes = new_tensor_sizes
+                f.write(f"\n{info}\n")
+                f.write(f"Total Memory Increasing:{total_mem_increase}Mb\n")
+                f.write(f"Total Memory Decreasing:{total_mem_decrease}Mb\n")
+                f.write(f"Total Used Memory:{meminfo.used/1000**2:<7.1f}Mb\n\n")
 
-            f.write(f"\nAt {where_str:<50}"
-                    f"Total Used Memory:{meminfo.used/1000**2:<7.1f}Mb\n\n")
+            # f.write(f"\nAt {where_str:<50}"
+            #         f"Total Used Memory:{meminfo.used/1000**2:<7.1f}Mb\n\n")
 
         pynvml.nvmlShutdown()
