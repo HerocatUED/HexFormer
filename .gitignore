@@ -1,8 +1,8 @@
 **/__pycache__
+.vscode
 *.npy
 *.npz
 logs
-data/dataset
-data/config
 data/visualize
-dataset_frame2
+dataset_frame*
+mtracker/log

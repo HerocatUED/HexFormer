@@ -1,11 +1,3 @@
-# --------------------------------------------------------
-# Octree-based Sparse Convolutional Neural Networks
-# Copyright (c) 2022 Peng-Shuai Wang <wangps@hotmail.com>
-# Licensed under The MIT License [see LICENSE for details]
-# Written by Peng-Shuai Wang
-# Hextree version written by Xiang Wang
-# --------------------------------------------------------
-
 import os
 import torch
 import unittest
@@ -30,13 +22,13 @@ class HextreeDropTest(unittest.TestCase):
         # Test 1
         depth = 5
         nnum = htree.nnum[depth]
-        data = torch.rand(nnum, 4)  # TODO 3 or 4
+        data = torch.rand(nnum, 4)
         drop_path = HextreeDropPath(drop_prob=0.8, nempty=False)
         output = drop_path(data, htree, depth)
 
         # Test 2
         nnum_nempty = htree.nnum_nempty[depth]
-        data = torch.rand(nnum_nempty, 4)  # TODO 3 or 4
+        data = torch.rand(nnum_nempty, 4)
         drop_path = HextreeDropPath(drop_prob=0.8, nempty=True)
         output = drop_path(data, htree, depth)
 

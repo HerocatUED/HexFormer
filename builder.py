@@ -1,10 +1,4 @@
-# --------------------------------------------------------
-# OctFormer: Octree-based Transformers for 3D Point Clouds
-# Copyright (c) 2023 Peng-Shuai Wang <wangps@hotmail.com>
-# Licensed under The MIT License [see LICENSE for details]
-# Written by Peng-Shuai Wang
-# Hextree version written by Xiang Wang
-# --------------------------------------------------------
+# build models
 
 from data import get_hoi4d_seg_dataset
 from hexformerseg import HexFormerSeg
@@ -51,9 +45,10 @@ def hexsegformer_small(in_channels, out_channels, **kwargs):
 def hexsegformer_toy(in_channels, out_channels, **kwargs):
     return HexFormerSeg(
         in_channels, out_channels,
-        channels=[96, 96],
-        num_blocks=[2, 2],
-        num_heads=[6, 6],
+        # channels=[32, 64, 192, 192],
+        channels=[48, 96, 192, 192],
+        num_blocks=[2, 2, 6, 2],
+        num_heads=[6, 12, 24, 24],
         patch_size=32, dilation=4,
         drop_path=0.5, nempty=True,
         stem_down=1, head_up=1,

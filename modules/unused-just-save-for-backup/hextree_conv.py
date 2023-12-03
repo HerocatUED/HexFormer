@@ -303,6 +303,7 @@ class HextreeConv(HextreeConvBase, torch.nn.Module):
     Args:
       in_channels (int): Number of input channels.
       out_channels (int): Number of output channels.
+      Note!!!!!!!!!!!!!!!!!!!!: only 3,3,3,3
       kernel_size (List(int)): The kernel shape, choose from :obj:`[3]`, :obj:`[2]`,
           :obj:`[3,3,3,3]`, :obj:`[3,1,1,1]`, :obj:`[1,3,1,1]`, :obj:`[1,1,3,1]`, :obj:`[1,1,1,3]`,
           :obj:`[2,2,2,2]`, :obj:`[3,3,1,1]`, :obj:`[1,3,3,1]`, and :obj:`[1,1,3,3]`.

@@ -5,13 +5,12 @@ import sys
 
 from utils import get_hextree
 sys.path.append('..')
-from modules import HextreeAvgPool, HextreeMaxPool, HextreeMaxUnpool
-
+from modules import HextreeMaxPool, HextreeMaxUnpool, HextreeAvgPoolXYZ, HextreeAvgUnpoolXYZ, HextreeMaxPoolXYZ, HextreeMaxUnpoolXYZ
 
 class HextreePoolTest(unittest.TestCase):
     # only dimension check, no value check
     def test_hextree_max_pooling(self):
-        htree = get_hextree(0)
+        htree = get_hextree(data_path='../data/points.npy', label_path='../data/semantic.npy', video_id=0)
         depth = 5
 
         nnum_nempty = htree.nnum_nempty[depth]
@@ -34,26 +33,40 @@ class HextreePoolTest(unittest.TestCase):
         out = max_unpooling.forward(out, indices, htree, depth-1)
         assert out.shape[0] == htree.nnum[depth]
     
-    def test_hextree_avg_pooling(self):
-        htree = get_hextree(0)
-        depth = 5
+    # only dimension check, no value check
+    def test_hextree_avg_pooling_xyz(self):
+        htree = get_hextree(data_path='../data/points.npy', label_path='../data/semantic.npy', video_id=0)
 
-        nnum_nempty = htree.nnum_nempty[depth]
-        data0 = torch.zeros(nnum_nempty, 100)
-        data1 = torch.ones(nnum_nempty, 100)
-        avg_pooling = HextreeAvgPool(nempty=True)
-        out0 = avg_pooling(data0, htree, depth)
-        out1 = avg_pooling(data1, htree, depth)
-        assert out0.shape[0] == htree.nnum_nempty[depth-1]
-        assert out1.shape[0] == htree.nnum_nempty[depth-1]
-        assert torch.all(out0 == 0)
-        assert torch.all(out1 == 1)
+        nnum_nempty = htree.nnum_nempty[-1]
+        data = torch.rand(nnum_nempty, 100)
+        Pool = HextreeAvgPoolXYZ()
+        Unpool = HextreeAvgUnpoolXYZ()
+        dims = [None] * htree.depth
+        for d in range(htree.depth, 0, -1):
+            dims[d-1] = len(data)
+            data = Pool(data, htree, depth=d)
+        print(dims)
+        for d in range(0, htree.depth):
+            data = Unpool(data, htree, depth=d)
+            self.assertTrue(len(data) == dims[d])
+    
+    # only dimension check, no value check
+    def test_hextree_max_pooling_xyz(self):
+        htree = get_hextree(data_path='../data/points.npy', label_path='../data/semantic.npy', video_id=0)
 
-        nnum = htree.nnum[depth]
-        data = torch.rand(nnum, 100)
-        avg_pooling = HextreeAvgPool(nempty=False)
-        out = avg_pooling(data, htree, depth)
-        assert out.shape[0] == htree.nnum[depth-1]
+        nnum_nempty = htree.nnum_nempty[-1]
+        data = torch.rand(nnum_nempty, 100)
+        Pool = HextreeMaxPoolXYZ(return_indices=True)
+        Unpool = HextreeMaxUnpoolXYZ()
+        indices = [None] * htree.depth
+        dims = [None] * htree.depth
+        for d in range(htree.depth, 0, -1):
+            dims[d-1] = len(data)
+            data, indices[d-1] = Pool(data, htree, depth=d)
+        for d in range(0, htree.depth):
+            data = Unpool(data, indices[d], htree, depth=d)
+            self.assertTrue(len(data) == dims[d])
+
 
 if __name__ == "__main__":
     os.environ['CUDA_VISIBLE_DEVICES'] = '0'

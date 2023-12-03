@@ -1,5 +1,4 @@
 # Convert dataset file to another format
-# Written by Xiang Wang
 
 import torch
 import h5py
@@ -8,6 +7,9 @@ from tqdm import tqdm
 
 
 def float64to32():
+    '''
+    convert h5 files from float64 to float32 to save memory
+    '''
     chunk_size = 30
 
     for filename in ['train1', 'train2', 'train3', 'train4']:
@@ -57,21 +59,29 @@ def float64to32():
     print("Done.")
 
 
-def h52npy(n_video):
+def h52npy(dataset_name: str, n_video: int, n_frame: int):
+    '''
+    convert h5 file of HOI4D to npy files
+    '''
     with h5py.File('/mnt/sdc/wangx/HOI4D/HOI4D_dataset/seg_data_h5'+'/train1_float32.h5', 'r') as f:
-        for dataset_name in ['semantic', 'pcd']:
-            print(dataset_name)
-            data = np.array(f[dataset_name][:n_video, :160])
-            print(f'{dataset_name}', np.shape(data))
-            np.save(f'./dataset/{dataset_name}', data)
+        for name in ['semantic', 'pcd']:
+            print(name)
+            data = np.array(f[name][:n_video, :n_frame])
+            print(f'{name}', np.shape(data))
+            np.save(f'./{dataset_name}/{name}', data)
 
 
 def xyz2txyz(dataset_name: str, config_name: str, clip_length: int):
-    points_xyz = np.load('./dataset/points.npy')
-    semantic = np.load('./dataset/semantic.npy')    
+    '''
+    construct dataset files
+    '''
+    points_xyz = np.load(f'./{dataset_name}/pcd.npy')
+    semantic = np.load(f'./{dataset_name}/semantic.npy')    
     
     # Translate data to txyz format
     n_video, t_video, n_point, _ = points_xyz.shape
+    print(f'video num: {n_video}')
+    print(f'frames per video: {t_video}')
     points_txyz = np.concatenate([np.zeros([n_video, t_video, n_point, 1]), points_xyz], axis=-1)
     points_txyz[:, :, :, 0] += (np.arange(t_video) + 1)[None, :, None]
 
@@ -98,6 +108,9 @@ def xyz2txyz(dataset_name: str, config_name: str, clip_length: int):
     f_val.close()
     
 def trans_visualize(rand_ids, logdir):
+    '''
+    script for visualization
+    '''
     for i, rand_id in enumerate(rand_ids):
         points = np.load(f"../logs/log_{logdir}_hoi4d/result_sample/points_{rand_id}.npz")
         points = np.array(points['arr_0'][:8192, 1:])
@@ -115,15 +128,16 @@ def trans_visualize(rand_ids, logdir):
 
 
 if __name__ == '__main__':
+    
     # float_64to32()
     
-    # h52npy(50)
+    h52npy(dataset_name='dataset_frame8', n_video=500, n_frame=160)
     
-    # xyz2txyz(dataset_name='dataset', config_name='config', clip_length=4)
+    xyz2txyz(dataset_name='dataset_frame8', config_name='config', clip_length=8)
     
-    rand_ids = [0.043, 0.317, 0.389]
-    logdir = 'frame2'
-    trans_visualize(rand_ids, logdir)
+    # rand_ids = [0.043, 0.317, 0.389]
+    # logdir = 'frame2'
+    # trans_visualize(rand_ids, logdir)
     
-    # for i in range(0):
+    # for i in range(4,0,-1):
     #     print(i)

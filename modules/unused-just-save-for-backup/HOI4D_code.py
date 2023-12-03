@@ -1,5 +1,4 @@
-# dataset HOI4D
-# Written by Xiang Wang
+# dataset for HOI4D
 # Modified based on https://github.com/hoi4d/HOI4D_SemSeg/blob/main/datasets/seg_base.py
 
 

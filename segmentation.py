@@ -1,10 +1,4 @@
-# --------------------------------------------------------
-# OctFormer: Octree-based Transformers for 3D Point Clouds
-# Copyright (c) 2023 Peng-Shuai Wang <wangps@hotmail.com>
-# Licensed under The MIT License [see LICENSE for details]
-# Written by Peng-Shuai Wang
-# Hextree version written by Xiang Wang
-# --------------------------------------------------------
+# build slover for HexFormerSeg
 
 import os
 import torch
@@ -22,14 +16,17 @@ from modules import InputFeature
 torch.multiprocessing.set_sharing_strategy('file_system')
 
 
-def save_pcd(batch, logit, path, rand_id:float):
+def save_pcd(batch, logit, path, rand_id: float):
     pred = logit.argmax(dim=1)
     print(f"saving to {path}")
     if not os.path.exists(path):
         os.makedirs(path)
-    np.savez(path+'/points_{:.3f}.npz'.format(rand_id), batch['points'].points.cpu().numpy())
-    np.savez(path+'/label_{:.3f}.npz'.format(rand_id), batch['points'].labels.cpu().numpy())
-    np.savez(path+'/pred_{:.3f}.npz'.format(rand_id), pred.cpu().numpy())
+    np.savez(path+'/points_{:.4f}.npz'.format(rand_id),
+             batch['points'].points.cpu().numpy())
+    np.savez(path+'/label_{:.4f}.npz'.format(rand_id),
+             batch['points'].labels.cpu().numpy())
+    np.savez(path+'/pred_{:.4f}.npz'.format(rand_id), pred.cpu().numpy())
+
 
 class SegSolver(Solver):
 
@@ -58,7 +55,7 @@ class SegSolver(Solver):
             points = [pts.cuda(non_blocking=True) for pts in batch['points']]
             hextrees = [points2hextree(pts) for pts in points]
             hextree = merge_hextrees(hextrees)
-            hextree.construct_all_neigh()
+            # hextree.construct_all_neigh()
             batch['points'] = merge_points(points)
             batch['hextree'] = hextree
         return batch
@@ -102,17 +99,16 @@ class SegSolver(Solver):
         loss = self.loss_function(logit, label)
         accu = self.accuracy(logit, label)
         num_class = self.FLAGS.LOSS.num_class
-        IoU, insc, union = self.IoU_per_shape(logit, label, num_class)
-        
-        # randomly save 1/10 data for visualization
+        mIoU, IoU = self.IoU_per_shape(logit, label, num_class)
+
+        # randomly save 1/100 data for visualization
         rand_id = np.random.uniform()
-        if batch['epoch'] == self.FLAGS.SOLVER.max_epoch-1 and rand_id < 0.1:
+        if batch['epoch'] == self.FLAGS.SOLVER.max_epoch-1 and rand_id < 0.01:
             save_pcd(batch, logit, self.logdir+'/result_sample', rand_id)
 
         names = ['test/loss', 'test/accu', 'test/mIoU'] + \
-                ['test/intsc_%d' % i for i in range(num_class)] + \
-                ['test/union_%d' % i for i in range(num_class)]
-        tensors = [loss, accu, IoU] + insc + union
+                ['test/IoU_%d' % i for i in range(num_class)]
+        tensors = [loss, accu, mIoU] + IoU
         return dict(zip(names, tensors))
 
     def eval_step(self, batch):
@@ -164,9 +160,7 @@ class SegSolver(Solver):
         mask = self.FLAGS.LOSS.mask + 1
         num_class = self.FLAGS.LOSS.num_class
         for i in range(mask, num_class):
-            instc_i = avg['test/intsc_%d' % i]
-            union_i = avg['test/union_%d' % i]
-            iou_part += instc_i / (union_i + 1.0e-10)
+            iou_part += avg['test/IoU_%d' % i]
         iou_part = iou_part / (num_class - mask)
 
         avg_tracker.update({'test/mIoU_part': torch.Tensor([iou_part])})
@@ -185,20 +179,21 @@ class SegSolver(Solver):
     def IoU_per_shape(self, logit, label, class_num):
         pred = logit.argmax(dim=1)
 
-        IoU, valid_part_num, esp = 0.0, 0.0, 1.0e-10
-        intsc, union = [None] * class_num, [None] * class_num
+        mIoU, valid_part_num, esp = 0.0, 0.0, 1.0e-10
+        IoU, intsc, union = [None] * class_num, [None] * class_num, [None] * class_num
         for k in range(class_num):
             pk, lk = pred.eq(k), label.eq(k)
             intsc[k] = torch.sum(torch.logical_and(pk, lk).float())
             union[k] = torch.sum(torch.logical_or(pk, lk).float())
+            IoU[k] = intsc[k] / (union[k] + esp)
 
             valid = torch.sum(lk.any()) > 0
             valid_part_num += valid.item()
-            IoU += valid * intsc[k] / (union[k] + esp)
+            mIoU += valid * intsc[k] / (union[k] + esp)
 
         # Calculate the shape IoU for ShapeNet
-        IoU /= valid_part_num + esp
-        return IoU, intsc, union
+        mIoU /= valid_part_num + esp
+        return mIoU, IoU
 
 
 if __name__ == "__main__":

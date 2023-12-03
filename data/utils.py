@@ -1,10 +1,4 @@
-# --------------------------------------------------------
-# OctFormer: Octree-based Transformers for 3D Point Clouds
-# Copyright (c) 2023 Peng-Shuai Wang <wangps@hotmail.com>
-# Licensed under The MIT License [see LICENSE for details]
-# Written by Peng-Shuai Wang
-# Hextree version written by Xiang Wang
-# --------------------------------------------------------
+# utils for data preprocess
 
 import torch
 import numpy as np
@@ -152,7 +146,7 @@ class Transform:
         #     points.orient_normal(self.orient_normal)
 
         # !!! NOTE: Clip the point cloud to [-1, 1] before building the hextree
-        inbox_mask = points.clip_xyz(min=-1, max=1)
+        inbox_mask = points.clip_xyz(bbmin=-1, bbmax=1)
         return {'points': points, 'inbox_mask': inbox_mask}
 
     def points2hextree(self, points: Points):

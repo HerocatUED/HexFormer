@@ -1,94 +1,11 @@
-# --------------------------------------------------------
-# OctFormer: Octree-based Transformers for 3D Point Clouds
-# Copyright (c) 2023 Peng-Shuai Wang <wangps@hotmail.com>
-# Licensed under The MIT License [see LICENSE for details]
-# Written by Peng-Shuai Wang
-# HexFormer version modified by Xiang Wang
-# --------------------------------------------------------
+# HexFormer BackBone
 
 import torch
 from typing import Optional, List
 from torch.utils.checkpoint import checkpoint
 
-from hextree import Hextree, key2txyz
-from modules import HextreeDropPath, HextreeMaxPool
-
-
-class HextreeT(Hextree):
-
-    def __init__(self, hextree: Hextree, patch_size: int = 24, dilation: int = 4,
-                 nempty: bool = True, max_depth: Optional[int] = None,
-                 start_depth: Optional[int] = None, **kwargs):
-        super().__init__(hextree.depth, hextree.full_depth)
-        self.__dict__.update(hextree.__dict__)
-
-        self.patch_size = patch_size
-        self.dilation = dilation  # TODO dilation as a list
-        self.nempty = nempty
-        self.max_depth = max_depth or self.depth
-        self.start_depth = start_depth or self.full_depth
-        self.invalid_mask_value = -1e3
-        assert self.start_depth > 1
-
-        self.block_num = patch_size * dilation
-        self.nnum_t = self.nnum_nempty if nempty else self.nnum
-        self.nnum_a = ((self.nnum_t / self.block_num).ceil()
-                       * self.block_num).int()
-
-        num = self.max_depth + 1
-        self.batch_idx = [None] * num
-        self.patch_mask = [None] * num
-        self.dilate_mask = [None] * num
-        self.rel_pos = [None] * num
-        self.dilate_pos = [None] * num
-        self.build_t()
-
-    def build_t(self):
-        for d in range(self.start_depth, self.max_depth + 1):
-            self.build_batch_idx(d)
-            self.build_attn_mask(d)
-            self.build_rel_pos(d)
-
-    def build_batch_idx(self, depth: int):
-        batch = self.batch_id(depth, self.nempty)
-        self.batch_idx[depth] = self.patch_partition(
-            batch, depth, self.batch_size)
-
-    def build_attn_mask(self, depth: int):
-        batch = self.batch_idx[depth]
-        mask = batch.view(-1, self.patch_size)
-        self.patch_mask[depth] = self._calc_attn_mask(mask)
-
-        mask = batch.view(-1, self.patch_size, self.dilation)
-        mask = mask.transpose(1, 2).reshape(-1, self.patch_size)
-        self.dilate_mask[depth] = self._calc_attn_mask(mask)
-
-    def _calc_attn_mask(self, mask: torch.Tensor):
-        attn_mask = mask.unsqueeze(2) - mask.unsqueeze(1)
-        attn_mask = attn_mask.masked_fill(
-            attn_mask != 0, self.invalid_mask_value)
-        return attn_mask
-
-    def build_rel_pos(self, depth: int):  # TODO
-        key = self.key(depth, self.nempty)
-        key = self.patch_partition(key, depth)
-        t, x, y, z, _ = key2txyz(key, depth)  # shape of t/x/y/z: (N, 1)
-        txyz = torch.stack([t, x, y, z], dim=1)  # (N, 4)
-
-        txyz = txyz.view(-1, self.patch_size, 4)
-        self.rel_pos[depth] = txyz.unsqueeze(2) - txyz.unsqueeze(1)
-
-        txyz = txyz.view(-1, self.patch_size, self.dilation, 4)
-        txyz = txyz.transpose(1, 2).reshape(-1, self.patch_size, 4)
-        self.dilate_pos[depth] = txyz.unsqueeze(2) - txyz.unsqueeze(1)
-
-    def patch_partition(self, data: torch.Tensor, depth: int, fill_value=0):
-        num = self.nnum_a[depth] - self.nnum_t[depth]
-        tail = data.new_full((num,) + data.shape[1:], fill_value)
-        return torch.cat([data, tail], dim=0)
-
-    def patch_reverse(self, data: torch.Tensor, depth: int):
-        return data[:self.nnum_t[depth]]
+from hextree import Hextree
+from modules import HextreeDropPath, HextreeAvgPoolXYZ, HextreeT
 
 
 class MLP(torch.nn.Module):
@@ -167,7 +84,6 @@ class HextreeAttention(torch.nn.Module):
         self.proj = torch.nn.Linear(dim, dim)
         self.proj_drop = torch.nn.Dropout(proj_drop)
         self.softmax = torch.nn.Softmax(dim=-1)
-        self.use_rpe = False
         self.rpe = RPE(patch_size, num_heads, dilation) if self.use_rpe else None
 
     def forward(self, data: torch.Tensor, hextree: HextreeT, depth: int):
@@ -278,32 +194,6 @@ class HexFormerStage(torch.nn.Module):
         return data
 
 
-# class PatchEmbed(torch.nn.Module):
-
-#     def __init__(self, in_channels: int = 3, dim: int = 96, num_down: int = 2,
-#                  nempty: bool = True, **kwargs):
-#         super().__init__()
-#         self.num_stages = num_down
-#         self.delta_depth = -num_down
-#         channels = [int(dim * 2**i) for i in range(-self.num_stages, 1)]
-
-#         self.convs = torch.nn.ModuleList([HextreeConvBnRelu(
-#             in_channels if i == 0 else channels[i], channels[i], kernel_size=[3],
-#             stride=1, nempty=nempty) for i in range(self.num_stages)])
-#         self.downsamples = torch.nn.ModuleList([HextreeConvBnRelu(
-#             channels[i], channels[i+1], kernel_size=[2], stride=2, nempty=nempty)
-#             for i in range(self.num_stages)])
-#         self.proj = HextreeConvBnRelu(
-#             channels[-1], dim, kernel_size=[3], stride=1, nempty=nempty)
-
-#     def forward(self, data: torch.Tensor, hextree: Hextree, depth: int):
-#         for i in range(self.num_stages):
-#             depth_i = depth - i
-#             data = self.convs[i](data, hextree, depth_i)
-#             data = self.downsamples[i](data, hextree, depth_i)
-#         data = self.proj(data, hextree, depth_i - 1)
-#         return data
-
 class PatchEmbed(torch.nn.Module):
 
     def __init__(self, in_dim: int = 4, dim: int = 96, num_stages: int = 2, nempty: bool = True, **kwargs):
@@ -314,32 +204,17 @@ class PatchEmbed(torch.nn.Module):
         self.mlps = torch.nn.ModuleList(
             [MLP(in_dim if i == 0 else channels[i-1], channels[i], channels[i]) for i in range(self.num_stages)])
         self.norm = torch.nn.LayerNorm(channels[-2])
-        self.downsamples = torch.nn.ModuleList(
-            [HextreeMaxPool(nempty, return_indices=False) for _ in range(self.num_stages)])
+        self.downsample = HextreeAvgPoolXYZ()
         self.proj = MLP(channels[-2], 2*dim, channels[-1])
 
     def forward(self, data: torch.Tensor, hextree: Hextree, depth: int):
         for i in range(self.num_stages):
             depth_i = depth - i
             data = self.mlps[i](data)
-            data = self.downsamples[i](data, hextree, depth_i)
+            data = self.downsample(data, hextree, depth_i)
+            
         data = self.proj(self.norm(data))
         return data
-
-
-# class Downsample(torch.nn.Module):
-
-#     def __init__(self, in_channels: int, out_channels: int,
-#                  kernel_size: List[int] = [2], nempty: bool = True):
-#         super().__init__()
-#         self.norm = torch.nn.BatchNorm1d(out_channels)
-#         self.conv = HextreeConv(in_channels, out_channels, kernel_size,
-#                                        stride=2, nempty=nempty, use_bias=True)
-
-#     def forward(self, data: torch.Tensor, hextree: Hextree, depth: int):
-#         data = self.conv(data, hextree, depth)
-#         data = self.norm(data)
-#         return data
 
 
 class HexFormer(torch.nn.Module):
@@ -365,13 +240,9 @@ class HexFormer(torch.nn.Module):
             drop_path=drop_ratio[sum(num_blocks[:i]):sum(num_blocks[:i+1])],
             dilation=dilation, nempty=nempty, num_blocks=num_blocks[i],)
             for i in range(self.num_stages)])
-        # self.downsamples = torch.nn.ModuleList([Downsample(
-        #     channels[i], channels[i + 1], kernel_size=[2],
-        #     nempty=nempty) for i in range(self.num_stages - 1)])
         self.feature_up = torch.nn.ModuleList([MLP(channels[i], int(
             (channels[i]+channels[i+1])/2), channels[i+1]) for i in range(self.num_stages - 2)])
-        self.downsamples = torch.nn.ModuleList(
-            [HextreeMaxPool(nempty, return_indices=False) for _ in range(self.num_stages - 1)])
+        self.downsample = HextreeAvgPoolXYZ()
 
     def forward(self, data: torch.Tensor, hextree: Hextree, depth: int):
         data = self.patch_embed(data, hextree, depth)
@@ -384,7 +255,7 @@ class HexFormer(torch.nn.Module):
             data = self.layers[i](data, hextree, depth_i)
             features[depth_i] = data
             if i < self.num_stages - 1:
-                data = self.downsamples[i](data, hextree, depth_i)
+                data = self.downsample(data, hextree, depth_i)
                 if i < self.num_stages - 2:
                     data = self.feature_up[i](data)
         return features

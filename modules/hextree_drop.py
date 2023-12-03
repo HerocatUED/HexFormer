@@ -1,16 +1,6 @@
-# --------------------------------------------------------
-# Octree-based Sparse Convolutional Neural Networks
-# Copyright (c) 2022 Peng-Shuai Wang <wangps@hotmail.com>
-# Licensed under The MIT License [see LICENSE for details]
-# Written by Peng-Shuai Wang
-# Hextree version written by Xiang Wang
-# --------------------------------------------------------
-
 import torch
 from typing import Optional
-# import sys
-# sys.path.append('..')
-from hextree import Hextree
+from .hextreeT import HextreeT
 
 
 class HextreeDropPath(torch.nn.Module):
@@ -32,7 +22,7 @@ class HextreeDropPath(torch.nn.Module):
         self.nempty = nempty
         self.scale_by_keep = scale_by_keep
 
-    def forward(self, data: torch.Tensor, hextree: Hextree, depth: int,
+    def forward(self, data: torch.Tensor, hextree: HextreeT, depth: int,
                 batch_id: Optional[torch.Tensor] = None):
         r''''''
 
@@ -41,14 +31,13 @@ class HextreeDropPath(torch.nn.Module):
 
         batch_size = hextree.batch_size
         keep_prob = 1 - self.drop_prob
-        rnd_tensor = torch.rand(
-            batch_size, 1, dtype=data.dtype, device=data.device)
+        rnd_tensor = torch.rand(batch_size, 1, dtype=data.dtype, device=data.device)
         rnd_tensor = torch.floor(rnd_tensor + keep_prob)
         if keep_prob > 0.0 and self.scale_by_keep:
             rnd_tensor.div_(keep_prob)
 
         if batch_id is None:
-            batch_id = hextree.batch_id(depth, self.nempty)
+            batch_id = hextree.batch_id_masked(depth, self.nempty)
         drop_mask = rnd_tensor[batch_id]
         output = data * drop_mask
         return output
