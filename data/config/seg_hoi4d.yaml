@@ -1,21 +1,21 @@
 SOLVER:
   gpu: 0,1,2,3
   run: train
-  logdir: logs/log_b8_f8_d9
+  logdir: logs/log_b8_f8_d9_e400_lr0.0025
   best_val: max:mIoU_part
 
   ckpt_num: 200
-  max_epoch: 120
+  max_epoch: 400
   test_every_epoch: 5
   log_per_iter: 5
 
   weight_decay: 0.05
   type: adamw_attn
 
-  lr: 0.001
+  lr: 0.0025
   lr_type: step_warmup
   warmup_epoch: 10
-  milestones: (50, 80, 100)
+  milestones: (150, 300)
   dist_url: tcp://localhost:10002  # for distributed training
 
 DATA:
@@ -24,7 +24,7 @@ DATA:
 
     # hextree building
     depth: 9
-    full_depth: 2
+    full_depth: 3
 
     # data augmentations
     distort: False
@@ -41,7 +41,7 @@ DATA:
 
     # hextree building
     depth: 9
-    full_depth: 2
+    full_depth: 3
 
     # data augmentations
     distort: False  # no data augmentation by default
@@ -66,6 +66,7 @@ MODEL:
   interp: nearest
   sync_bn: True
   find_unused_parameters: False
+  # use_compile: True
 
 LOSS:
   mask: 0

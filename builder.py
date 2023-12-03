@@ -45,6 +45,7 @@ def hexsegformer_small(in_channels, out_channels, **kwargs):
 def hexsegformer_toy(in_channels, out_channels, **kwargs):
     return HexFormerSeg(
         in_channels, out_channels,
+        # channels=[32, 64, 192, 192],
         channels=[48, 96, 192, 192],
         num_blocks=[2, 2, 6, 2],
         num_heads=[6, 12, 24, 24],
