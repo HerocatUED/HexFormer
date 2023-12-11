@@ -3,6 +3,5 @@
 *.npy
 *.npz
 logs
-data/visualize
-dataset_frame*
+dataset
 mtracker/log

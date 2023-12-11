@@ -1,0 +1,73 @@
+SOLVER:
+  gpu: 0,1,2,3
+  run: train
+  logdir: logs/log_debug
+  best_val: max:mIoU_part
+
+  ckpt_num: 200
+  max_epoch: 350
+  test_every_epoch: 5
+  log_per_iter: 5
+
+  weight_decay: 0.05
+  type: adamw_attn
+
+  lr: 0.0025
+  lr_type: step_warmup
+  warmup_epoch: 10
+  milestones: (200, 300)
+  dist_url: tcp://localhost:10002  # for distributed training
+
+DATA:
+  train:
+    name: hoi4d
+
+    # hextree building
+    depth: 9
+    full_depth: 3
+
+    # data augmentations
+    distort: False
+    cutmix: 0.0   # no cutmix
+    # data loading
+    location: dataset/hoi4d
+    filelist: data_utils/config/hoi4d/train_data.txt
+    batch_size: 8 # for a single GPU, real batch size = GPU_num * batch_size
+    shuffle: True
+    num_workers: 1
+
+  test:
+    name: hoi4d
+
+    # hextree building
+    depth: 9
+    full_depth: 3
+
+    # data augmentations
+    distort: False  # no data augmentation by default
+    cutmix: 0.0   # no cutmix
+    # data loading
+    location: dataset/hoi4d
+    filelist: data_utils/config/hoi4d/val_data.txt
+    batch_size: 4
+    shuffle: False
+    num_workers: 1
+
+MODEL:
+  name: hexsegformer_toy
+  # N -> Normal (3 channels);
+  # D -> Displacement (1 channel);
+  # F -> Color (3 channels);
+  # P -> Position (4 channels);
+  feature: P
+  channel: 4
+  nout: 49
+  nempty: True
+  interp: nearest
+  sync_bn: True
+  find_unused_parameters: False
+  # use_compile: True
+
+LOSS:
+  mask: 0
+  num_class: 49

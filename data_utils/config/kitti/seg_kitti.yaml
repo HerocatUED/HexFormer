@@ -1,11 +1,11 @@
 SOLVER:
   gpu: 0,1,2,3
   run: train
-  logdir: logs/log_b8_f8_d9_e400_lr0.0025
+  logdir: logs/log_debug
   best_val: max:mIoU_part
 
   ckpt_num: 200
-  max_epoch: 400
+  max_epoch: 350
   test_every_epoch: 5
   log_per_iter: 5
 
@@ -15,12 +15,12 @@ SOLVER:
   lr: 0.0025
   lr_type: step_warmup
   warmup_epoch: 10
-  milestones: (150, 300)
+  milestones: (200, 300)
   dist_url: tcp://localhost:10002  # for distributed training
 
 DATA:
   train:
-    name: hoi4d
+    name: kitti
 
     # hextree building
     depth: 9
@@ -30,14 +30,14 @@ DATA:
     distort: False
     cutmix: 0.0   # no cutmix
     # data loading
-    location: data
-    filelist: data/config/train_data.txt
+    location: dataset/kitti
+    filelist: data_utils/config/kitti/train_data.txt
     batch_size: 8 # for a single GPU, real batch size = GPU_num * batch_size
     shuffle: True
     num_workers: 1
 
   test:
-    name: hoi4d
+    name: kitti
 
     # hextree building
     depth: 9
@@ -47,8 +47,8 @@ DATA:
     distort: False  # no data augmentation by default
     cutmix: 0.0   # no cutmix
     # data loading
-    location: data
-    filelist: data/config/val_data.txt
+    location: dataset/kitti
+    filelist: data_utils/config/kitti/val_data.txt
     batch_size: 4
     shuffle: False
     num_workers: 1
