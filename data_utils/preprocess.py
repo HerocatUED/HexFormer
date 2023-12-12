@@ -156,7 +156,7 @@ def load_bin(dir_path:str, config_path: str, dataset_name: str, mode: str, n_fra
         pcd_files = pcd_files[: n_frame]
         pcd = np.zeros((len(pcd_files), 130000, 4)) # pad every frame to 13000 points
         depad = np.zeros(len(pcd_files), dtype=int) # depad num, number of points in this frame
-        for i in tqdm(range(len(pcd_files)), desc=f'video {video}'):
+        for i in tqdm(range(len(pcd_files)), desc=f'points {video}'):
             scan = np.fromfile(pcd_dir + pcd_files[i], dtype=np.float32)
             scan = scan.reshape((-1, 4))
             depad[i] = np.shape(scan)[0]
@@ -177,7 +177,7 @@ def load_bin(dir_path:str, config_path: str, dataset_name: str, mode: str, n_fra
         label_files.sort()
         label_files = label_files[: n_frame]
         labels = np.zeros((len(label_files), 130000), dtype=int) # pad every frame to 13000 points
-        for i in range(len(label_files)):  
+        for i in tqdm(range(len(label_files)), desc=f'label {video}'):  
             label = np.fromfile(label_dir + label_files[i], dtype=np.uint32)
             label = label.reshape((-1))
             # only fill in attribute if the right size
@@ -192,10 +192,11 @@ def load_bin(dir_path:str, config_path: str, dataset_name: str, mode: str, n_fra
             assert((sem_label + (inst_label << 16) == label).all())
             
             labels[i, :depad_num[k][i]] = sem_label
-            labels = remap(labels, config_path, False)
+        labels = remap(labels, config_path, False)
         semantic.append(labels)      
     
     if save: 
+        print(f'saving to {dataset_name}')
         os.makedirs(dataset_name, exist_ok=True)
         np.save(f'{dataset_name}/pcd', points_txyz)
         np.save(f'{dataset_name}/semantic', semantic)
@@ -252,7 +253,7 @@ def construct_dataset(points_txyz, semantic, dataset_name: str, clip_length: int
         else: # depad
             pcd = [None] * N
             label = [None] * N
-            for j in range(N):
+            for j in tqdm(range(N), desc=f'depad {v}'):
                 index = np.cumsum(depad_num[v][j*clip_length:(j+1)*clip_length])
                 index = np.pad(index, (1,0), 'constant', constant_values=0)
                 pcd[j] = np.zeros((index[-1], 4))
@@ -261,9 +262,9 @@ def construct_dataset(points_txyz, semantic, dataset_name: str, clip_length: int
                     id = j*clip_length + k
                     assert index[k+1]-index[k] == depad_num[v][id]
                     pcd[j][index[k]:index[k+1], :] = points_txyz[v][id][:depad_num[v][id]]
-                    label[j][index[k]:index[k+1]] = semantic[v][id][:depad_num[v][id]]     
+                    label[j][index[k]:index[k+1]] = semantic[v][id][:depad_num[v][id]]  
 
-        for i in tqdm(range(N), desc=f'video {v}'):
+        for i in range(N):
             np.savez(f'{dataset_name}/data_{i}.npz', points=pcd[i], labels=label[i])
             if i % 5 == 0:
                 val_list += f'{dataset_name}/data_{i}.npz\n'
@@ -300,21 +301,21 @@ if __name__ == '__main__':
     
     def hoi4d():
         # example of building dataset using HOI4D
-        clip_length = 2
+        clip_length = 8
         h5_dir = '/mnt/sdc/wangx/HOI4D/HOI4D_dataset/seg_data_h5'
         dataset_name = f'/mnt/sdc/wangx/HexFormer/dataset/hoi4d/frame{clip_length}'
         # h5float64to32(h5_dir, 100) NOTE run only if you need to save memory
-        points_txyz, semantic = load_h5(h5_dir+'/train1_float32.h5', dataset_name, 20, 100, True)
+        points_txyz, semantic = load_h5(h5_dir+'/train1_float32.h5', dataset_name, 500, 160, True)
         construct_dataset(points_txyz, semantic, dataset_name, clip_length)
     
     def kitti():
         # TODO train, val, test split
         # example of building dataset using KITTI
-        clip_length = 2
+        clip_length = 4
         kitti_dir = '/mnt/sdc/wangrh/data/SemanticKITTI'
         dataset_name = f'/mnt/sdc/wangx/HexFormer/dataset/kitti/frame{clip_length}'
         config_path = '/mnt/sdc/wangx/HexFormer/data_utils/config/semantic-kitti.yaml'
-        points_txyz, semantic, depad_num = load_bin(kitti_dir, config_path, dataset_name, 'train', 10, False)
+        points_txyz, semantic, depad_num = load_bin(kitti_dir, config_path, dataset_name, 'train', 100, True)
         construct_dataset(points_txyz, semantic, dataset_name, clip_length, depad_num)
         # load_bin(kitti_dir, dataset_name, 'train', -1, True)
         # load_bin(kitti_dir, dataset_name, 'test', -1, True)

@@ -1,7 +1,7 @@
 SOLVER:
   gpu: 0,1,2,3
   run: train
-  logdir: logs/log_debug
+  logdir: logs/log_b8_f8_d9_e350_lr0.0025_RPE1
   best_val: max:mIoU_part
 
   ckpt_num: 200
@@ -31,7 +31,7 @@ DATA:
     cutmix: 0.0   # no cutmix
     # data loading
     location: dataset/hoi4d
-    filelist: dataset/hoi4d/frame2/train_data.txt
+    filelist: dataset/hoi4d/frame8/train_data.txt
     batch_size: 8 # for a single GPU, real batch size = GPU_num * batch_size
     shuffle: True
     num_workers: 1
@@ -48,7 +48,7 @@ DATA:
     cutmix: 0.0   # no cutmix
     # data loading
     location: dataset/hoi4d
-    filelist: dataset/hoi4d/frame2/val_data.txt
+    filelist: dataset/hoi4d/frame8/val_data.txt
     batch_size: 4
     shuffle: False
     num_workers: 1
