@@ -31,7 +31,7 @@ DATA:
     cutmix: 0.0   # no cutmix
     # data loading
     location: dataset/hoi4d
-    filelist: data_utils/config/hoi4d/train_data.txt
+    filelist: dataset/hoi4d/frame2/train_data.txt
     batch_size: 8 # for a single GPU, real batch size = GPU_num * batch_size
     shuffle: True
     num_workers: 1
@@ -48,7 +48,7 @@ DATA:
     cutmix: 0.0   # no cutmix
     # data loading
     location: dataset/hoi4d
-    filelist: data_utils/config/hoi4d/val_data.txt
+    filelist: dataset/hoi4d/frame2/val_data.txt
     batch_size: 4
     shuffle: False
     num_workers: 1

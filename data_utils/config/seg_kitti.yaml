@@ -23,7 +23,7 @@ DATA:
     name: kitti
 
     # hextree building
-    depth: 9
+    depth: 13
     full_depth: 3
 
     # data augmentations
@@ -31,8 +31,8 @@ DATA:
     cutmix: 0.0   # no cutmix
     # data loading
     location: dataset/kitti
-    filelist: data_utils/config/kitti/train_data.txt
-    batch_size: 8 # for a single GPU, real batch size = GPU_num * batch_size
+    filelist: dataset/kitti/frame2/train_data.txt
+    batch_size: 1 # for a single GPU, real batch size = GPU_num * batch_size
     shuffle: True
     num_workers: 1
 
@@ -40,7 +40,7 @@ DATA:
     name: kitti
 
     # hextree building
-    depth: 9
+    depth: 13
     full_depth: 3
 
     # data augmentations
@@ -48,8 +48,8 @@ DATA:
     cutmix: 0.0   # no cutmix
     # data loading
     location: dataset/kitti
-    filelist: data_utils/config/kitti/val_data.txt
-    batch_size: 4
+    filelist: dataset/kitti/frame2/val_data.txt
+    batch_size: 1
     shuffle: False
     num_workers: 1
 
@@ -61,7 +61,7 @@ MODEL:
   # P -> Position (4 channels);
   feature: P
   channel: 4
-  nout: 49
+  nout: 20
   nempty: True
   interp: nearest
   sync_bn: True
@@ -70,4 +70,4 @@ MODEL:
 
 LOSS:
   mask: 0
-  num_class: 49
+  num_class: 20
