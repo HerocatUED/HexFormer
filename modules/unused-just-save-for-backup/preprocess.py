@@ -107,25 +107,43 @@ def load_bin(dir_path:str, dataset_name: str, mode: str, n_frame: int=-1, save: 
     print('Train, using data sequences', videos)
     
     point_xyz = []
+    print("no range print!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+    # f_range = np.array([0, 1e+10])
+    # p_range = np.array([0, 1e+10])
+    # xyz_range = np.array([[0,0,0],[1e+10,1e+10,1e+10]])
     for video in videos:
         pcd = []
         pcd_dir = path + video + '/velodyne/'
         pcd_files = os.listdir(pcd_dir)
         pcd_files.sort()
         pcd_files = pcd_files[: n_frame]
+        # f_range[0] = max(f_range[0], len(pcd_files))
+        # f_range[1] = min(f_range[1], len(pcd_files))
         for i in tqdm(range(len(pcd_files)), desc=f'video {video}'):
             scan = np.fromfile(pcd_dir + pcd_files[i], dtype=np.float32)
             scan = scan.reshape((-1, 4))
             # put in attribute
             points = scan[:, 0:3]    # get xyz
             remissions = scan[:, 3]  # get remission
+            
+    #         p_range[0] = max(p_range[0], np.shape(points)[0])
+    #         p_range[1] = min(p_range[1], np.shape(points)[0])
+    #         for j in range(3):
+    #             a = np.max(points[:, j])
+    #             b = np.min(points[:, j])
+    #             xyz_range[0,j] = max(xyz_range[0,j], a)
+    #             xyz_range[1,j] = min(xyz_range[1,j], b)
+    # print(f_range)
+    # print(p_range)
+    # print(xyz_range)
     
-            pcd.append(points)
-        point_xyz.append(pcd)
-    point_xyz = np.array(point_xyz)
-    print('point_xyz:', np.shape(point_xyz))
+    #         pcd.append(points)
+    #     point_xyz.append(pcd)
+    # point_xyz = np.array(point_xyz)
+    # print('point_xyz:', np.shape(point_xyz))
     
-    if mode != 'train': return point_xyz
+    # if mode != 'train': return point_xyz
+    return None, None
     
     semantic = []
     
@@ -259,17 +277,16 @@ if __name__ == '__main__':
         construct_dataset(points_txyz, semantic, dataset_name, config_name, clip_length)
     
     def kitti():
-        # TODO pad to same num
         # example of building dataset using KITTI
         clip_length = 8
         kitti_dir = '/mnt/sdc/wangrh/data/SemanticKITTI'
         dataset_name = f'/mnt/sdc/wangx/HexFormer/dataset/kitti/frame{clip_length}'
         config_name = '/mnt/sdc/wangx/HexFormer/data_utils/config/kitti'
-        points_xyz, semantic = load_bin(kitti_dir, dataset_name, 'train', -1, True)
-        points_txyz = xyz2txyz(points_xyz)
-        construct_dataset(points_txyz, semantic, dataset_name, config_name, clip_length)
-        # load_bin(kitti_dir, dataset_name, 'train', -1, True)
-        # load_bin(kitti_dir, dataset_name, 'test', -1, True)
+        # points_xyz, semantic = load_bin(kitti_dir, dataset_name, 'train', -1, True)
+        # points_txyz = xyz2txyz(points_xyz)
+        # construct_dataset(points_txyz, semantic, dataset_name, config_name, clip_length)
+        load_bin(kitti_dir, dataset_name, 'train', -1, True)
+        load_bin(kitti_dir, dataset_name, 'test', -1, True)
     
     # hoi4d()
     kitti()
