@@ -94,25 +94,22 @@ def load_h5(h5path:str, dataset_name: str, n_video: int=-1, n_frame: int=-1, sav
     semantic: array of corresponding semantic label with shape [n_video, t_video, n_point]
     '''
     print(f"Loading {h5path}...")
+    print(f'video num: {n_video}')
+    print(f'frames per video: {n_frame}')
     
     with h5py.File(h5path, 'r') as f:
         points_xyz = np.array(f['pcd'][: n_video, : n_frame])
-        semantic = np.array(f['semantic'][: n_video, : n_frame])
         print('pcd', np.shape(points_xyz))
+        semantic = np.array(f['semantic'][: n_video, : n_frame])
         print('semantic', np.shape(semantic))
     
-    n_video, t_video, n_point, _ = points_xyz.shape
     print("Converting xyz to txyz")
-    print(f'video num: {n_video}')
-    print(f'frames per video: {t_video}')
-    
+    n_video, t_video, n_point, _ = points_xyz.shape
     points_txyz = np.concatenate([np.zeros([n_video, t_video, n_point, 1]), points_xyz], axis=-1)
     points_txyz[:, :, :, 0] += (np.arange(t_video) + 1)[None, :, None]
     
-    # points_txyz = points_txyz.reshape((n_video, t_video*n_point, 4))
-    # semantic = semantic.reshape((n_video, t_video*n_point, 4))
-    
     if save: 
+        print(f'Saving to {dataset_name}')
         os.makedirs(dataset_name, exist_ok=True)
         np.save(f'{dataset_name}/pcd', points_txyz)
         np.save(f'{dataset_name}/semantic', semantic)
@@ -224,16 +221,17 @@ def load_npy(dataset_name: str):
     return points_txyz, semantic
     
     
-def construct_dataset(points_txyz, semantic, dataset_name: str, clip_length: int, depad_num = None):
+def construct_dataset(points_txyz, semantic, dataset_name: str, clip_length: int, depad_num: list = None, val_videos: list = None):
     '''
     Construct dataset and config files.
-    
+    TODO support test dataset construction
     Args:
     points_txyz: array/list of txyz coordinate with shape [n_video, t_video, n_point, 4]
     semantic: array/list of corresponding semantic label with shape [n_video, t_video, n_point]
     dataset_name: name of folder to save clipped file, $batch size$ will be number of clipped file to read in a batch.
     clip_length: number of frame in a single clip.
     depad_num: if is not None, only take first depad[i] points in frame i.
+    val_videos: if is not None, videos that (id) in val_videos will be taken as validation data. 
     '''  
     print(f"Constructing dataset into {dataset_name}...")
     assert len(points_txyz) == len(semantic), 'semantic should be corresponding to points_txyz'
@@ -265,11 +263,13 @@ def construct_dataset(points_txyz, semantic, dataset_name: str, clip_length: int
                     label[j][index[k]:index[k+1]] = semantic[v][id][:depad_num[v][id]]  
 
         for i in range(N):
-            np.savez(f'{dataset_name}/data_{i}.npz', points=pcd[i], labels=label[i])
-            if i % 5 == 0:
-                val_list += f'{dataset_name}/data_{i}.npz\n'
+            np.savez(f'{dataset_name}/data_{v}_{i}.npz', points=pcd[i], labels=label[i])
+            if val_videos is None:
+                if v % 5 == 0: val_list += f'{dataset_name}/data_{v}_{i}.npz\n'
+                else: train_list += f'{dataset_name}/data_{v}_{i}.npz\n'
             else:
-                train_list += f'{dataset_name}/data_{i}.npz\n'
+                if v in val_videos: val_list += f'{dataset_name}/data_{v}_{i}.npz\n'
+                else: train_list += f'{dataset_name}/data_{v}_{i}.npz\n'
         
         # left frames
         if t_video % clip_length > 0:
@@ -285,8 +285,9 @@ def construct_dataset(points_txyz, semantic, dataset_name: str, clip_length: int
                     id = N*clip_length + k
                     pcd[index[k]:index[k+1], :] = points_txyz[v][id][:depad_num[v][id]]
                     label[index[k]:index[k+1]] = semantic[v][id][:depad_num[v][id]]  
-            np.savez(f'{dataset_name}/data_{N}.npz', points=pcd, labels=label)
-            train_list += f'{dataset_name}/data_{N}.npz\n'
+            np.savez(f'{dataset_name}/data_{v}_{N}.npz', points=pcd, labels=label)
+            if val_videos is not None and v in val_videos: val_list += f'{dataset_name}/data_{v}_{i}.npz\n'
+            else: train_list += f'{dataset_name}/data_{v}_{N}.npz\n'
     # save config file
     f_train = open(f'{dataset_name}/train_data.txt', 'w')
     f_val = open(f'{dataset_name}/val_data.txt', 'w')
@@ -298,7 +299,7 @@ def construct_dataset(points_txyz, semantic, dataset_name: str, clip_length: int
 
 
 if __name__ == '__main__':
-    
+    # TODO: large data
     def hoi4d():
         # example of building dataset using HOI4D
         clip_length = 8
@@ -309,16 +310,13 @@ if __name__ == '__main__':
         construct_dataset(points_txyz, semantic, dataset_name, clip_length)
     
     def kitti():
-        # TODO train, val, test split
         # example of building dataset using KITTI
         clip_length = 4
         kitti_dir = '/mnt/sdc/wangrh/data/SemanticKITTI'
         dataset_name = f'/mnt/sdc/wangx/HexFormer/dataset/kitti/frame{clip_length}'
         config_path = '/mnt/sdc/wangx/HexFormer/data_utils/config/semantic-kitti.yaml'
-        points_txyz, semantic, depad_num = load_bin(kitti_dir, config_path, dataset_name, 'train', 100, True)
-        construct_dataset(points_txyz, semantic, dataset_name, clip_length, depad_num)
-        # load_bin(kitti_dir, dataset_name, 'train', -1, True)
-        # load_bin(kitti_dir, dataset_name, 'test', -1, True)
+        points_txyz, semantic, depad_num = load_bin(kitti_dir, config_path, dataset_name, 'train', -1, True)
+        construct_dataset(points_txyz, semantic, dataset_name, clip_length, depad_num, val_videos=[8])
     
     # hoi4d()
     kitti()

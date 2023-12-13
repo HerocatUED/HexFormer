@@ -1,7 +1,7 @@
 SOLVER:
   gpu: 0,1,2,3
   run: train
-  logdir: logs/log_b8_f8_d9_e350_lr0.0025_RPE1
+  logdir: logs/log_b8_f8_d9_e350_lr0.0025_RPE2
   best_val: max:mIoU_part
 
   ckpt_num: 200
