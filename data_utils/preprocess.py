@@ -192,11 +192,11 @@ def load_bin(dir_path:str, config_path: str, dataset_name: str, mode: str, n_fra
         labels = remap(labels, config_path, False)
         semantic.append(labels)      
     
-    if save: 
-        print(f'saving to {dataset_name}')
-        os.makedirs(dataset_name, exist_ok=True)
-        np.save(f'{dataset_name}/pcd', points_txyz)
-        np.save(f'{dataset_name}/semantic', semantic)
+    # if save: 
+    #     print(f'saving to {dataset_name}')
+    #     os.makedirs(dataset_name, exist_ok=True)
+    #     np.save(f'{dataset_name}/pcd', points_txyz)
+    #     np.save(f'{dataset_name}/semantic', semantic)
     
     return points_txyz, semantic, depad_num
     
@@ -286,7 +286,7 @@ def construct_dataset(points_txyz, semantic, dataset_name: str, clip_length: int
                     pcd[index[k]:index[k+1], :] = points_txyz[v][id][:depad_num[v][id]]
                     label[index[k]:index[k+1]] = semantic[v][id][:depad_num[v][id]]  
             np.savez(f'{dataset_name}/data_{v}_{N}.npz', points=pcd, labels=label)
-            if val_videos is not None and v in val_videos: val_list += f'{dataset_name}/data_{v}_{i}.npz\n'
+            if val_videos is not None and v in val_videos: val_list += f'{dataset_name}/data_{v}_{N}.npz\n'
             else: train_list += f'{dataset_name}/data_{v}_{N}.npz\n'
     # save config file
     f_train = open(f'{dataset_name}/train_data.txt', 'w')
@@ -315,7 +315,7 @@ if __name__ == '__main__':
         kitti_dir = '/mnt/sdc/wangrh/data/SemanticKITTI'
         dataset_name = f'/mnt/sdc/wangx/HexFormer/dataset/kitti/frame{clip_length}'
         config_path = '/mnt/sdc/wangx/HexFormer/data_utils/config/semantic-kitti.yaml'
-        points_txyz, semantic, depad_num = load_bin(kitti_dir, config_path, dataset_name, 'train', -1, True)
+        points_txyz, semantic, depad_num = load_bin(kitti_dir, config_path, dataset_name, 'train', 100, True)
         construct_dataset(points_txyz, semantic, dataset_name, clip_length, depad_num, val_videos=[8])
     
     # hoi4d()

@@ -70,7 +70,7 @@ class ReadFile:
 
 
 class Transform:
-    r''' A boilerplate class which transforms an input data.
+    ''' A boilerplate class which transforms an input data.
     The input data is first converted to :class:`Points`, then randomly transformed 
     (if enabled), and converted to an :class:`Hextree`.
 
@@ -92,7 +92,8 @@ class Transform:
     # def __init__(self, depth: int, full_depth: int, distort: bool, angle: list,
     #              interval: list, scale: float, uniform: bool, jitter: float,
     #              flip: list, orient_normal: str = '', **kwargs):
-    def __init__(self, depth: int, full_depth: int, distort: bool):
+    def __init__(self, depth: int, full_depth: int, distort: bool, angle: list,
+                 interval: list, scale: float, flip: list, uniform: bool, **kwargs):
         super().__init__()
 
         # for hextree building
@@ -101,18 +102,18 @@ class Transform:
 
         # for data augmentation
         self.distort = distort
-        # self.angle = angle
-        # self.interval = interval
-        # self.scale = scale
-        # self.uniform = uniform
+        self.angle = angle
+        self.interval = interval
+        self.scale = scale
+        self.uniform = uniform
         # self.jitter = jitter
-        # self.flip = flip
+        self.flip = flip
 
         # for other transformations
         # self.orient_normal = orient_normal
 
     def __call__(self, sample: dict, idx: int):
-        r''''''
+        ''''''
 
         points = self.preprocess(sample, idx)
         output = self.transform(points, idx)
@@ -120,27 +121,27 @@ class Transform:
         return output
 
     def preprocess(self, sample: dict, idx: int):
-        r''' Transforms :attr:`sample` to :class:`Points` and performs some specific
+        ''' 
+        Transforms :attr:`sample` to :class:`Points` and performs some specific
         transformations, like normalization.
         '''
-
+        
         txyz = torch.from_numpy(sample['points'])
-        normals = torch.from_numpy(sample['normals'])
-        points = Points(txyz, normals)
+        points = Points(txyz)
         return points
 
     def transform(self, points: Points, idx: int):
-        r''' Applies the general transformations.
+        ''' 
+        Applies the general transformations.
         '''
 
-        # The augmentations including rotation, scaling, and jittering.
+        # The augmentations including rotation, scaling.
         if self.distort:
-            raise NotImplementedError
-            rng_angle, rng_scale, rng_jitter, rnd_flip = self.rnd_parameters()
-            points.flip(rnd_flip)
+            rng_angle, rng_scale, rnd_flip = self.rnd_parameters()
+            
             points.rotate(rng_angle)
-            points.translate(rng_jitter)
-            points.scale(rng_scale)
+            points.scale_xyz(rng_scale)
+            points.flip(rnd_flip)
 
         # if self.orient_normal:
         #     points.orient_normal(self.orient_normal)
@@ -150,33 +151,34 @@ class Transform:
         return {'points': points, 'inbox_mask': inbox_mask}
 
     def points2hextree(self, points: Points):
-        r''' Converts the input :attr:`points` to an hextree.
+        ''' 
+        Converts the input :attr:`points` to an hextree.
         '''
 
         hextree = Hextree(self.depth, self.full_depth)
         hextree.build_hextree(points)
         return hextree
 
-    # def rnd_parameters(self):
-    #     r''' Generates random parameters for data augmentation.
-    #     '''
+    def rnd_parameters(self):
+        ''' 
+        Generates random parameters for data augmentation.
+        '''
 
-    #     rnd_angle = [None] * 3
-    #     for i in range(3):
-    #         rot_num = self.angle[i] // self.interval[i]
-    #         rnd = torch.randint(low=-rot_num, high=rot_num+1, size=(1,))
-    #         rnd_angle[i] = rnd * self.interval[i] * (3.14159265 / 180.0)
-    #     rnd_angle = torch.cat(rnd_angle)
+        rnd_angle = [None] * 3
+        for i in range(3):
+            rot_num = self.angle[i] // self.interval[i]
+            rnd = torch.randint(low=-rot_num, high=rot_num+1, size=(1,))
+            rnd_angle[i] = rnd * self.interval[i] * (3.14159265 / 180.0)
+        rnd_angle = torch.cat(rnd_angle)
 
-    #     rnd_scale = torch.rand(3) * (2 * self.scale) - self.scale + 1.0
-    #     if self.uniform:
-    #         rnd_scale[1] = rnd_scale[0]
-    #         rnd_scale[2] = rnd_scale[0]
+        rnd_scale = torch.rand(3) * (2 * self.scale) - self.scale + 1.0
+        if self.uniform:
+            rnd_scale[1] = rnd_scale[0]
+            rnd_scale[2] = rnd_scale[0]
 
-    #     rnd_flip = ''
-    #     for i, c in enumerate('txyz'):
-    #         if torch.rand([1]) < self.flip[i]:
-    #             rnd_flip = rnd_flip + c
+        rnd_flip = ''
+        for i, c in enumerate('xyz'):
+            if torch.rand([1]) < self.flip[i]:
+                rnd_flip = rnd_flip + c
 
-    #     rnd_jitter = torch.rand(3) * (2 * self.jitter) - self.jitter
-    #     return rnd_angle, rnd_scale, rnd_jitter, rnd_flip
+        return rnd_angle, rnd_scale, rnd_flip

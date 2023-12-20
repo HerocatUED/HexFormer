@@ -1,7 +1,7 @@
 SOLVER:
   gpu: 0,1,2,3
   run: train
-  logdir: logs/log_debug
+  logdir: logs/log_b2_f4_d12_e350_lr0.0025_RPE1
   best_val: max:mIoU_part
 
   ckpt_num: 200
@@ -23,7 +23,7 @@ DATA:
     name: kitti
 
     # hextree building
-    depth: 13
+    depth: 12
     full_depth: 3
 
     # data augmentations
@@ -40,7 +40,7 @@ DATA:
     name: kitti
 
     # hextree building
-    depth: 13
+    depth: 12
     full_depth: 3
 
     # data augmentations

@@ -1,4 +1,4 @@
-# build HOI4D dataset for Solver
+# build KITTI dataset for Solver
 
 
 import torch
@@ -32,7 +32,7 @@ def rand_crop(points: Points, max_npt: int):
     return points, crop_mask
 
 
-class HOI4DTransform(Transform):
+class KITTITransform(Transform):
 
     def __init__(self, flags):
         super().__init__(flags.depth, flags.full_depth, flags.distort)
@@ -55,6 +55,7 @@ class HOI4DTransform(Transform):
 
         # random crop
         if self.distort:
+            raise NotImplementedError
             max_npt = self.flags.max_npt if self.flags.max_npt > 0 else points.npt
             max_npt = min(max_npt, int(points.npt * self.flags.crop_ratio))
             points, crop_mask = rand_crop(points, max_npt)
@@ -119,8 +120,8 @@ class CollateBatch:
         return outputs
 
 
-def get_hoi4d_seg_dataset(flags):
-    transform = HOI4DTransform(flags)
+def get_kitti_seg_dataset(flags):
+    transform = KITTITransform(flags)
     read_file = ReadFile(has_normal=False, has_color=False, has_label=True)
     collate_batch = CollateBatch(flags.cutmix)
 
