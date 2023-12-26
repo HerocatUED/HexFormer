@@ -1,0 +1,50 @@
+GPU Memory Track | 28-Nov-23-17:37:21 | Total Used Memory:25196.9Mb
+
+
+before all
+Total Memory Increasing:0.0Mb
+Total Memory Decreasing:0.0Mb
+Total Used Memory:25196.9Mb
+
+
+before process batch
+Total Memory Increasing:63.56659999999999Mb
+Total Memory Decreasing:0.0Mb
+Total Used Memory:25196.9Mb
+
+
+after process batch
+Total Memory Increasing:11379.295087999993Mb
+Total Memory Decreasing:0.060676Mb
+Total Used Memory:25196.9Mb
+
+
+before model forward
+Total Memory Increasing:13.6952Mb
+Total Memory Decreasing:227.82512800000003Mb
+Total Used Memory:25196.9Mb
+
+
+before backbone
+Total Memory Increasing:0.0Mb
+Total Memory Decreasing:0.0Mb
+Total Used Memory:25196.9Mb
+
+
+layer-0,depth-10
+Total Memory Increasing:1920.267072Mb
+Total Memory Decreasing:8.897376Mb
+Total Used Memory:25196.9Mb
+
+
+layer-1,depth-9
+Total Memory Increasing:703.2503280000001Mb
+Total Memory Decreasing:150.771456Mb
+Total Used Memory:25196.9Mb
+
+
+layer-2,depth-8
+Total Memory Increasing:1389.372864Mb
+Total Memory Decreasing:300.70655999999997Mb
+Total Used Memory:25196.9Mb
+

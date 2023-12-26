@@ -39,9 +39,9 @@ DATA:
     # data loading
     location: dataset/hoi4d
     filelist: dataset/hoi4d/frame8/train_data.txt
-    batch_size: 8 # for a single GPU, real batch size = GPU_num * batch_size
+    batch_size: 6 # for a single GPU, real batch size = GPU_num * batch_size
     shuffle: True
-    num_workers: 4
+    num_workers: 3
 
   test:
     name: hoi4d
