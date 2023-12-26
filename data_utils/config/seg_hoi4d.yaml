@@ -1,7 +1,7 @@
 SOLVER:
   gpu: 0,1,2,3
   run: train
-  logdir: logs/log_b8_f8_d9_e350_lr0.0025_RPE1
+  logdir: logs/log_b8_f8_d9_e350_lr0.0025_PE2_RPE2_DA
   best_val: max:mIoU_part
 
   ckpt_num: 200
@@ -32,9 +32,9 @@ DATA:
     scale: 0.2
     # jitter: 0.1       # no jitter
     flip: (0.5, 0.5, 0.0)
-    uniform: False
+    uniform: True
     cutmix: 0.0        # no cutmix
-    crop_ratio: 0.8    # random ratio of random cropping
+    crop_ratio: 0.9    # random ratio of random cropping
     max_npt: 120000    # max point number of random cropping
     # data loading
     location: dataset/hoi4d
@@ -70,11 +70,7 @@ DATA:
 
 MODEL:
   name: hexsegformer_toy
-  # N -> Normal (3 channels);
-  # D -> Displacement (1 channel);
-  # F -> Color (3 channels);
-  # P -> Position (4 channels);
-  feature: P
+  feature: R
   channel: 4
   nout: 49
   nempty: True

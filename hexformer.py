@@ -122,7 +122,7 @@ class HextreeAttention(torch.nn.Module):
         self.proj = torch.nn.Linear(dim, dim)
         self.proj_drop = torch.nn.Dropout(proj_drop)
         self.softmax = torch.nn.Softmax(dim=-1)
-        self.rpe = RPE(patch_size, num_heads, dilation) if self.use_rpe else None
+        self.rpe = RPE2(patch_size, num_heads, dilation) if self.use_rpe else None
 
     def forward(self, data: torch.Tensor, hextree: HextreeT, depth: int):
         H = self.num_heads
@@ -259,6 +259,41 @@ class PatchEmbed(torch.nn.Module):
             
         data = self.proj(self.norm(data))
         return data
+    
+
+class PatchEmbed2(torch.nn.Module):
+
+    def __init__(self, patch_size:int = 32, in_dim: int = 4, dim: int = 96, num_stages: int = 2, nempty: bool = True, **kwargs):
+        super().__init__()
+        self.patch_size = patch_size
+        self.num_stages = num_stages
+        self.channels = [in_dim] + [int(dim * 2**i) for i in range(-self.num_stages, 1)]
+
+        self.mlps = torch.nn.ModuleList(
+            [MLP(self.patch_size * self.channels[i], 
+                 self.patch_size * self.channels[i+1], 
+                 self.patch_size * self.channels[i+1]) for i in range(self.num_stages)])
+        self.norm = torch.nn.LayerNorm(self.channels[-2])
+        self.downsample = HextreeAvgPoolXYZ()
+        self.proj = MLP(self.channels[-2], 2*dim, self.channels[-1])
+
+    def forward(self, data: torch.Tensor, hextree: Hextree, depth: int):
+        for i in range(self.num_stages):
+            nnum_t = data.shape[0]
+            num = self.patch_size - nnum_t % self.patch_size
+            tail = data.new_full((num,) + data.shape[1:], 0)
+            data = torch.cat([data, tail], dim=0).view(-1, self.patch_size * self.channels[i])
+            
+            data = self.mlps[i](data)
+            data = data.view(-1, self.channels[i+1])
+            data = data[:nnum_t]
+            
+            depth_i = depth - i
+            data = self.downsample(data, hextree, depth_i)
+            
+        data = self.proj(self.norm(data))
+        return data
+    
 
 
 class HexFormer(torch.nn.Module):
@@ -277,7 +312,7 @@ class HexFormer(torch.nn.Module):
         self.stem_down = stem_down
         drop_ratio = torch.linspace(0, drop_path, sum(num_blocks)).tolist()
 
-        self.patch_embed = PatchEmbed(
+        self.patch_embed = PatchEmbed2(
             in_channels, channels[0], stem_down, nempty)
         self.layers = torch.nn.ModuleList([HexFormerStage(
             dim=channels[i], num_heads=num_heads[i], patch_size=patch_size,

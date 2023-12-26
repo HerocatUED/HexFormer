@@ -35,13 +35,14 @@ def rand_crop(points: Points, max_npt: int):
 class HOI4DTransform(Transform):
 
     def __init__(self, flags):
-        super().__init__(flags.depth, flags.full_depth, flags.distort)
+        super().__init__(**flags)
 
         # The `self.scale_factor` is used to normalize the input point cloud to the
         # range of [-1, 1]. If this parameter is modified, the `self.elastic_params`
         # and the `jittor` in the data augmentation should be scaled accordingly.
         # self.scale_factor = 5.12
-        self.scale_factor = 10.24
+        # self.scale_factor = 10.24
+        self.flags = flags
 
     def __call__(self, sample, idx=None):
         # construct and normalize points

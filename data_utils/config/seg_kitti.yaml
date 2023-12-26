@@ -55,10 +55,6 @@ DATA:
 
 MODEL:
   name: hexsegformer_toy
-  # N -> Normal (3 channels);
-  # D -> Displacement (1 channel);
-  # F -> Color (3 channels);
-  # P -> Position (4 channels);
   feature: P
   channel: 4
   nout: 20

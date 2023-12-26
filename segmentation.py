@@ -103,7 +103,7 @@ class SegSolver(Solver):
 
         # randomly save 1/100 data for visualization
         rand_id = np.random.uniform()
-        if batch['epoch'] == self.FLAGS.SOLVER.max_epoch-1 and rand_id < 0.01:
+        if batch['epoch'] == self.FLAGS.SOLVER.max_epoch and rand_id < 0.01:
             save_pcd(batch, logit, self.logdir+'/result_sample', rand_id)
 
         names = ['test/loss', 'test/accu', 'test/mIoU'] + \
