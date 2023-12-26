@@ -282,7 +282,8 @@ class PatchEmbed2(torch.nn.Module):
             nnum_t = data.shape[0]
             num = self.patch_size - nnum_t % self.patch_size
             tail = data.new_full((num,) + data.shape[1:], 0)
-            data = torch.cat([data, tail], dim=0).view(-1, self.patch_size * self.channels[i])
+            data = torch.cat([data, tail], dim=0)
+            data = data.view(-1, self.patch_size * self.channels[i])
             
             data = self.mlps[i](data)
             data = data.view(-1, self.channels[i+1])
@@ -312,8 +313,8 @@ class HexFormer(torch.nn.Module):
         self.stem_down = stem_down
         drop_ratio = torch.linspace(0, drop_path, sum(num_blocks)).tolist()
 
-        self.patch_embed = PatchEmbed2(
-            in_channels, channels[0], stem_down, nempty)
+        # self.patch_embed = PatchEmbed(in_channels, channels[0], stem_down, nempty)
+        self.patch_embed = PatchEmbed2(patch_size, in_channels, channels[0], stem_down, nempty)
         self.layers = torch.nn.ModuleList([HexFormerStage(
             dim=channels[i], num_heads=num_heads[i], patch_size=patch_size,
             drop_path=drop_ratio[sum(num_blocks[:i]):sum(num_blocks[:i+1])],
