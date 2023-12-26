@@ -63,6 +63,44 @@ class RPE(torch.nn.Module):
     def extra_repr(self) -> str:
         return 'num_heads={}, pos_bnd={}, dilation={}'.format(
                 self.num_heads, self.pos_bnd, self.dilation)  # noqa
+        
+
+class RPE2(torch.nn.Module):
+
+    def __init__(self, patch_size: int, num_heads: int, dilation: int = 1):
+        super().__init__()
+        self.patch_size = patch_size
+        self.num_heads = num_heads
+        self.dilation = dilation
+        self.pos_bnd = self.get_pos_bnd(patch_size)
+        self.rpe_num = 2 * self.pos_bnd + 1
+        self.rpe_table_w = torch.nn.Parameter(torch.zeros(4*self.rpe_num, num_heads))
+        self.rpe_table_b = torch.nn.Parameter(torch.zeros(4*self.rpe_num, num_heads))
+        torch.nn.init.trunc_normal_(self.rpe_table_w, std=0.02)
+        torch.nn.init.trunc_normal_(self.rpe_table_b, std=0.02)
+
+    def get_pos_bnd(self, patch_size: int):
+        return int(0.8 * patch_size * self.dilation**0.5)
+
+    def txyz2idx(self, txyz: torch.Tensor):
+        mul = torch.arange(4, device=txyz.device) * self.rpe_num
+        txyz = txyz.clamp(-self.pos_bnd, self.pos_bnd)
+        idx = txyz + (self.pos_bnd + mul)
+        return idx
+
+    def forward(self, txyz):
+        idx = self.txyz2idx(txyz)
+        w = self.rpe_table_w.index_select(0, idx.reshape(-1))
+        w = w.view(idx.shape + (-1,)).sum(3)
+        w = w.permute(0, 3, 1, 2)  # (N, K, K, H) -> (N, H, K, K)
+        b = self.rpe_table_b.index_select(0, idx.reshape(-1))
+        b = b.view(idx.shape + (-1,)).sum(3)
+        b = b.permute(0, 3, 1, 2)  # (N, K, K, H) -> (N, H, K, K)
+        return w, b
+
+    def extra_repr(self) -> str:
+        return 'num_heads={}, pos_bnd={}, dilation={}'.format(
+                self.num_heads, self.pos_bnd, self.dilation)  # noqa
 
 
 class HextreeAttention(torch.nn.Module):
@@ -84,7 +122,7 @@ class HextreeAttention(torch.nn.Module):
         self.proj = torch.nn.Linear(dim, dim)
         self.proj_drop = torch.nn.Dropout(proj_drop)
         self.softmax = torch.nn.Softmax(dim=-1)
-        self.rpe = RPE(patch_size, num_heads, dilation) if self.use_rpe else None
+        self.rpe = RPE2(patch_size, num_heads, dilation) if self.use_rpe else None
 
     def forward(self, data: torch.Tensor, hextree: HextreeT, depth: int):
         H = self.num_heads
@@ -128,7 +166,13 @@ class HextreeAttention(torch.nn.Module):
 
     def apply_rpe(self, attn, rel_pos):
         if self.use_rpe:
-            attn = attn + self.rpe(rel_pos)
+            if isinstance(self.rpe, RPE2):
+                w, b = self.rpe(rel_pos)
+                attn = w*attn + b
+            elif isinstance(self.rpe, RPE):
+                attn = attn + self.rpe(rel_pos) 
+            else: 
+                assert NotImplementedError, 'only RPE and RPE2 implemented!'
         return attn
 
     def extra_repr(self) -> str:
@@ -215,6 +259,42 @@ class PatchEmbed(torch.nn.Module):
             
         data = self.proj(self.norm(data))
         return data
+    
+
+class PatchEmbed2(torch.nn.Module):
+
+    def __init__(self, patch_size:int = 32, in_dim: int = 4, dim: int = 96, num_stages: int = 2, nempty: bool = True, **kwargs):
+        super().__init__()
+        self.patch_size = patch_size
+        self.num_stages = num_stages
+        self.channels = [in_dim] + [int(dim * 2**i) for i in range(-self.num_stages, 1)]
+
+        self.mlps = torch.nn.ModuleList(
+            [MLP(self.patch_size * self.channels[i], 
+                 self.patch_size * self.channels[i+1], 
+                 self.patch_size * self.channels[i+1]) for i in range(self.num_stages)])
+        self.norm = torch.nn.LayerNorm(self.channels[-2])
+        self.downsample = HextreeAvgPoolXYZ()
+        self.proj = MLP(self.channels[-2], 2*dim, self.channels[-1])
+
+    def forward(self, data: torch.Tensor, hextree: Hextree, depth: int):
+        for i in range(self.num_stages):
+            nnum_t = data.shape[0]
+            num = self.patch_size - nnum_t % self.patch_size
+            tail = data.new_full((num,) + data.shape[1:], 0)
+            data = torch.cat([data, tail], dim=0)
+            data = data.view(-1, self.patch_size * self.channels[i])
+            
+            data = self.mlps[i](data)
+            data = data.view(-1, self.channels[i+1])
+            data = data[:nnum_t]
+            
+            depth_i = depth - i
+            data = self.downsample(data, hextree, depth_i)
+            
+        data = self.proj(self.norm(data))
+        return data
+    
 
 
 class HexFormer(torch.nn.Module):
@@ -233,8 +313,8 @@ class HexFormer(torch.nn.Module):
         self.stem_down = stem_down
         drop_ratio = torch.linspace(0, drop_path, sum(num_blocks)).tolist()
 
-        self.patch_embed = PatchEmbed(
-            in_channels, channels[0], stem_down, nempty)
+        # self.patch_embed = PatchEmbed(in_channels, channels[0], stem_down, nempty)
+        self.patch_embed = PatchEmbed2(patch_size, in_channels, channels[0], stem_down, nempty)
         self.layers = torch.nn.ModuleList([HexFormerStage(
             dim=channels[i], num_heads=num_heads[i], patch_size=patch_size,
             drop_path=drop_ratio[sum(num_blocks[:i]):sum(num_blocks[:i+1])],

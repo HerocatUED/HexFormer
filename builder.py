@@ -1,6 +1,6 @@
 # build models
 
-from data import get_hoi4d_seg_dataset
+from data_utils import get_hoi4d_seg_dataset, get_kitti_seg_dataset
 from hexformerseg import HexFormerSeg
 
 
@@ -99,5 +99,7 @@ def get_segmentation_model(flags):
 def get_segmentation_dataset(flags):
     if flags.name.lower() == 'hoi4d':
         return get_hoi4d_seg_dataset(flags)
+    elif flags.name.lower() == 'kitti':
+        return get_kitti_seg_dataset(flags)
     else:
         raise ValueError

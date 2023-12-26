@@ -99,11 +99,11 @@ class SegSolver(Solver):
         loss = self.loss_function(logit, label)
         accu = self.accuracy(logit, label)
         num_class = self.FLAGS.LOSS.num_class
-        mIoU, IoU = self.IoU_per_shape(logit, label, num_class)
+        mIoU, IoU = self.IoU_per_class(logit, label, num_class)
 
         # randomly save 1/100 data for visualization
         rand_id = np.random.uniform()
-        if batch['epoch'] == self.FLAGS.SOLVER.max_epoch-1 and rand_id < 0.01:
+        if batch['epoch'] == self.FLAGS.SOLVER.max_epoch and rand_id < 0.01:
             save_pcd(batch, logit, self.logdir+'/result_sample', rand_id)
 
         names = ['test/loss', 'test/accu', 'test/mIoU'] + \
@@ -176,7 +176,7 @@ class SegSolver(Solver):
         accu = pred.eq(label).float().mean()
         return accu
 
-    def IoU_per_shape(self, logit, label, class_num):
+    def IoU_per_class(self, logit, label, class_num):
         pred = logit.argmax(dim=1)
 
         mIoU, valid_part_num, esp = 0.0, 0.0, 1.0e-10

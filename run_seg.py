@@ -19,9 +19,10 @@ def execute_command(cmds):
 
 
 def train():
+  print(f"using dataset {args.alias}")
   cmds = [
       'python segmentation.py',
-      '--config data/config/seg_hoi4d.yaml',
+      f'--config data_utils/config/seg_{args.alias}.yaml',
       'SOLVER.gpu  {},'.format(args.gpu),
       'SOLVER.alias  {}'.format(args.alias),
       'SOLVER.dist_url tcp://localhost:{}'.format(args.port),]

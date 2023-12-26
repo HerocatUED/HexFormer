@@ -1,11 +1,11 @@
 SOLVER:
   gpu: 0,1,2,3
   run: train
-  logdir: logs/log_b8_f8_d9_e400_lr0.0025
+  logdir: logs/log_b8_f8_d9_e350_lr0.0025_PE2_RPE2_DA
   best_val: max:mIoU_part
 
   ckpt_num: 200
-  max_epoch: 400
+  max_epoch: 350
   test_every_epoch: 5
   log_per_iter: 5
 
@@ -15,7 +15,7 @@ SOLVER:
   lr: 0.0025
   lr_type: step_warmup
   warmup_epoch: 10
-  milestones: (150, 300)
+  milestones: (200, 300)
   dist_url: tcp://localhost:10002  # for distributed training
 
 DATA:
@@ -27,14 +27,21 @@ DATA:
     full_depth: 3
 
     # data augmentations
-    distort: False
-    cutmix: 0.0   # no cutmix
+    distort: True
+    angle: (5, 5, 180)
+    scale: 0.2
+    # jitter: 0.1       # no jitter
+    flip: (0.5, 0.5, 0.0)
+    uniform: True
+    cutmix: 0.0        # no cutmix
+    crop_ratio: 0.9    # random ratio of random cropping
+    max_npt: 120000    # max point number of random cropping
     # data loading
-    location: data
-    filelist: data/config/train_data.txt
+    location: dataset/hoi4d
+    filelist: dataset/hoi4d/frame8/train_data.txt
     batch_size: 8 # for a single GPU, real batch size = GPU_num * batch_size
     shuffle: True
-    num_workers: 1
+    num_workers: 4
 
   test:
     name: hoi4d
@@ -45,21 +52,25 @@ DATA:
 
     # data augmentations
     distort: False  # no data augmentation by default
+    angle: (5, 5, 180)
+    scale: 0.2
+    # jitter: 0.1
+    flip: (0.5, 0.5, 0.0)
+    uniform: False
+    crop_ratio: 0.8
+    max_npt:  -1
     cutmix: 0.0   # no cutmix
+
     # data loading
-    location: data
-    filelist: data/config/val_data.txt
+    location: dataset/hoi4d
+    filelist: dataset/hoi4d/frame8/val_data.txt
     batch_size: 4
     shuffle: False
-    num_workers: 1
+    num_workers: 2
 
 MODEL:
   name: hexsegformer_toy
-  # N -> Normal (3 channels);
-  # D -> Displacement (1 channel);
-  # F -> Color (3 channels);
-  # P -> Position (4 channels);
-  feature: P
+  feature: R
   channel: 4
   nout: 49
   nempty: True

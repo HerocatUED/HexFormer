@@ -13,6 +13,7 @@ class InputFeature(torch.nn.Module):
           If :obj:`D` is in :attr:`feature`, the local displacement is extracted (1 channels). 
           If :obj:`L` is in :attr:`feature`, the local coordinates of the averaged points in each hexree node is extracted (3 channels).
           If :attr:`P` is in :attr:`feature`, the global coordinates are extracted (4 channels). 
+          If :attr:`R` is in :attr:`feature`, the relative coordinates are extracted (4 channels).
           If :attr:`F` is in :attr:`feature`, other features (like colors) are extracted (k channels).
       nempty (bool): If false, gets the features of all hexree nodes. 
     '''
@@ -42,9 +43,23 @@ class InputFeature(torch.nn.Module):
             features.append(local_points)
 
         if 'P' in self.feature:
-            scale = 2 ** (1 - depth)   # normalize [0, 2^depth] -> [-1, 1]
+            scale = 2 ** (1 - depth)   # normalize xyz [0, 2^depth] -> [-1, 1]
             global_points = hexree.points[depth] * scale - 1.0
-            features.append(global_points)
+            # normalize t -> [-1, 1]
+            global_points[:, 0] = hexree.points[depth][:, 0] - torch.min(hexree.points[depth][:, 0])
+            global_points[:, 0] = global_points[:, 0] / torch.max(global_points[:, 0]) * 2 - 1
+            features.append(global_points)   
+        
+        if 'R' in self.feature:
+            scale = 2 ** (1 - depth)   # normalize xyz [0, 2^depth] -> [-1, 1]
+            global_points = hexree.points[depth] * scale - 1.0
+            center = torch.mean(global_points, dim=0)
+            assert center.size(0) == 4
+            relative_points = global_points - center
+            # normalize t -> [-1, 1]
+            relative_points[:, 0] = hexree.points[depth][:, 0] - torch.min(hexree.points[depth][:, 0])
+            relative_points[:, 0] = relative_points[:, 0] / torch.max(relative_points[:, 0]) * 2 - 1
+            features.append(relative_points) 
 
         if 'F' in self.feature:
             features.append(hexree.features[depth])
