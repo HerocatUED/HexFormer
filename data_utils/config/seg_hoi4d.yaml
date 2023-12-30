@@ -1,7 +1,7 @@
 SOLVER:
   gpu: 0,1,2,3
   run: train
-  logdir: logs/log_b8_f8_d9_e350_lr0.0025_PE2_RPE2_DA
+  logdir: logs/log_b8_f8_d9_e350_lr0.0025_PE2_RPE2 
   best_val: max:mIoU_part
 
   ckpt_num: 200
@@ -27,8 +27,9 @@ DATA:
     full_depth: 3
 
     # data augmentations
-    distort: True
+    distort: False
     angle: (5, 5, 180)
+    # angle: (0, 9, 0) # HOI4D
     scale: 0.2
     # jitter: 0.1       # no jitter
     flip: (0.5, 0.5, 0.0)

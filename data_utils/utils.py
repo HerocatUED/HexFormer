@@ -139,7 +139,7 @@ class Transform:
         if self.distort:
             rng_angle, rng_scale, rnd_flip = self.rnd_parameters()
             
-            points.rotate(rng_angle)
+            # points.rotate(rng_angle)
             points.scale_xyz(rng_scale)
             points.flip(rnd_flip)
 
@@ -168,7 +168,7 @@ class Transform:
         for i in range(3):
             rot_num = self.angle[i] // self.interval[i]
             rnd = torch.randint(low=-rot_num, high=rot_num+1, size=(1,))
-            rnd_angle[i] = rnd * self.interval[i] * (3.14159265 / 180.0)
+            rnd_angle[i] = rnd * self.interval[i] * (torch.pi / 180.0)
         rnd_angle = torch.cat(rnd_angle)
 
         rnd_scale = torch.rand(3) * (2 * self.scale) - self.scale + 1.0
