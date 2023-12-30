@@ -1,6 +1,6 @@
 # Convert dataset file to another format
+
 import os
-import yaml
 import h5py
 import numpy as np
 from tqdm import tqdm
@@ -72,13 +72,13 @@ def construct_dataset(h5path:list, dataset_name: str, clip_length: int, n_video:
     for k, path in enumerate(h5path):
         
         f = h5py.File(path, 'r')
-        if n_video == -1: n_video = f['pcd'].shape[0]
-        if n_frame == -1: n_frame = f['pcd'].shape[1]
+        all_video = f['pcd'].shape[0] if n_video == -1 else n_video 
+        all_frame = f['pcd'].shape[1] if n_frame == -1 else n_frame 
         print(f"Loading {path}...")
-        print(f'video num: {n_video}')
-        print(f'frames per video: {n_frame}')
+        print(f'video num: {all_video}')
+        print(f'frames per video: {all_frame}')
         
-        batch = n_video // chunk_size
+        batch = all_video // chunk_size
         
         for b in tqdm(range(batch+1)):
             start_id = b*chunk_size
@@ -106,16 +106,16 @@ def construct_dataset(h5path:list, dataset_name: str, clip_length: int, n_video:
                 label = semantic[v][: N*clip_length].reshape((N, -1))
 
                 for i in range(N):
-                    np.savez(f'{dataset_name}/data_{k}_{v_}_{i}.npz', points=pcd[i], labels=label[i])
-                    if v % 5 == 0: val_list += f'{dataset_name}/data_{k}_{v_}_{i}.npz\n'
-                    else: train_list += f'{dataset_name}/data_{k}_{v_}_{i}.npz\n'
+                    np.savez(f'{dataset_name}/data_{k+1}_{v_}_{i}.npz', points=pcd[i], labels=label[i])
+                    if v % 5 == 0: val_list += f'{dataset_name}/data_{k+1}_{v_}_{i}.npz\n'
+                    else: train_list += f'{dataset_name}/data_{k+1}_{v_}_{i}.npz\n'
 
                 # left frames
                 if t_video % clip_length > 0:
                     pcd = points_txyz[v][N*clip_length: ].reshape((-1, 4))  
                     label = semantic[v][N*clip_length: ].reshape((-1))  
-                    np.savez(f'{dataset_name}/data_{k}_{v_}_{N}.npz', points=pcd, labels=label)
-                    train_list += f'{dataset_name}/data_{k}_{v_}_{N}.npz\n'
+                    np.savez(f'{dataset_name}/data_{k+1}_{v_}_{N}.npz', points=pcd, labels=label)
+                    train_list += f'{dataset_name}/data_{k+1}_{v_}_{N}.npz\n'
             
     # save config file
     f_train = open(f'{dataset_name}/train_data.txt', 'w')
