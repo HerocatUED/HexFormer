@@ -79,8 +79,9 @@ def construct_dataset(h5path:list, dataset_name: str, clip_length: int, n_video:
         print(f'frames per video: {all_frame}')
         
         batch = all_video // chunk_size
+        delta = 1 if all_video - batch*chunk_size > 0 else 0
         
-        for b in tqdm(range(batch+1)):
+        for b in tqdm(range(batch+delta)):
             start_id = b*chunk_size
             if b < batch:
                 points_xyz = np.array(f['pcd'][start_id: start_id+chunk_size, :n_frame])

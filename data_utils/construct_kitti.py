@@ -44,7 +44,6 @@ def construct_train(dir_path:str, config_path: str, dataset_name: str, clip_leng
     val_videos: if is not None, videos that (id) in val_videos will be taken as validation data. 
     n_frame: number of frame to load from single video.
     '''  
-    print(f"Constructing trainingset into {dataset_name}...")
     train_list = ''
     val_list = ''
 
@@ -144,8 +143,6 @@ def construct_test(dir_path:str, dataset_name: str, clip_length: int):
     dataset_name: name of folder to save clipped file, $batch size$ will be number of clipped file to read in a batch.
     clip_length: number of frame in a single clip.
     '''  
-    print(f"Constructing testset into {dataset_name}...")
-    os.makedirs(dataset_name, exist_ok=True)
     test_list = ''
 
     path = dir_path + '/dataset/sequences/'
@@ -218,8 +215,10 @@ def construct_dataset(dir_path:str, config_path: str, dataset_name: str, clip_le
     '''  
     print(f"Constructing dataset into {dataset_name}...")
     os.makedirs(dataset_name, exist_ok=True)
-    construct_train(kitti_dir, config_path, dataset_name, clip_length, val_videos=[8])
-    construct_test(kitti_dir, dataset_name, clip_length)
+    print(f"Constructing trainingset into {dataset_name}...")
+    construct_train(dir_path, config_path, dataset_name, clip_length, val_videos, n_frame)
+    print(f"Constructing testset into {dataset_name}...")
+    construct_test(dir_path, dataset_name, clip_length)
 
 
 if __name__ == '__main__':
