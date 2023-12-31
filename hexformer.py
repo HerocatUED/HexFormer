@@ -5,7 +5,7 @@ from typing import Optional, List
 from torch.utils.checkpoint import checkpoint
 
 from hextree import Hextree
-from modules import HextreeDropPath, HextreeAvgPoolXYZ, HextreeT
+from modules import HextreeDropPath, HextreeWeightedPoolXYZ, HextreeAvgPoolXYZ, HextreeT
 
 
 class MLP(torch.nn.Module):
@@ -248,7 +248,7 @@ class PatchEmbed(torch.nn.Module):
         self.mlps = torch.nn.ModuleList(
             [MLP(in_dim if i == 0 else channels[i-1], channels[i], channels[i]) for i in range(self.num_stages)])
         self.norm = torch.nn.LayerNorm(channels[-2])
-        self.downsample = HextreeAvgPoolXYZ()
+        self.downsample = HextreeWeightedPoolXYZ()
         self.proj = MLP(channels[-2], 2*dim, channels[-1])
 
     def forward(self, data: torch.Tensor, hextree: Hextree, depth: int):

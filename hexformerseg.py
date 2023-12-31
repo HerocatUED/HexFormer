@@ -5,7 +5,7 @@ import torch
 
 from hextree import Hextree
 from typing import Optional, List, Dict
-from modules import HextreeInterp, HextreeAvgUnpoolXYZ, HextreeUpsample
+from modules import HextreeInterp, HextreeAvgUnpoolXYZ
 from hexformer import HexFormer
 
 
@@ -34,26 +34,24 @@ class SegHeader(torch.nn.Module):
                 query_pts: torch.Tensor):
         depth = min(features.keys())
         depth_max = max(features.keys())
+        target_depth = depth_max + self.num_up
         assert self.num_stages == len(features)
         feature = self.conv1x1[0](features[depth])
-        # print(depth, depth_max, depth_max+self.num_up)
+        # print(depth, depth_max, target_depth)
 
-        # out = self.upsample(feature, hextree, depth_max-1)
+        out = self.upsample(feature, hextree, depth, target_depth)
+        for i in range(1, self.num_stages):
+            depth_i = depth + i
+            feature = self.upsample(feature, hextree, depth_i-1, depth_i)
+            feature = self.conv1x1[i](features[depth_i]) + feature
+            out = out + self.upsample(feature, hextree, depth_i, target_depth)
+
         # for i in range(1, self.num_stages):
         #     depth_i = depth + i
         #     feature = self.upsample(feature, hextree, depth_i - 1)
         #     feature = self.conv1x1[i](features[depth_i]) + feature
-        #     out = out + self.upsample(feature, hextree, depth_max-1)
-        #     # out = out + self.upsample(feature, hextree, depth_i, depth_max)
 
-        for i in range(1, self.num_stages):
-            depth_i = depth + i
-            feature = self.upsample(feature, hextree, depth_i - 1)
-            feature = self.conv1x1[i](features[depth_i]) + feature
-
-        for i in range(self.num_up):
-            feature = self.upsample(feature, hextree, depth_max + i)
-        out = self.interp(feature, hextree, depth_max+self.num_up, query_pts)
+        out = self.interp(out, hextree, target_depth, query_pts)
         out = self.classifier(out)
         return out
 

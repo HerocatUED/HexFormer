@@ -6,7 +6,7 @@ import sys
 from utils import get_hextree
 sys.path.append('..')
 # from modules import HextreeMaxPool, HextreeMaxUnpool, HextreeAvgPoolXYZ, HextreeAvgUnpoolXYZ, HextreeMaxPoolXYZ, HextreeMaxUnpoolXYZ
-from modules import HextreeAvgPoolXYZ, HextreeAvgUnpoolXYZ
+from modules import HextreeAvgPoolXYZ, HextreeAvgUnpoolXYZ, HextreeWeightedPoolXYZ
 
 class HextreePoolTest(unittest.TestCase):
     # only dimension check, no value check
@@ -60,6 +60,10 @@ class HextreePoolTest(unittest.TestCase):
             data = Pool(data, htree, from_depth=d)
         data = Unpool(data, htree, from_depth=3, to_depth=htree.depth)
         self.assertTrue(torch.allclose(data, data2))
+
+        Pool = HextreeWeightedPoolXYZ(in_channels=100, out_channels=200, from_depth=htree.depth, to_depth=3)
+        data = Pool.forward(data, htree)
+        print(data.shape)
 
     
     # only dimension check, no value check

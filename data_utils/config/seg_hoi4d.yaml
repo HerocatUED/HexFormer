@@ -1,13 +1,13 @@
 SOLVER:
   gpu: 0,1,2,3
   run: train
-  logdir: logs/log_debug 
+  logdir: logs/log_debug_noDA
   best_val: max:mIoU_part
 
   ckpt_num: 200
-  max_epoch: 1
+  max_epoch: 100
   test_every_epoch: 5
-  log_per_iter: 5
+  log_per_iter: 2
 
   weight_decay: 0.05
   type: adamw_attn
@@ -39,10 +39,10 @@ DATA:
     max_npt: 120000    # max point number of random cropping
     # data loading
     location: dataset/hoi4d
-    filelist: dataset/hoi4d/frame8/train_data1.txt
-    batch_size: 6 # for a single GPU, real batch size = GPU_num * batch_size
+    filelist: dataset/hoi4d/frame8/train_data.txt
+    batch_size: 8 # for a single GPU, real batch size = GPU_num * batch_size
     shuffle: True
-    num_workers: 3
+    num_workers: 4
 
   test:
     name: hoi4d
@@ -64,7 +64,7 @@ DATA:
 
     # data loading
     location: dataset/hoi4d
-    filelist: dataset/hoi4d/frame8/val_data1.txt
+    filelist: dataset/hoi4d/frame8/val_data.txt
     batch_size: 4
     shuffle: False
     num_workers: 2

@@ -139,7 +139,7 @@ class Transform:
         if self.distort:
             rng_angle, rng_scale, rnd_flip = self.rnd_parameters()
             
-            # points.rotate(rng_angle)
+            points.rotate(rng_angle)
             points.scale_xyz(rng_scale)
             points.flip(rnd_flip)
 
