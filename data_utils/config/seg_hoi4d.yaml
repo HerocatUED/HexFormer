@@ -1,11 +1,11 @@
 SOLVER:
   gpu: 0,1,2,3
   run: train
-  logdir: logs/log_b8_f8_d9_e350_lr0.0025_PE2_RPE2 
+  logdir: logs/log_debug 
   best_val: max:mIoU_part
 
   ckpt_num: 200
-  max_epoch: 350
+  max_epoch: 1
   test_every_epoch: 5
   log_per_iter: 5
 
@@ -39,7 +39,7 @@ DATA:
     max_npt: 120000    # max point number of random cropping
     # data loading
     location: dataset/hoi4d
-    filelist: dataset/hoi4d/frame8/train_data.txt
+    filelist: dataset/hoi4d/frame8/train_data1.txt
     batch_size: 6 # for a single GPU, real batch size = GPU_num * batch_size
     shuffle: True
     num_workers: 3
@@ -64,7 +64,7 @@ DATA:
 
     # data loading
     location: dataset/hoi4d
-    filelist: dataset/hoi4d/frame8/val_data.txt
+    filelist: dataset/hoi4d/frame8/val_data1.txt
     batch_size: 4
     shuffle: False
     num_workers: 2
