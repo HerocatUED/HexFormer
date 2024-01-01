@@ -1,21 +1,21 @@
 SOLVER:
   gpu: 0,1,2,3
   run: train
-  logdir: logs/log_new
+  logdir: logs/log_full
   best_val: max:mIoU_part
 
   ckpt_num: 200
-  max_epoch: 100
-  test_every_epoch: 5
-  log_per_iter: 2
+  max_epoch: 550
+  test_every_epoch: 10
+  log_per_iter: 10
 
   weight_decay: 0.05
   type: adamw_attn
 
   lr: 0.0025
   lr_type: step_warmup
-  warmup_epoch: 10
-  milestones: (200, 300)
+  warmup_epoch: 20
+  milestones: (400, 500)
   dist_url: tcp://localhost:10002  # for distributed training
 
 DATA:
@@ -39,10 +39,10 @@ DATA:
     max_npt: 120000    # max point number of random cropping
     # data loading
     location: dataset/hoi4d
-    filelist: dataset/hoi4d/frame8/train_data.txt
-    batch_size: 2 # for a single GPU, real batch size = GPU_num * batch_size
+    filelist: dataset/hoi4d/frame8_full/train_data.txt
+    batch_size: 6 # for a single GPU, real batch size = GPU_num * batch_size
     shuffle: True
-    num_workers: 1
+    num_workers: 3
 
   test:
     name: hoi4d
@@ -64,7 +64,7 @@ DATA:
 
     # data loading
     location: dataset/hoi4d
-    filelist: dataset/hoi4d/frame8/val_data.txt
+    filelist: dataset/hoi4d/frame8_full/val_data.txt
     batch_size: 4
     shuffle: False
     num_workers: 2
@@ -76,6 +76,7 @@ MODEL:
   nout: 49
   nempty: True
   interp: nearest
+  depth: 9
   sync_bn: True
   find_unused_parameters: False
   # use_compile: True

@@ -1,5 +1,6 @@
 # HexFormer BackBone
 
+import time
 import torch
 from typing import Optional, List
 from torch.utils.checkpoint import checkpoint
@@ -281,7 +282,7 @@ class HexFormer(torch.nn.Module):
                  num_blocks: List[int] = [2, 2, 18, 2],
                  num_heads: List[int] = [6, 12, 24, 24],
                  patch_size: int = 32, dilation: int = 4, drop_path: float = 0.5,
-                 nempty: bool = True, stem_down: int = 2, init_depth:int = 9, **kwargs):
+                 nempty: bool = True, stem_down: int = 2, init_depth:int = 10, **kwargs):
         super().__init__()
         self.patch_size = patch_size
         self.dilation = dilation
@@ -298,9 +299,9 @@ class HexFormer(torch.nn.Module):
             drop_path=drop_ratio[sum(num_blocks[:i]):sum(num_blocks[:i+1])],
             dilation=dilation, nempty=nempty, num_blocks=num_blocks[i],)
             for i in range(self.num_stages)])
-        self.downsample = torch.nn.ModuleList([HextreeWeightedPoolXYZ(
-            channels[i], channels[i+1], self.init_depth-self.stem_down-i, self.init_depth-self.stem_down-i-1, 
-        ) for i in range(self.num_stages-1)])
+        self.feature_up = torch.nn.ModuleList([MLP(channels[i], int(
+            (channels[i]+channels[i+1])/2), channels[i+1]) for i in range(self.num_stages - 2)])
+        self.downsample = HextreeAvgPoolXYZ()
 
     def forward(self, data: torch.Tensor, hextree: Hextree, depth: int):
         assert self.init_depth == depth
@@ -314,5 +315,7 @@ class HexFormer(torch.nn.Module):
             data = self.layers[i](data, hextree, depth_i)
             features[depth_i] = data
             if i < self.num_stages - 1:
-                data = self.downsample[i](data, hextree)
+                data = self.downsample(data, hextree, depth_i)
+                if i < self.num_stages - 2:
+                    data = self.feature_up[i](data)
         return features

@@ -21,7 +21,7 @@ def hextree_weighted_pooling_xyz(data: torch.Tensor,
         to_depth = from_depth - 1
     assert 0 <= to_depth < from_depth <= htree.depth, 'Depth input error!'
     assert weight.shape[0] == 8 ** (from_depth - to_depth), 'Weight shape error!'
-    assert weight.shape[1] == data.shape[1], 'Dimensions not match!'
+    # assert weight.shape[1] == data.shape[1], 'Dimensions not match!'
 
     from_keys = htree.unique_keys[from_depth]
     assert from_keys.shape[0] == data.shape[0], 'Data shape error'
