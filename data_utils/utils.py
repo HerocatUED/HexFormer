@@ -58,7 +58,7 @@ class ReadNpz:
 
 class ReadFile:
 
-    def __init__(self, has_normal: bool = True, has_color: bool = False,
+    def __init__(self, has_normal: bool = False, has_color: bool = False,
                  has_label: bool = False):
         self.read_npz = ReadNpz(has_normal, has_color, has_label)
         self.read_ply = ReadPly(has_normal, has_color, has_label)

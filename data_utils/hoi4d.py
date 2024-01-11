@@ -122,7 +122,7 @@ class CollateBatch:
 
 def get_hoi4d_seg_dataset(flags):
     transform = HOI4DTransform(flags)
-    read_file = ReadFile(has_normal=False, has_color=False, has_label=True)
+    read_file = ReadFile(has_normal=False, has_color=False, has_label=flags.has_label)
     collate_batch = CollateBatch(flags.cutmix)
 
     dataset = Dataset(flags.location, flags.filelist,

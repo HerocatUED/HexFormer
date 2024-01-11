@@ -5,8 +5,8 @@ SOLVER:
   best_val: max:mIoU_part
 
   ckpt_num: 200
-  max_epoch: 550
-  test_every_epoch: 10
+  max_epoch: 250
+  test_every_epoch: 5
   log_per_iter: 10
 
   weight_decay: 0.05
@@ -15,7 +15,7 @@ SOLVER:
   lr: 0.0025
   lr_type: step_warmup
   warmup_epoch: 20
-  milestones: (400, 500)
+  milestones: (120, 180, 220)
   dist_url: tcp://localhost:10002  # for distributed training
 
 DATA:
@@ -38,11 +38,12 @@ DATA:
     crop_ratio: 1    # random ratio of random cropping
     max_npt: 120000    # max point number of random cropping
     # data loading
+    has_label: True
     location: dataset/hoi4d
     filelist: dataset/hoi4d/frame8_full/train_data.txt
-    batch_size: 6 # for a single GPU, real batch size = GPU_num * batch_size
+    batch_size: 8 # for a single GPU, real batch size = GPU_num * batch_size
     shuffle: True
-    num_workers: 3
+    num_workers: 4
 
   test:
     name: hoi4d
@@ -63,8 +64,10 @@ DATA:
     cutmix: 0.0   # no cutmix
 
     # data loading
+    has_label: False
     location: dataset/hoi4d
     filelist: dataset/hoi4d/frame8_full/val_data.txt
+    # filelist: dataset/hoi4d/frame8_test/test_data.txt
     batch_size: 4
     shuffle: False
     num_workers: 2
@@ -82,5 +85,5 @@ MODEL:
   # use_compile: True
 
 LOSS:
-  mask: 0
+  mask: -255
   num_class: 49

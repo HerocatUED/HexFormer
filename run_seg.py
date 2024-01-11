@@ -8,40 +8,40 @@ parser.add_argument('--run', type=str, required=False, default='train')
 parser.add_argument('--alias', type=str, required=False, default='hoi4d')
 parser.add_argument('--gpu', type=str, required=False, default='5')
 parser.add_argument('--port', type=str, required=False, default='10008')
-parser.add_argument('--ckpt', type=str, required=False, default='\'\'')
+parser.add_argument('--ckpt', type=str, required=False, default='')
 args = parser.parse_args()
 
 
 def execute_command(cmds):
-  cmd = ' '.join(cmds)
-  print('Execute: \n' + cmd + '\n')
-  os.system(cmd)
+    cmd = ' '.join(cmds)
+    print('Execute: \n' + cmd + '\n')
+    os.system(cmd)
 
 
 def train():
-  print(f"using dataset {args.alias}")
-  cmds = [
-      'python segmentation.py',
-      f'--config data_utils/config/seg_{args.alias}.yaml',
-      'SOLVER.gpu  {},'.format(args.gpu),
-      'SOLVER.alias  {}'.format(args.alias),
-      'SOLVER.dist_url tcp://localhost:{}'.format(args.port),]
-  execute_command(cmds)
+    print(f"using dataset {args.alias}")
+    cmds = [
+        'python segmentation.py',
+        f'--config data_utils/config/seg_{args.alias}.yaml',
+        'SOLVER.gpu  {},'.format(args.gpu),
+        'SOLVER.alias  {}'.format(args.alias),
+        'SOLVER.dist_url tcp://localhost:{}'.format(args.port),]
+    execute_command(cmds)
 
 
 def test():
-  # get the predicted probabilities for each point
-  ckpt = (args.ckpt)   # use args.ckpt if provided
-  cmds = [
-      'python segmentation.py',
-      '--config data/configs/seg_hoi4d.yaml',
-      'LOSS.mask -255',       # to keep all points
-      'SOLVER.gpu  {},'.format(args.gpu),
-      'SOLVER.run evaluate',
-      'SOLVER.eval_epoch 72',  # voting with 72 predictions
-      'SOLVER.alias test_{}'.format(args.alias),
-      'SOLVER.ckpt {}'.format(ckpt),]
-  execute_command(cmds)
+    # get the predicted probabilities for each point
+    ckpt = (args.ckpt)   # use args.ckpt if provided
+    cmds = [
+        'python segmentation.py',
+        '--config data_utils/config/seg_{}.yaml'.format(args.alias),
+        'LOSS.mask -255',       # to keep all points
+        'SOLVER.gpu  {},'.format(args.gpu),
+        'SOLVER.run evaluate',
+        'SOLVER.eval_epoch 1',  # can't voting with more than 1 predictions, out of memory
+        'SOLVER.alias test_{}'.format(args.alias),
+        'SOLVER.ckpt {}'.format(ckpt),]
+    execute_command(cmds)
 
 #   # map the probabilities to labels
 #   cmds = [
@@ -89,4 +89,4 @@ def test():
 
 
 if __name__ == '__main__':
-  eval('%s()' % args.run)
+    eval('%s()' % args.run)

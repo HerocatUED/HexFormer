@@ -228,6 +228,7 @@ if __name__ == '__main__':
     kitti_dir = '/mnt/sdc/wangrh/data/SemanticKITTI'
     dataset_name = f'/mnt/sdc/wangx/HexFormer/dataset/kitti/frame{clip_length}_full'
     config_path = '/mnt/sdc/wangx/HexFormer/data_utils/config/semantic-kitti.yaml'
+    assert NotImplementedError # test need record point_num for every frame 
     construct_dataset(kitti_dir, config_path, dataset_name, clip_length, val_videos=[8])
 
 
