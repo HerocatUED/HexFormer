@@ -55,7 +55,8 @@ def get_batch_hextree(data_path, label_path, video_ids=[0, 1], n_frame=8,
                       depth=8, full_depth=1, device='cpu', need_neigh=False):
     hextrees = []
     for video_id in video_ids:
-        htree_i = get_hextree(video_id, n_frame, depth, full_depth, device, need_neigh=False)
+        htree_i = get_hextree(data_path, label_path, video_id, n_frame, 
+                              depth, full_depth, device, need_neigh=False)
         hextrees.append(htree_i)
     hextree = merge_hextrees(hextrees)
     if need_neigh:

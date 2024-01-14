@@ -1,11 +1,12 @@
 # HexFormer BackBone
 
+import time
 import torch
 from typing import Optional, List
 from torch.utils.checkpoint import checkpoint
 
 from hextree import Hextree
-from modules import HextreeDropPath, HextreeAvgPoolXYZ, HextreeT
+from modules import HextreeDropPath, HextreeWeightedPoolXYZ, HextreeAvgPoolXYZ, HextreeT
 
 
 class MLP(torch.nn.Module):
@@ -236,66 +237,29 @@ class HexFormerStage(torch.nn.Module):
             # if i % self.interval == 0 and i != 0:
             #   data = self.norms[(i - 1) // self.interval](data)
         return data
-
-
+    
+    
 class PatchEmbed(torch.nn.Module):
 
-    def __init__(self, in_dim: int = 4, dim: int = 96, num_stages: int = 2, nempty: bool = True, **kwargs):
+    def __init__(self, in_dim: int = 4, dim: int = 96, num_stages: int = 2, nempty: bool = True, init_depth: int = 9, **kwargs):
         super().__init__()
-        self.num_stages = num_stages
-        channels = [int(dim * 2**i) for i in range(-self.num_stages, 1)]
-
-        self.mlps = torch.nn.ModuleList(
-            [MLP(in_dim if i == 0 else channels[i-1], channels[i], channels[i]) for i in range(self.num_stages)])
-        self.norm = torch.nn.LayerNorm(channels[-2])
-        self.downsample = HextreeAvgPoolXYZ()
-        self.proj = MLP(channels[-2], 2*dim, channels[-1])
-
-    def forward(self, data: torch.Tensor, hextree: Hextree, depth: int):
-        for i in range(self.num_stages):
-            depth_i = depth - i
-            data = self.mlps[i](data)
-            data = self.downsample(data, hextree, depth_i)
-            
-        data = self.proj(self.norm(data))
-        return data
-    
-
-class PatchEmbed2(torch.nn.Module):
-
-    def __init__(self, patch_size:int = 32, in_dim: int = 4, dim: int = 96, num_stages: int = 2, nempty: bool = True, **kwargs):
-        super().__init__()
-        self.patch_size = patch_size
         self.num_stages = num_stages
         self.channels = [in_dim] + [int(dim * 2**i) for i in range(-self.num_stages, 1)]
 
-        self.mlps = torch.nn.ModuleList(
-            [MLP(self.patch_size * self.channels[i], 
-                 self.patch_size * self.channels[i+1], 
-                 self.patch_size * self.channels[i+1]) for i in range(self.num_stages)])
+        self.downsample = torch.nn.ModuleList([
+            HextreeWeightedPoolXYZ(self.channels[i], self.channels[i+1], init_depth-i, init_depth-i-1)
+            for i in range(self.num_stages)])
         self.norm = torch.nn.LayerNorm(self.channels[-2])
-        self.downsample = HextreeAvgPoolXYZ()
-        self.proj = MLP(self.channels[-2], 2*dim, self.channels[-1])
+        self.proj = MLP(self.channels[-2], dim, self.channels[-1])
 
     def forward(self, data: torch.Tensor, hextree: Hextree, depth: int):
-        for i in range(self.num_stages):
-            nnum_t = data.shape[0]
-            num = self.patch_size - nnum_t % self.patch_size
-            tail = data.new_full((num,) + data.shape[1:], 0)
-            data = torch.cat([data, tail], dim=0)
-            data = data.view(-1, self.patch_size * self.channels[i])
-            
-            data = self.mlps[i](data)
-            data = data.view(-1, self.channels[i+1])
-            data = data[:nnum_t]
-            
-            depth_i = depth - i
-            data = self.downsample(data, hextree, depth_i)
+        
+        for i in range(self.num_stages):            
+            data = self.downsample[i](data, hextree)
             
         data = self.proj(self.norm(data))
         return data
     
-
 
 class HexFormer(torch.nn.Module):
 
@@ -304,17 +268,17 @@ class HexFormer(torch.nn.Module):
                  num_blocks: List[int] = [2, 2, 18, 2],
                  num_heads: List[int] = [6, 12, 24, 24],
                  patch_size: int = 32, dilation: int = 4, drop_path: float = 0.5,
-                 nempty: bool = True, stem_down: int = 2, **kwargs):
+                 nempty: bool = True, stem_down: int = 2, init_depth:int = 10, **kwargs):
         super().__init__()
         self.patch_size = patch_size
         self.dilation = dilation
         self.nempty = nempty
         self.num_stages = len(num_blocks)
         self.stem_down = stem_down
+        self.init_depth = init_depth
         drop_ratio = torch.linspace(0, drop_path, sum(num_blocks)).tolist()
 
-        # self.patch_embed = PatchEmbed(in_channels, channels[0], stem_down, nempty)
-        self.patch_embed = PatchEmbed2(patch_size, in_channels, channels[0], stem_down, nempty)
+        self.patch_embed = PatchEmbed(in_channels, channels[0], stem_down, nempty, init_depth)
         self.layers = torch.nn.ModuleList([HexFormerStage(
             dim=channels[i], num_heads=num_heads[i], patch_size=patch_size,
             drop_path=drop_ratio[sum(num_blocks[:i]):sum(num_blocks[:i+1])],
@@ -325,6 +289,7 @@ class HexFormer(torch.nn.Module):
         self.downsample = HextreeAvgPoolXYZ()
 
     def forward(self, data: torch.Tensor, hextree: Hextree, depth: int):
+        assert self.init_depth == depth
         data = self.patch_embed(data, hextree, depth)
         depth = depth - self.stem_down   # current hextree depth
         hextree = HextreeT(hextree, self.patch_size, self.dilation, self.nempty,

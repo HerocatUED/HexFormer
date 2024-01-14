@@ -1,0 +1,428 @@
+GPU Memory Track | 28-Nov-23-17:44:21 | Total Used Memory:25196.9Mb
+
+
+before all
+Total Memory Increasing:0.0Mb
+Total Memory Decreasing:0.0Mb
+Total Used Memory:25196.9Mb
+
+
+before process batch
+Total Memory Increasing:63.56659999999998Mb
+Total Memory Decreasing:0.0Mb
+Total Used Memory:25196.9Mb
+
+
+after process batch
+Total Memory Increasing:5595.884055999997Mb
+Total Memory Decreasing:4e-06Mb
+Total Used Memory:25196.9Mb
+
+
+before model forward
+Total Memory Increasing:8.907256Mb
+Total Memory Decreasing:114.24982399999998Mb
+Total Used Memory:25196.9Mb
+
+
+before backbone
+Total Memory Increasing:0.0Mb
+Total Memory Decreasing:0.0Mb
+Total Used Memory:25196.9Mb
+
+
+before building HextreeT
+Total Memory Increasing:188.97506799999996Mb
+Total Memory Decreasing:0.0Mb
+Total Used Memory:25196.9Mb
+
+
+after building HextreeT
+Total Memory Increasing:721.608264Mb
+Total Memory Decreasing:4.451376Mb
+Total Used Memory:25196.9Mb
+
+
+layer-0,depth-10
+Total Memory Increasing:75.37248Mb
+Total Memory Decreasing:25.12416Mb
+Total Used Memory:25196.9Mb
+
+
+layer-1,depth-9
+Total Memory Increasing:351.5594Mb
+Total Memory Decreasing:75.37248Mb
+Total Used Memory:25196.9Mb
+
+
+layer-2,depth-8
+Total Memory Increasing:694.551932Mb
+Total Memory Decreasing:150.32448Mb
+Total Used Memory:25196.9Mb
+
+
+layer-3,depth-7
+Total Memory Increasing:1916.116204Mb
+Total Memory Decreasing:296.163072Mb
+Total Used Memory:25196.9Mb
+
+
+layer-4,depth-6
+Total Memory Increasing:1612.4992440000003Mb
+Total Memory Decreasing:1182.838272Mb
+Total Used Memory:25196.9Mb
+
+
+between backbone and seghead
+Total Memory Increasing:0.0Mb
+Total Memory Decreasing:0.0Mb
+Total Used Memory:25196.9Mb
+
+
+after seghead
+Total Memory Increasing:291.70227600000004Mb
+Total Memory Decreasing:1.047408Mb
+Total Used Memory:25196.9Mb
+
+
+after model forward
+Total Memory Increasing:0.0Mb
+Total Memory Decreasing:0.0Mb
+Total Used Memory:25196.9Mb
+
+
+before process batch
+Total Memory Increasing:383.97247999999996Mb
+Total Memory Decreasing:3473.947471999999Mb
+Total Used Memory:25196.9Mb
+
+
+after process batch
+Total Memory Increasing:5571.534976000004Mb
+Total Memory Decreasing:4.181376Mb
+Total Used Memory:25196.9Mb
+
+
+before model forward
+Total Memory Increasing:7.117928000000001Mb
+Total Memory Decreasing:111.962796Mb
+Total Used Memory:25196.9Mb
+
+
+before backbone
+Total Memory Increasing:0.0Mb
+Total Memory Decreasing:0.0Mb
+Total Used Memory:25196.9Mb
+
+
+before building HextreeT
+Total Memory Increasing:189.034272Mb
+Total Memory Decreasing:0.0Mb
+Total Used Memory:25196.9Mb
+
+
+after building HextreeT
+Total Memory Increasing:1221.227844Mb
+Total Memory Decreasing:505.389272Mb
+Total Used Memory:25196.9Mb
+
+
+layer-0,depth-10
+Total Memory Increasing:75.396096Mb
+Total Memory Decreasing:25.132032Mb
+Total Used Memory:25196.9Mb
+
+
+layer-1,depth-9
+Total Memory Increasing:351.69093599999997Mb
+Total Memory Decreasing:75.396096Mb
+Total Used Memory:25196.9Mb
+
+
+layer-2,depth-8
+Total Memory Increasing:694.6702439999999Mb
+Total Memory Decreasing:150.38438399999998Mb
+Total Used Memory:25196.9Mb
+
+
+layer-3,depth-7
+Total Memory Increasing:1913.395152Mb
+Total Memory Decreasing:296.186112Mb
+Total Used Memory:25196.9Mb
+
+
+layer-4,depth-6
+Total Memory Increasing:1606.461184Mb
+Total Memory Decreasing:1180.698624Mb
+Total Used Memory:25196.9Mb
+
+
+between backbone and seghead
+Total Memory Increasing:0.0Mb
+Total Memory Decreasing:0.0Mb
+Total Used Memory:25196.9Mb
+
+
+after seghead
+Total Memory Increasing:291.27652800000004Mb
+Total Memory Decreasing:0.52388Mb
+Total Used Memory:25196.9Mb
+
+
+after model forward
+Total Memory Increasing:0.0Mb
+Total Memory Decreasing:0.0Mb
+Total Used Memory:25196.9Mb
+
+
+before process batch
+Total Memory Increasing:506.91454400000015Mb
+Total Memory Decreasing:10108.206443999996Mb
+Total Used Memory:25196.9Mb
+
+
+after process batch
+Total Memory Increasing:5778.347559999996Mb
+Total Memory Decreasing:12.595787999999999Mb
+Total Used Memory:25196.9Mb
+
+
+before model forward
+Total Memory Increasing:6.8147Mb
+Total Memory Decreasing:115.19958400000006Mb
+Total Used Memory:25196.9Mb
+
+
+before backbone
+Total Memory Increasing:0.0Mb
+Total Memory Decreasing:0.0Mb
+Total Used Memory:25196.9Mb
+
+
+before building HextreeT
+Total Memory Increasing:189.017512Mb
+Total Memory Decreasing:0.0Mb
+Total Used Memory:25196.9Mb
+
+
+after building HextreeT
+Total Memory Increasing:1055.887884Mb
+Total Memory Decreasing:340.21428Mb
+Total Used Memory:25196.9Mb
+
+
+layer-0,depth-10
+Total Memory Increasing:75.388032Mb
+Total Memory Decreasing:25.129344Mb
+Total Used Memory:25196.9Mb
+
+
+layer-1,depth-9
+Total Memory Increasing:351.628236Mb
+Total Memory Decreasing:75.388032Mb
+Total Used Memory:25196.9Mb
+
+
+layer-2,depth-8
+Total Memory Increasing:694.3673800000001Mb
+Total Memory Decreasing:150.35327999999998Mb
+Total Used Memory:25196.9Mb
+
+
+layer-3,depth-7
+Total Memory Increasing:1908.235832Mb
+Total Memory Decreasing:296.02944Mb
+Total Used Memory:25196.9Mb
+
+
+layer-4,depth-6
+Total Memory Increasing:1603.5056359999999Mb
+Total Memory Decreasing:1176.849408Mb
+Total Used Memory:25196.9Mb
+
+
+between backbone and seghead
+Total Memory Increasing:0.0Mb
+Total Memory Decreasing:0.0Mb
+Total Used Memory:25196.9Mb
+
+
+after seghead
+Total Memory Increasing:291.793664Mb
+Total Memory Decreasing:1.047736Mb
+Total Used Memory:25196.9Mb
+
+
+after model forward
+Total Memory Increasing:0.0Mb
+Total Memory Decreasing:0.0Mb
+Total Used Memory:25196.9Mb
+
+
+before process batch
+Total Memory Increasing:347.838928Mb
+Total Memory Decreasing:9915.325119999998Mb
+Total Used Memory:25196.9Mb
+
+
+after process batch
+Total Memory Increasing:5668.527691999997Mb
+Total Memory Decreasing:1.738112Mb
+Total Used Memory:25196.9Mb
+
+
+before model forward
+Total Memory Increasing:7.108708Mb
+Total Memory Decreasing:113.75258799999993Mb
+Total Used Memory:25196.9Mb
+
+
+before backbone
+Total Memory Increasing:0.0Mb
+Total Memory Decreasing:0.0Mb
+Total Used Memory:25196.9Mb
+
+
+before building HextreeT
+Total Memory Increasing:189.004524Mb
+Total Memory Decreasing:0.0Mb
+Total Used Memory:25196.9Mb
+
+
+after building HextreeT
+Total Memory Increasing:1059.371124Mb
+Total Memory Decreasing:340.23551199999997Mb
+Total Used Memory:25196.9Mb
+
+
+layer-0,depth-10
+Total Memory Increasing:75.384Mb
+Total Memory Decreasing:25.128Mb
+Total Used Memory:25196.9Mb
+
+
+layer-1,depth-9
+Total Memory Increasing:351.6902Mb
+Total Memory Decreasing:75.384Mb
+Total Used Memory:25196.9Mb
+
+
+layer-2,depth-8
+Total Memory Increasing:695.278352Mb
+Total Memory Decreasing:150.3936Mb
+Total Used Memory:25196.9Mb
+
+
+layer-3,depth-7
+Total Memory Increasing:1925.237928Mb
+Total Memory Decreasing:296.543232Mb
+Total Used Memory:25196.9Mb
+
+
+layer-4,depth-6
+Total Memory Increasing:1623.6459519999999Mb
+Total Memory Decreasing:1189.536768Mb
+Total Used Memory:25196.9Mb
+
+
+between backbone and seghead
+Total Memory Increasing:0.0Mb
+Total Memory Decreasing:0.0Mb
+Total Used Memory:25196.9Mb
+
+
+after seghead
+Total Memory Increasing:291.22961599999996Mb
+Total Memory Decreasing:0.523796Mb
+Total Used Memory:25196.9Mb
+
+
+after model forward
+Total Memory Increasing:0.0Mb
+Total Memory Decreasing:0.0Mb
+Total Used Memory:25196.9Mb
+
+
+before process batch
+Total Memory Increasing:339.30438399999997Mb
+Total Memory Decreasing:10126.304988Mb
+Total Used Memory:25196.9Mb
+
+
+after process batch
+Total Memory Increasing:5628.122487999993Mb
+Total Memory Decreasing:1.511296Mb
+Total Used Memory:25196.9Mb
+
+
+before model forward
+Total Memory Increasing:6.887344Mb
+Total Memory Decreasing:112.78702800000003Mb
+Total Used Memory:25196.9Mb
+
+
+before backbone
+Total Memory Increasing:0.0Mb
+Total Memory Decreasing:0.0Mb
+Total Used Memory:25196.9Mb
+
+
+before building HextreeT
+Total Memory Increasing:189.018672Mb
+Total Memory Decreasing:0.0Mb
+Total Used Memory:25196.9Mb
+
+
+after building HextreeT
+Total Memory Increasing:890.237952Mb
+Total Memory Decreasing:172.586496Mb
+Total Used Memory:25196.9Mb
+
+
+layer-0,depth-10
+Total Memory Increasing:75.389184Mb
+Total Memory Decreasing:25.129728Mb
+Total Used Memory:25196.9Mb
+
+
+layer-1,depth-9
+Total Memory Increasing:351.73174399999994Mb
+Total Memory Decreasing:75.389184Mb
+Total Used Memory:25196.9Mb
+
+
+layer-2,depth-8
+Total Memory Increasing:694.887004Mb
+Total Memory Decreasing:150.414336Mb
+Total Used Memory:25196.9Mb
+
+
+layer-3,depth-7
+Total Memory Increasing:1915.486212Mb
+Total Memory Decreasing:296.292096Mb
+Total Used Memory:25196.9Mb
+
+
+layer-4,depth-6
+Total Memory Increasing:1613.045616Mb
+Total Memory Decreasing:1182.214656Mb
+Total Used Memory:25196.9Mb
+
+
+between backbone and seghead
+Total Memory Increasing:0.0Mb
+Total Memory Decreasing:0.0Mb
+Total Used Memory:25196.9Mb
+
+
+after seghead
+Total Memory Increasing:291.262964Mb
+Total Memory Decreasing:0.523856Mb
+Total Used Memory:25196.9Mb
+
+
+after model forward
+Total Memory Increasing:0.0Mb
+Total Memory Decreasing:0.0Mb
+Total Used Memory:25196.9Mb
+

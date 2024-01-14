@@ -118,35 +118,23 @@ class SegSolver(Solver):
         prob = torch.nn.functional.softmax(logit, dim=1)
 
         # split predictions
-        inbox_masks = batch['inbox_mask']
         npts = batch['points'].batch_npt.tolist()
         probs = torch.split(prob, npts)
 
         # merge predictions
-        batch_size = len(inbox_masks)
-        for i in range(batch_size):
-            # The point cloud may be clipped when doing data augmentation. The
-            # `inbox_mask` indicates which points are clipped. The `prob_all_pts`
-            # contains the prediction for all points.
+        for i in range(len(probs)):
             prob = probs[i].cpu()
-            inbox_mask = inbox_masks[i].to(prob.device)
-            prob_all_pts = prob.new_zeros([inbox_mask.shape[0], prob.shape[1]])
-            prob_all_pts[inbox_mask] = prob
-
             # Aggregate predictions across different epochs
-            filename = batch['filename'][i]
-            self.eval_rst[filename] = self.eval_rst.get(
-                filename, 0) + prob_all_pts
+            filename = 'data' + str(batch['iter_num']) + str(i)
+            # self.eval_rst[filename] = self.eval_rst.get(filename, 0) + prob
 
             # Save the prediction results in the last epoch
             if self.FLAGS.SOLVER.eval_epoch - 1 == batch['epoch']:
-                full_filename = os.path.join(
-                    self.logdir, filename[:-4] + '.eval.npz')
+                full_filename = os.path.join(self.logdir, filename[:-4] + '-eval.npz')
                 curr_folder = os.path.dirname(full_filename)
                 if not os.path.exists(curr_folder):
                     os.makedirs(curr_folder)
-                np.savez(full_filename,
-                         prob=self.eval_rst[filename].cpu().numpy())
+                np.savez(full_filename, prob=self.eval_rst[filename].cpu().numpy())
 
     def result_callback(self, avg_tracker, epoch):
         r''' Calculate the part mIoU for PartNet and ScanNet.

@@ -1,6 +1,6 @@
 # Convert dataset file to another format
 import os
-import torch
+import yaml
 import h5py
 import numpy as np
 from tqdm import tqdm
@@ -51,6 +51,33 @@ def h5float64to32(path: str, chunk_size: int = 30):
     print("Done.")
 
 
+def remap(semantic: np.array, config_path: str, inverse: bool = False):
+    '''
+    Remap semantic classes.
+    
+    Args:
+    semantic: semantic classes to remap.
+    config_path: path to KITTI config.
+    inverse: class2num if True, num2class if False. NOTE: See KITTI config for more.
+    '''
+    DATA = yaml.safe_load(open(config_path, 'r'))
+
+    # get number of interest classes, and the label mappings
+    if inverse:
+        print("Mapping xentropy to original labels")
+        remapdict = DATA["learning_map_inv"]
+    else:
+        remapdict = DATA["learning_map"]
+
+    # make lookup table for mapping
+    maxkey = max(remapdict.keys())
+
+    # +100 hack making lut bigger just in case there are unknown labels
+    remap_lut = np.zeros((maxkey + 100), dtype=np.int32)
+    remap_lut[list(remapdict.keys())] = list(remapdict.values())
+    return remap_lut[semantic]
+
+
 def load_h5(h5path:str, dataset_name: str, n_video: int=-1, n_frame: int=-1, save:bool=False):
     '''
     Load h5 file of HOI4D.
@@ -63,30 +90,40 @@ def load_h5(h5path:str, dataset_name: str, n_video: int=-1, n_frame: int=-1, sav
     dataset_name: name of folder to save npy file, only used if $save$ is True.
     
     Return:
-    point_xyz: array of xyz coordinate with shape [n_video, t_video, n_point, 3]
-    semantic: array of corresponding semantic label with shape [n_video, t_video, n_point, 1]
+    points_txyz: array of txyz coordinate with shape [n_video, t_video, n_point, 4]
+    semantic: array of corresponding semantic label with shape [n_video, t_video, n_point]
     '''
     print(f"Loading {h5path}...")
+    print(f'video num: {n_video}')
+    print(f'frames per video: {n_frame}')
     
     with h5py.File(h5path, 'r') as f:
-        point_xyz = np.array(f['pcd'][: n_video, : n_frame])
+        points_xyz = np.array(f['pcd'][: n_video, : n_frame])
+        print('pcd', np.shape(points_xyz))
         semantic = np.array(f['semantic'][: n_video, : n_frame])
-        print('pcd', np.shape(point_xyz))
         print('semantic', np.shape(semantic))
-        if save: 
-            os.mkdir(dataset_name, exist_ok=True)
-            np.save(f'{dataset_name}/pcd', point_xyz)
-            np.save(f'{dataset_name}/semantic', semantic)
+    
+    print("Converting xyz to txyz")
+    n_video, t_video, n_point, _ = points_xyz.shape
+    points_txyz = np.concatenate([np.zeros([n_video, t_video, n_point, 1]), points_xyz], axis=-1)
+    points_txyz[:, :, :, 0] += (np.arange(t_video) + 1)[None, :, None]
+    
+    if save: 
+        print(f'Saving to {dataset_name}')
+        os.makedirs(dataset_name, exist_ok=True)
+        np.save(f'{dataset_name}/pcd', points_txyz)
+        np.save(f'{dataset_name}/semantic', semantic)
             
-    return point_xyz, semantic
+    return points_txyz, semantic
 
 
-def load_bin(dir_path:str, dataset_name: str, mode: str, n_frame: int=-1, save: bool=False):
+def load_bin(dir_path:str, config_path: str, dataset_name: str, mode: str, n_frame: int=-1, save: bool=False):
     '''
     Load binary file of KITTI.
     
     Args:
     dir_path: path to KITTI.
+    config_path: path to KITTI config.
     dataset_name: name of folder to save npy file, only used if $save$ is True.
     mode: 'train' use 00-10; 'test' use 11-21.
     n_frame: number of frame to load from single video.
@@ -94,8 +131,9 @@ def load_bin(dir_path:str, dataset_name: str, mode: str, n_frame: int=-1, save: 
     
     
     Return:
-    point_xyz: array of xyz coordinate with shape [n_video, t_video, n_point, 3]
-    semantic: array of corresponding semantic label with shape [n_video, t_video, n_point, 1]
+    points_txyz: list of txyz coordinate with shape n_video * [t_video, n_point=130000, 4]
+    depad_num: list of depad num, number of points in corresponding frames.
+    semantic: list of corresponding semantic label with shape n_video * [t_video, n_point=13000]
     '''
     print(f"Loading {dir_path}...")
     
@@ -106,58 +144,41 @@ def load_bin(dir_path:str, dataset_name: str, mode: str, n_frame: int=-1, save: 
     else: videos = videos[11:]
     print('Train, using data sequences', videos)
     
-    point_xyz = []
-    print("no range print!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-    # f_range = np.array([0, 1e+10])
-    # p_range = np.array([0, 1e+10])
-    # xyz_range = np.array([[0,0,0],[1e+10,1e+10,1e+10]])
+    points_txyz = []
+    depad_num = []
     for video in videos:
-        pcd = []
         pcd_dir = path + video + '/velodyne/'
         pcd_files = os.listdir(pcd_dir)
         pcd_files.sort()
         pcd_files = pcd_files[: n_frame]
-        # f_range[0] = max(f_range[0], len(pcd_files))
-        # f_range[1] = min(f_range[1], len(pcd_files))
-        for i in tqdm(range(len(pcd_files)), desc=f'video {video}'):
+        pcd = np.zeros((len(pcd_files), 130000, 4)) # pad every frame to 13000 points
+        depad = np.zeros(len(pcd_files), dtype=int) # depad num, number of points in this frame
+        for i in tqdm(range(len(pcd_files)), desc=f'points {video}'):
             scan = np.fromfile(pcd_dir + pcd_files[i], dtype=np.float32)
             scan = scan.reshape((-1, 4))
+            depad[i] = np.shape(scan)[0]
             # put in attribute
             points = scan[:, 0:3]    # get xyz
             remissions = scan[:, 3]  # get remission
-            
-    #         p_range[0] = max(p_range[0], np.shape(points)[0])
-    #         p_range[1] = min(p_range[1], np.shape(points)[0])
-    #         for j in range(3):
-    #             a = np.max(points[:, j])
-    #             b = np.min(points[:, j])
-    #             xyz_range[0,j] = max(xyz_range[0,j], a)
-    #             xyz_range[1,j] = min(xyz_range[1,j], b)
-    # print(f_range)
-    # print(p_range)
-    # print(xyz_range)
+            pcd[i, :depad[i], 0] = i
+            pcd[i, :depad[i], 1:] = points
+        points_txyz.append(pcd)
+        depad_num.append(depad)
     
-    #         pcd.append(points)
-    #     point_xyz.append(pcd)
-    # point_xyz = np.array(point_xyz)
-    # print('point_xyz:', np.shape(point_xyz))
-    
-    # if mode != 'train': return point_xyz
-    return None, None
+    if mode != 'train': return points_txyz, depad_num
     
     semantic = []
-    
-    for video in videos:
-        labels = []
+    for k, video in enumerate(videos):
         label_dir = path + video + '/labels/'
         label_files = os.listdir(label_dir)
         label_files.sort()
         label_files = label_files[: n_frame]
-        for i in range(n_frame):  
+        labels = np.zeros((len(label_files), 130000), dtype=int) # pad every frame to 13000 points
+        for i in tqdm(range(len(label_files)), desc=f'label {video}'):  
             label = np.fromfile(label_dir + label_files[i], dtype=np.uint32)
             label = label.reshape((-1))
             # only fill in attribute if the right size
-            if label.shape[0] == points.shape[0]:
+            if label.shape[0] == depad_num[k][i]:
                 sem_label = label & 0xFFFF  # semantic label in lower half
                 inst_label = label >> 16    # instance id in upper half
             else:
@@ -167,18 +188,18 @@ def load_bin(dir_path:str, dataset_name: str, mode: str, n_frame: int=-1, save: 
             # sanity check
             assert((sem_label + (inst_label << 16) == label).all())
             
-            labels.append(label)
-        semantic.append(labels)       
-    semantic = np.array(semantic)
-    print('semantic:', np.shape(semantic))
+            labels[i, :depad_num[k][i]] = sem_label
+        labels = remap(labels, config_path, False)
+        semantic.append(labels)      
     
-    if save: 
-        os.mkdir(dataset_name, exist_ok=True)
-        np.save(f'{dataset_name}/pcd', point_xyz)
-        np.save(f'{dataset_name}/semantic', semantic)
-            
-    return point_xyz, semantic
-
+    # if save: 
+    #     print(f'saving to {dataset_name}')
+    #     os.makedirs(dataset_name, exist_ok=True)
+    #     np.save(f'{dataset_name}/pcd', points_txyz)
+    #     np.save(f'{dataset_name}/semantic', semantic)
+    
+    return points_txyz, semantic, depad_num
+    
 
 def load_npy(dataset_name: str):
     '''
@@ -189,73 +210,87 @@ def load_npy(dataset_name: str):
     NOTE: corresponding to $dataset_name$ in func load_h5 and load_bin.
     
     Return:
-    point_xyz: array of xyz coordinate with shape [n_video, t_video, n_point, 3]
-    semantic: array of corresponding semantic label with shape [n_video, t_video, n_point, 1]
+    points_txyz: array/list of txyz coordinate with shape [n_video, t_video, n_point, 3]
+    semantic: array/list of corresponding semantic label with shape [n_video, t_video, n_point]
     '''
     print(f"Loading {dataset_name}...")
     
-    point_xyz = np.load(f'{dataset_name}/pcd.npy')
+    points_txyz = np.load(f'{dataset_name}/pcd.npy')
     semantic = np.load(f'{dataset_name}/semantic.npy')
     
-    return point_xyz, semantic
-
-
-def xyz2txyz(points_xyz: np.array):
-    '''
-    Convert xyz array to txyz array.
+    return points_txyz, semantic
     
+    
+def construct_dataset(points_txyz, semantic, dataset_name: str, clip_length: int, depad_num: list = None, val_videos: list = None):
+    '''
+    Construct dataset and config files.
+    TODO support test dataset construction
     Args:
-    points_xyz: array of xyz coordinate with shape [n_video, t_video, n_point, 3]
-    
-    Return:
-    points_txyz [n_video, t_video, n_point, 4]
-    '''
-    print("Converting xyz to txyz")
-    
-    n_video, t_video, n_point, _ = points_xyz.shape
-    print(f'video num: {n_video}')
-    print(f'frames per video: {t_video}')
-    
-    points_txyz = np.concatenate([np.zeros([n_video, t_video, n_point, 1]), points_xyz], axis=-1)
-    points_txyz[:, :, :, 0] += (np.arange(t_video) + 1)[None, :, None]
-    
-    return points_txyz
-    
-    
-def construct_dataset(points_txyz: np.array, semantic: np.array, dataset_name: str, config_name: str, clip_length: int):
-    '''
-    Convert xyz array to txyz array and construct dataset config files.
-    
-    Args:
-    points_txyz: array of xyz coordinate with shape [n_video, t_video, n_point, 4]
-    semantic: array of corresponding semantic label with shape [n_video, t_video, n_point, 1]
+    points_txyz: array/list of txyz coordinate with shape [n_video, t_video, n_point, 4]
+    semantic: array/list of corresponding semantic label with shape [n_video, t_video, n_point]
     dataset_name: name of folder to save clipped file, $batch size$ will be number of clipped file to read in a batch.
-    config_name: name of config folder to save train & validation split config.
     clip_length: number of frame in a single clip.
+    depad_num: if is not None, only take first depad[i] points in frame i.
+    val_videos: if is not None, videos that (id) in val_videos will be taken as validation data. 
     '''  
     print(f"Constructing dataset into {dataset_name}...")
-    os.mkdir(dataset_name, exist_ok=True)
-    os.mkdir(config_name, exist_ok=True)
+    assert len(points_txyz) == len(semantic), 'semantic should be corresponding to points_txyz'
     
-    n_video, t_video, _, _ = points_txyz.shape
-    clip_rate = int(t_video / clip_length)
-    N = clip_rate * n_video
+    os.makedirs(dataset_name, exist_ok=True)
     
-    points_txyz = torch.Tensor(points_txyz.reshape([N, -1, 4]))  
-    semantic = torch.Tensor(semantic.reshape([N, -1]))           
-
     train_list = ''
     val_list = ''
 
-    for i in tqdm(range(N)):
-        np.savez(f'{dataset_name}/data_{i}.npz', points=points_txyz[i], labels=semantic[i],)
-        if i % 5 == 0:
-            val_list += f'{dataset_name}/data_{i}.npz\n'
-        else:
-            train_list += f'{dataset_name}/data_{i}.npz\n'
-    
-    f_train = open(f'{config_name}/train_data.txt', 'w')
-    f_val = open(f'{config_name}/val_data.txt', 'w')
+    for v in range(len(points_txyz)): # loop over videos
+        t_video, _, _ = points_txyz[v].shape
+        N = t_video // clip_length
+        
+        if depad_num is None:
+            pcd = points_txyz[v][: N*clip_length].reshape((N, -1, 4)) 
+            label = semantic[v][: N*clip_length].reshape((N, -1))
+        else: # depad
+            pcd = [None] * N
+            label = [None] * N
+            for j in tqdm(range(N), desc=f'depad {v}'):
+                index = np.cumsum(depad_num[v][j*clip_length:(j+1)*clip_length])
+                index = np.pad(index, (1,0), 'constant', constant_values=0)
+                pcd[j] = np.zeros((index[-1], 4))
+                label[j] = np.zeros((index[-1]))
+                for k in range(clip_length):
+                    id = j*clip_length + k
+                    assert index[k+1]-index[k] == depad_num[v][id]
+                    pcd[j][index[k]:index[k+1], :] = points_txyz[v][id][:depad_num[v][id]]
+                    label[j][index[k]:index[k+1]] = semantic[v][id][:depad_num[v][id]]  
+
+        for i in range(N):
+            np.savez(f'{dataset_name}/data_{v}_{i}.npz', points=pcd[i], labels=label[i])
+            if val_videos is None:
+                if v % 5 == 0: val_list += f'{dataset_name}/data_{v}_{i}.npz\n'
+                else: train_list += f'{dataset_name}/data_{v}_{i}.npz\n'
+            else:
+                if v in val_videos: val_list += f'{dataset_name}/data_{v}_{i}.npz\n'
+                else: train_list += f'{dataset_name}/data_{v}_{i}.npz\n'
+        
+        # left frames
+        if t_video % clip_length > 0:
+            if depad_num is None:
+                pcd = points_txyz[v][N*clip_length: ].reshape((-1, 4))  
+                label = semantic[v][N*clip_length: ].reshape((-1))  
+            else:
+                index = np.cumsum(depad_num[v][N*clip_length:])
+                index = np.pad(index, (1,0), 'constant', constant_values=0)
+                pcd = np.zeros((index[-1], 4))
+                label = np.zeros((index[-1]))
+                for k in range(t_video % clip_length):
+                    id = N*clip_length + k
+                    pcd[index[k]:index[k+1], :] = points_txyz[v][id][:depad_num[v][id]]
+                    label[index[k]:index[k+1]] = semantic[v][id][:depad_num[v][id]]  
+            np.savez(f'{dataset_name}/data_{v}_{N}.npz', points=pcd, labels=label)
+            if val_videos is not None and v in val_videos: val_list += f'{dataset_name}/data_{v}_{N}.npz\n'
+            else: train_list += f'{dataset_name}/data_{v}_{N}.npz\n'
+    # save config file
+    f_train = open(f'{dataset_name}/train_data.txt', 'w')
+    f_val = open(f'{dataset_name}/val_data.txt', 'w')
     f_train.write(train_list)
     f_train.close()
     f_val.write(val_list)
@@ -264,29 +299,24 @@ def construct_dataset(points_txyz: np.array, semantic: np.array, dataset_name: s
 
 
 if __name__ == '__main__':
-    
+    # TODO: large data
     def hoi4d():
         # example of building dataset using HOI4D
         clip_length = 8
         h5_dir = '/mnt/sdc/wangx/HOI4D/HOI4D_dataset/seg_data_h5'
         dataset_name = f'/mnt/sdc/wangx/HexFormer/dataset/hoi4d/frame{clip_length}'
-        config_name = '/mnt/sdc/wangx/HexFormer/data_utils/config/hoi4d'
         # h5float64to32(h5_dir, 100) NOTE run only if you need to save memory
-        points_xyz, semantic = load_h5(h5_dir+'/train1_float32.h5', 500, 160, dataset_name, True)
-        points_txyz = xyz2txyz(points_xyz)
-        construct_dataset(points_txyz, semantic, dataset_name, config_name, clip_length)
+        points_txyz, semantic = load_h5(h5_dir+'/train1_float32.h5', dataset_name, 500, 160, True)
+        construct_dataset(points_txyz, semantic, dataset_name, clip_length)
     
     def kitti():
         # example of building dataset using KITTI
-        clip_length = 8
+        clip_length = 4
         kitti_dir = '/mnt/sdc/wangrh/data/SemanticKITTI'
         dataset_name = f'/mnt/sdc/wangx/HexFormer/dataset/kitti/frame{clip_length}'
-        config_name = '/mnt/sdc/wangx/HexFormer/data_utils/config/kitti'
-        # points_xyz, semantic = load_bin(kitti_dir, dataset_name, 'train', -1, True)
-        # points_txyz = xyz2txyz(points_xyz)
-        # construct_dataset(points_txyz, semantic, dataset_name, config_name, clip_length)
-        load_bin(kitti_dir, dataset_name, 'train', -1, True)
-        load_bin(kitti_dir, dataset_name, 'test', -1, True)
+        config_path = '/mnt/sdc/wangx/HexFormer/data_utils/config/semantic-kitti.yaml'
+        points_txyz, semantic, depad_num = load_bin(kitti_dir, config_path, dataset_name, 'train', 100, True)
+        construct_dataset(points_txyz, semantic, dataset_name, clip_length, depad_num, val_videos=[8])
     
     # hoi4d()
     kitti()

@@ -1,218 +1,129 @@
-import torch
-from torch_scatter import scatter_add, scatter_max
-from hextree import Hextree
-
-from hextree.utils import meshgrid
-
-from .hextree_pad import hextree_pad, hextree_depad
+from typing import Optional
+import torch 
+import torch.nn as nn
+from torch_scatter import scatter_add
+from hextree import Hextree, key2masked
 
 
-def hextree_avg_pool_xyz(data: torch.Tensor, htree: Hextree, depth: int):
-    r''' Performs hextree average pooling with kernel size 2 and stride 2
-    on xyz axes.
-
-    Args:
-        data (torch.Tensor): The input tensor to be pooled, must corresponds to non-empty nodes 
-        htree (Hextree): The corresponding hextree
-        depth (int): The corresponding depth of hextree. After each pooling, 
-            the depth is decreased by 1. Note that 
-            :func:`hextree_avg_pool_xyz(depth=d)` matches 
-            :func:`hextree_avg_unpool_xyz(depth=d-1)`
+def hextree_weighted_pooling_xyz(data: torch.Tensor, 
+                                 weight: torch.Tensor, 
+                                 htree: Hextree, 
+                                 from_depth: int, 
+                                 to_depth: Optional[int]=None,
+                                 bias: Optional[torch.Tensor]=None,
+                                 need_mean: bool=False):
+    r'''
+    data: (N, in_channels)
+    weight: (8 ** (from_depth - to_depth), in_channels, out_channels)
+    bias: (out_channels, )
     '''
-    idx = htree.scatter_idx[depth]
-    count = htree.masked_counts[depth]
-    out = scatter_add(dim=0, index=idx, src=data) / count.unsqueeze(1)
+    if to_depth is None:
+        to_depth = from_depth - 1
+    assert 0 <= to_depth < from_depth <= htree.depth, 'Depth input error!'
+    assert weight.shape[0] == 8 ** (from_depth - to_depth), 'Weight shape error!'
+    # assert weight.shape[1] == data.shape[1], 'Dimensions not match!'
+
+    from_keys = htree.unique_keys[from_depth]
+    assert from_keys.shape[0] == data.shape[0], 'Data shape error'
+
+    from_keys_masked, xyz_index = key2masked(from_keys, htree.depth - to_depth, need_index=True)
+    for i, h in enumerate(range(htree.depth - from_depth + 1, htree.depth - to_depth + 1)):
+        from_bits = (1 << (4 * h - 1)) - (1 << (4 * (h - 1)))
+        xyz_index_i = (((xyz_index & from_bits) >> (4 * (h - 1))) & 0x7) << (3 * i)
+        xyz_index = (xyz_index & ~from_bits) | xyz_index_i
+    
+    _, idx, counts = torch.unique(
+            from_keys_masked, sorted=True, return_inverse=True, return_counts=True, dim=0)
+    weighted_data = (weight[xyz_index] * data.unsqueeze(-1)).sum(dim=1)
+
+    out = scatter_add(dim=0, index=idx, src=weighted_data)
+    if need_mean:
+        out /= counts.unsqueeze(1)
+    
+    if bias is not None:
+        out += bias.unsqueeze(0)
+    
+    return out
+    
+
+def hextree_avg_pool_xyz(data: torch.Tensor, 
+                         htree: Hextree, 
+                         from_depth: int,
+                         to_depth: Optional[int]=None):
+    if to_depth is None:
+        to_depth = from_depth - 1
+    assert 0 <= to_depth < from_depth <= htree.depth, 'Depth input error!'
+
+    from_keys = htree.unique_keys[from_depth]
+    assert from_keys.shape[0] == data.shape[0], 'Data shape error'
+    from_keys_masked = key2masked(from_keys, htree.depth - to_depth)
+    _, idx, counts = torch.unique(
+            from_keys_masked, sorted=True, return_inverse=True, return_counts=True, dim=0)
+    out = scatter_add(dim=0, index=idx, src=data)
+    out /= counts.unsqueeze(1)
+
     return out
 
 
-def hextree_avg_unpool_xyz(data: torch.Tensor, htree: Hextree, depth:int):
-    r''' Performs hextree average unpooling with kernel size 2 and stride 2
-    on xyz axes.
+def hextree_avg_unpool_xyz(data: torch.Tensor, 
+                           htree: Hextree, 
+                           from_depth: int,
+                           to_depth: Optional[int]=None):
+    if to_depth is None:
+        to_depth = from_depth + 1
+    assert 0 <= from_depth < to_depth <= htree.depth, 'Depth input error!'
 
-    Args:
-        data (torch.Tensor): The input tensor to be pooled, must corresponds to non-empty nodes 
-        htree (Hextree): The corresponding hextree
-        depth (int): The corresponding depth of hextree. After each unpooling, 
-            the depth is increased by 1. Note that 
-            :func:`hextree_avg_pool_xyz(depth=d)` matches 
-            :func:`hextree_avg_unpool_xyz(depth=d-1)`
-    '''
-    idx = htree.scatter_idx[depth+1]
+    to_keys = htree.unique_keys[to_depth]
+    from_keys = htree.unique_keys[from_depth]
+    assert from_keys.shape[0] == data.shape[0], 'Data shape error'
+
+    to_keys_masked = key2masked(to_keys, htree.depth - from_depth)
+    _, idx = torch.unique(
+            to_keys_masked, sorted=True, return_inverse=True, dim=0)
+    
     out = data[idx]
     return out
 
 
-def hextree_max_pool_xyz(data: torch.Tensor, htree: Hextree, depth: int, 
-                         return_indices: bool = False):
-    r''' Performs hextree max pooling with kernel size 2 and stride 2
-    on xyz axes.
-
-    Args:
-        data (torch.Tensor): The input tensor to be pooled, must corresponds to non-empty nodes 
-        htree (Hextree): The corresponding hextree
-        depth (int): The corresponding depth of hextree. After each pooling, 
-            the depth is decreased by 1. Note that 
-            :func:`hextree_max_pool_xyz(depth=d)` matches 
-            :func:`hextree_max_unpool_xyz(depth=d-1)`
-    '''
-    idx = htree.scatter_idx[depth]
-    out, indices = scatter_max(dim=0, index=idx, src=data)
-    if return_indices:
-        return out, indices
-    return out
-
-
-def hextree_max_unpool_xyz(data: torch.Tensor, indices: torch.Tensor, 
-                           htree: Hextree, depth: int):
-    r''' Performs hextree max unpooling with kernel size 2 and stride 2
-    on xyz axes.
-
-    Args:
-        data (torch.Tensor): The input tensor to be pooled, must corresponds to non-empty nodes 
-        indices (torch.Tensor): The indices returned by :func:`hextree_max_pool_xyz`. The
-            depth of :attr:`indices` is larger by 1 than :attr:`data`.
-        htree (Hextree): The corresponding hextree
-        depth (int): The corresponding depth of hextree. After each unpooling, 
-            the depth is increased by 1. Note that 
-            :func:`hextree_max_pool_xyz(depth=d)` matches 
-            :func:`hextree_max_unpool_xyz(depth=d-1)`
-    '''
-    idx = htree.scatter_idx[depth+1]
-    out = torch.zeros_like(data[idx])
-    num, channel = data.shape
-    i = torch.arange(num, device=indices.device, dtype=indices.dtype)
-    k = torch.arange(channel, device=indices.device, dtype=indices.dtype)
-    _, k = meshgrid(i, k, indexing='ij')
-    out[indices, k] = data
-    return out
-
-
-def hextree_max_pool(data: torch.Tensor, hextree: Hextree, depth: int,
-                     nempty: bool = False, return_indices: bool = False):
-    r''' Performs hextree max pooling with kernel size 2 and stride 2. We do not recommand 
-    using this function since it will compress t axis. Use :func:`hextree_max_pool_xyz` instead
-
-    Args:
-        data (torch.Tensor): The input tensor.
-        hextree (Hextree): The corresponding hextree.
-        depth (int): The depth of current hextree. After pooling, the corresponding
-            depth decreased by 1.
-        nempty (bool): If True, :attr:`data` contains only features of non-empty
-            hextree nodes.
-        return_indices (bool): If True, returns the indices, which can be used in
-            :func:`hextree_max_unpool`.
-    '''
-    if nempty:
-        data = hextree_pad(data, hextree, depth, float('-inf'))
-    data = data.view(-1, 16, data.shape[1])
-    out, indices = data.max(dim=1)
-    if not nempty:
-        out = hextree_pad(out, hextree, depth-1)
-    return (out, indices) if return_indices else out
-
-
-def hextree_max_unpool(data: torch.Tensor, indices: torch.Tensor, hextree: Hextree,
-                       depth: int, nempty: bool = False):
-    r''' Performs hextree max unpooling. 
-
-    Args:
-        data (torch.Tensor): The input tensor.
-        indices (torch.Tensor): The indices returned by :func:`hextree_max_pool`. The
-            depth of :attr:`indices` is larger by 1 than :attr:`data`.
-        hextree (Hextree): The corresponding hextree.
-        depth (int): The depth of current data. After unpooling, the corresponding
-            depth increases by 1.
-    '''
-
-    if not nempty:
-        data = hextree_depad(data, hextree, depth)
-    num, channel = data.shape 
-    out = torch.zeros(num, 16, channel, dtype=data.dtype, device=data.device)
-    i = torch.arange(num, dtype=indices.dtype, device=indices.device)
-    k = torch.arange(channel, dtype=indices.dtype, device=indices.device)
-    i, k = meshgrid(i, k, indexing='ij')
-    out[i, indices, k] = data
-    out = out.view(-1, channel)
-    if nempty:
-        out = hextree_depad(out, hextree, depth+1)
-    return out
-
-
-class HextreeMaxPool(torch.nn.Module):
-    r''' Performs hextree max pooling.
-
-    Please refer to :func:`hextree_max_pool` for details.
-    '''
-    
-    def __init__(self, nempty: bool = False, return_indices: bool = False):
-        super().__init__()
-        self.nempty = nempty
-        self.return_indices = return_indices
-
-    def forward(self, data: torch.Tensor, hextree: Hextree, depth: int):
-        return hextree_max_pool(data, hextree, depth, self.nempty, self.return_indices)
-
-
-class HextreeMaxUnpool(torch.nn.Module):
-    r''' Performs hextree max unpooling.
-
-    Please refer to :func:`hextree_max_unpool` for details.
-    '''
-
-    def __init__(self, nempty: bool = False):
-        super().__init__()
-        self.nempty = nempty
-
-    def forward(self, data: torch.Tensor, indices: torch.Tensor, hextree: Hextree,
-                depth: int):
-        return hextree_max_unpool(data, indices, hextree, depth, self.nempty)
-
-
 class HextreeAvgPoolXYZ(torch.nn.Module):
-    r''' Performs hextree average pooling on xyz axes.
-
-    Please refer to :func:`hextree_avg_pool_xyz` for details.
-    '''
     def __init__(self):
         super().__init__()
-        
-    def forward(self, data: torch.Tensor, hextree: Hextree, depth: int):
-        return hextree_avg_pool_xyz(data, hextree, depth)
+    
+    def forward(self, data: torch.Tensor, htree: Hextree,
+                from_depth: int, to_depth: Optional[int]=None):
+        return hextree_avg_pool_xyz(data, htree, from_depth, to_depth)
 
 
 class HextreeAvgUnpoolXYZ(torch.nn.Module):
-    r''' Performs hextree average pooling.
-
-    Please refer to :func:`hextree_avg_unpool_xyz` for details.
-    '''
     def __init__(self):
         super().__init__()
-        
-    def forward(self, data: torch.Tensor, hextree: Hextree, depth: int):
-        return hextree_avg_unpool_xyz(data, hextree, depth)
+    
+    def forward(self, data: torch.Tensor, htree: Hextree,
+                from_depth: int, to_depth: Optional[int]=None):
+        return hextree_avg_unpool_xyz(data, htree, from_depth, to_depth)
     
 
-class HextreeMaxPoolXYZ(torch.nn.Module):
-    r''' Performs hextree average pooling on xyz axes.
-
-    Please refer to :func:`hextree_max_pool_xyz` for details.
-    '''
-    def __init__(self, return_indices: bool = False):
+class HextreeWeightedPoolXYZ(torch.nn.Module):
+    def __init__(self, 
+                 in_channels: int,
+                 out_channels: int,
+                 from_depth: int, 
+                 to_depth: Optional[int]=None,
+                 need_bias: bool=True):
         super().__init__()
-        self.return_indices = return_indices
-        
-    def forward(self, data: torch.Tensor, hextree: Hextree, depth: int):
-        return hextree_max_pool_xyz(data, hextree, depth, self.return_indices)
+        if to_depth is None:
+            to_depth = from_depth - 1
+        self.from_depth = from_depth
+        self.to_depth = to_depth
+        weight = torch.randn(8 ** (from_depth - to_depth), in_channels, out_channels)
+        self.weight = nn.Parameter(weight, requires_grad=True)
+        self.bias = None
+        if need_bias:
+            bias = torch.zeros(out_channels)
+            self.bias = nn.Parameter(bias, requires_grad=True)
 
-
-class HextreeMaxUnpoolXYZ(torch.nn.Module):
-    r''' Performs hextree average pooling.
-
-    Please refer to :func:`hextree_max_unpool_xyz` for details.
-    '''
-    def __init__(self):
-        super().__init__()
-        
-    def forward(self, data: torch.Tensor, indices: torch.Tensor, hextree: Hextree, 
-                depth: int):
-        return hextree_max_unpool_xyz(data, indices, hextree, depth)
+    
+    def forward(self, data: torch.Tensor, htree: Hextree, need_mean: bool=False):
+        return hextree_weighted_pooling_xyz(data, self.weight, htree, 
+                                            self.from_depth, self.to_depth, 
+                                            self.bias, need_mean)

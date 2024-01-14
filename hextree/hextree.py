@@ -205,6 +205,7 @@ class Hextree:
         #                     >= len(self.key(d, nempty=True))
         self.masked_counts = [None] * num
         self.scatter_idx = [None] * num
+        self.unique_keys = [None] * num
 
         # hextree node numbers in each hextree layers
         # TODO: decide whether to settle them to 'gpu' or not
@@ -423,7 +424,9 @@ class Hextree:
         r''' Sets attributes `masked_counts` and `scatter_idx`
         '''
         key_masked = self.key(-1, nempty=True)
+
         for d in range(self.depth, -1, -1):
+            self.unique_keys[d] = key_masked
             key_masked = key2masked(key_masked, steps=self.depth-d+1)
             key_masked, idx, count = torch.unique(
                 key_masked, sorted=True, return_inverse=True, return_counts=True, dim=0
@@ -572,6 +575,7 @@ class Hextree:
         hextree.keys = list_to_device(self.keys)
         hextree.masked_counts = list_to_device(self.masked_counts)
         hextree.scatter_idx = list_to_device(self.scatter_idx)
+        hextree.unique_keys = list_to_device(self.unique_keys)
         hextree.children = list_to_device(self.children)
         hextree.neighs = list_to_device(self.neighs)
         hextree.features = list_to_device(self.features)
@@ -647,6 +651,14 @@ def merge_hextrees(hextrees: List['Hextree']):
             running_length += masked_counts[i].shape[0]
             scatter_idx[i] = scatter_id
         hextree.scatter_idx[d] = torch.cat(scatter_idx, dim=0)
+
+        # unique keys
+        unique_keys = [None] * hextree.batch_size
+        for i in range(hextree.batch_size):
+            unique_key = hextrees[i].unique_keys[d] & (
+                (1 << 56) - 1)
+            unique_keys[i] = unique_key | (i << 56)
+        hextree.unique_keys[d] = torch.cat(unique_keys, dim=0)
 
         # children
         children = [None] * hextree.batch_size

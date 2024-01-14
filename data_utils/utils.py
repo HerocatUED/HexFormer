@@ -58,7 +58,7 @@ class ReadNpz:
 
 class ReadFile:
 
-    def __init__(self, has_normal: bool = True, has_color: bool = False,
+    def __init__(self, has_normal: bool = False, has_color: bool = False,
                  has_label: bool = False):
         self.read_npz = ReadNpz(has_normal, has_color, has_label)
         self.read_ply = ReadPly(has_normal, has_color, has_label)
@@ -168,7 +168,7 @@ class Transform:
         for i in range(3):
             rot_num = self.angle[i] // self.interval[i]
             rnd = torch.randint(low=-rot_num, high=rot_num+1, size=(1,))
-            rnd_angle[i] = rnd * self.interval[i] * (3.14159265 / 180.0)
+            rnd_angle[i] = rnd * self.interval[i] * (torch.pi / 180.0)
         rnd_angle = torch.cat(rnd_angle)
 
         rnd_scale = torch.rand(3) * (2 * self.scale) - self.scale + 1.0

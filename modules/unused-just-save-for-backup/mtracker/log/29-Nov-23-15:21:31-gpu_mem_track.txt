@@ -1,0 +1,44 @@
+GPU Memory Track | 29-Nov-23-15:21:31 | Total Used Memory:22579.6Mb
+
+
+before all
+Total Memory Increasing:0.0Mb
+Total Memory Decreasing:0.0Mb
+Total Used Memory:22579.6Mb
+
+
+before process batch
+Total Memory Increasing:63.5666Mb
+Total Memory Decreasing:0.0Mb
+Total Used Memory:22579.6Mb
+
+
+after process batch
+Total Memory Increasing:5600.516195999996Mb
+Total Memory Decreasing:0.049156Mb
+Total Used Memory:22579.6Mb
+
+
+before model forward
+Total Memory Increasing:8.957428Mb
+Total Memory Decreasing:114.447496Mb
+Total Used Memory:22579.6Mb
+
+
+before backbone
+Total Memory Increasing:0.0Mb
+Total Memory Decreasing:0.0Mb
+Total Used Memory:22579.6Mb
+
+
+before building HextreeT
+Total Memory Increasing:189.00944400000003Mb
+Total Memory Decreasing:0.0Mb
+Total Used Memory:22579.6Mb
+
+
+after building HextreeT
+Total Memory Increasing:721.9419960000001Mb
+Total Memory Decreasing:4.454728Mb
+Total Used Memory:22579.6Mb
+

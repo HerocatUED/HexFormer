@@ -5,7 +5,7 @@ import torch
 
 from hextree import Hextree
 from typing import Optional, List, Dict
-from modules import HextreeInterp, HextreeAvgUnpoolXYZ, HextreeUpsample
+from modules import HextreeInterp, HextreeAvgUnpoolXYZ
 from hexformer import HexFormer
 
 
@@ -34,26 +34,24 @@ class SegHeader(torch.nn.Module):
                 query_pts: torch.Tensor):
         depth = min(features.keys())
         depth_max = max(features.keys())
+        target_depth = depth_max + self.num_up
         assert self.num_stages == len(features)
         feature = self.conv1x1[0](features[depth])
-        # print(depth, depth_max, depth_max+self.num_up)
+        # print(depth, depth_max, target_depth)
 
-        # out = self.upsample(feature, hextree, depth_max-1)
+        out = self.upsample(feature, hextree, depth, target_depth)
+        for i in range(1, self.num_stages):
+            depth_i = depth + i
+            feature = self.upsample(feature, hextree, depth_i-1, depth_i)
+            feature = self.conv1x1[i](features[depth_i]) + feature
+            out = out + self.upsample(feature, hextree, depth_i, target_depth)
+
         # for i in range(1, self.num_stages):
         #     depth_i = depth + i
         #     feature = self.upsample(feature, hextree, depth_i - 1)
         #     feature = self.conv1x1[i](features[depth_i]) + feature
-        #     out = out + self.upsample(feature, hextree, depth_max-1)
-        #     # out = out + self.upsample(feature, hextree, depth_i, depth_max)
 
-        for i in range(1, self.num_stages):
-            depth_i = depth + i
-            feature = self.upsample(feature, hextree, depth_i - 1)
-            feature = self.conv1x1[i](features[depth_i]) + feature
-
-        for i in range(self.num_up):
-            feature = self.upsample(feature, hextree, depth_max + i)
-        out = self.interp(feature, hextree, depth_max+self.num_up, query_pts)
+        out = self.interp(out, hextree, target_depth, query_pts)
         out = self.classifier(out)
         return out
 
@@ -67,11 +65,11 @@ class HexFormerSeg(torch.nn.Module):
             num_heads: List[int] = [6, 12, 24, 24],
             patch_size: int = 32, dilation: int = 4, drop_path: float = 0.5,
             nempty: bool = True, stem_down: int = 2, head_up: int = 1,
-            fpn_channel: int = 168, head_drop: List[float] = [0.0, 0.0], **kwargs):
+            fpn_channel: int = 168, head_drop: List[float] = [0.0, 0.0], init_depth: int = 10, **kwargs):
         super().__init__()
         self.backbone = HexFormer(
             in_channels, channels, num_blocks, num_heads, patch_size, dilation,
-            drop_path, nempty, stem_down)
+            drop_path, nempty, stem_down, init_depth)
         self.head = SegHeader(out_channels, channels,
                               fpn_channel, nempty, head_up, head_drop)
         self.apply(self.init_weights)

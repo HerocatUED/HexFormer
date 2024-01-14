@@ -1,0 +1,92 @@
+GPU Memory Track | 29-Nov-23-15:14:09 | Total Used Memory:792.3  Mb
+
+
+before all
+Total Memory Increasing:0.0Mb
+Total Memory Decreasing:0.0Mb
+Total Used Memory:792.3  Mb
+
+
+before process batch
+Total Memory Increasing:63.5666Mb
+Total Memory Decreasing:0.0Mb
+Total Used Memory:1270.5 Mb
+
+
+after process batch
+Total Memory Increasing:5588.747831999996Mb
+Total Memory Decreasing:0.060676Mb
+Total Used Memory:23263.3Mb
+
+
+before model forward
+Total Memory Increasing:6.8744320000000005Mb
+Total Memory Decreasing:112.158188Mb
+Total Used Memory:23263.3Mb
+
+
+before backbone
+Total Memory Increasing:0.0Mb
+Total Memory Decreasing:0.0Mb
+Total Used Memory:23263.3Mb
+
+
+before building HextreeT
+Total Memory Increasing:189.01348000000002Mb
+Total Memory Decreasing:0.0Mb
+Total Used Memory:23273.8Mb
+
+
+after building HextreeT
+Total Memory Increasing:720.9472799999999Mb
+Total Memory Decreasing:4.4489920000000005Mb
+Total Used Memory:23273.8Mb
+
+
+layer-0,depth-10
+Total Memory Increasing:75.388032Mb
+Total Memory Decreasing:25.129344Mb
+Total Used Memory:23565.3Mb
+
+
+layer-1,depth-9
+Total Memory Increasing:351.68788Mb
+Total Memory Decreasing:75.388032Mb
+Total Used Memory:23636.6Mb
+
+
+layer-2,depth-8
+Total Memory Increasing:694.845524Mb
+Total Memory Decreasing:150.388992Mb
+Total Used Memory:23728.9Mb
+
+
+layer-3,depth-7
+Total Memory Increasing:1914.885464Mb
+Total Memory Decreasing:296.287488Mb
+Total Used Memory:23781.3Mb
+
+
+layer-4,depth-6
+Total Memory Increasing:1609.717748Mb
+Total Memory Decreasing:1181.75232Mb
+Total Used Memory:23819.1Mb
+
+
+between backbone and seghead
+Total Memory Increasing:0.0Mb
+Total Memory Decreasing:0.0Mb
+Total Used Memory:24834.1Mb
+
+
+after seghead
+Total Memory Increasing:291.23646Mb
+Total Memory Decreasing:0.523808Mb
+Total Used Memory:25765.2Mb
+
+
+after model forward
+Total Memory Increasing:0.0Mb
+Total Memory Decreasing:0.0Mb
+Total Used Memory:25765.2Mb
+
