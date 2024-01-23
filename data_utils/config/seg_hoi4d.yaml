@@ -1,7 +1,7 @@
 SOLVER:
   gpu: 0,1,2,3
   run: train
-  logdir: logs/log_full
+  logdir: logs/log_compile
   best_val: max:mIoU_part
 
   ckpt_num: 200
@@ -12,7 +12,7 @@ SOLVER:
   weight_decay: 0.05
   type: adamw_attn
 
-  lr: 0.0025
+  lr: 0.0015
   lr_type: step_warmup
   warmup_epoch: 20
   milestones: (180, 220)
@@ -40,7 +40,8 @@ DATA:
     # data loading
     has_label: True
     location: dataset/hoi4d
-    filelist: dataset/hoi4d/frame8_full/train_data.txt
+    # filelist: dataset/hoi4d/frame8_full/train_data.txt
+    filelist: dataset/hoi4d/frame8/train_data1.txt
     batch_size: 8 # for a single GPU, real batch size = GPU_num * batch_size
     shuffle: True
     num_workers: 4
@@ -66,7 +67,8 @@ DATA:
     # data loading
     has_label: False
     location: dataset/hoi4d
-    filelist: dataset/hoi4d/frame8_full/val_data.txt
+    filelist: dataset/hoi4d/frame8/val_data1.txt
+    # filelist: dataset/hoi4d/frame8_full/val_data.txt
     # filelist: dataset/hoi4d/frame8_test/test_data.txt
     batch_size: 4
     shuffle: False
@@ -82,7 +84,7 @@ MODEL:
   depth: 9
   sync_bn: True
   find_unused_parameters: False
-  # use_compile: True
+  use_compile: True
 
 LOSS:
   mask: -255

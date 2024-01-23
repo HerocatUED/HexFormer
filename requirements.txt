@@ -1,0 +1,11 @@
+# python 3.8, CUDA11.7
+torch
+torchvision
+torchaudio
+tensorboard
+torch_tb_profiler
+thsolver # new
+torch_scatter # see https://pypi.org/project/torch-scatter/ for details
+tqdm
+packaging
+plyfile
