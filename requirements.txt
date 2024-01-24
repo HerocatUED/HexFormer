@@ -2,10 +2,12 @@
 torch
 torchvision
 torchaudio
+
+torch_scatter # see https://pypi.org/project/torch-scatter/ for details
 tensorboard
 torch_tb_profiler
+
 thsolver # new
-torch_scatter # see https://pypi.org/project/torch-scatter/ for details
 tqdm
 packaging
 plyfile

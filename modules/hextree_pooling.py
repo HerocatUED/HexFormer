@@ -1,7 +1,8 @@
 from typing import Optional
 import torch 
 import torch.nn as nn
-from torch_scatter import scatter_add
+from torch import scatter_add
+# from torch_scatter import scatter_add
 from hextree import Hextree, key2masked
 
 
@@ -32,11 +33,17 @@ def hextree_weighted_pooling_xyz(data: torch.Tensor,
         xyz_index_i = (((xyz_index & from_bits) >> (4 * (h - 1))) & 0x7) << (3 * i)
         xyz_index = (xyz_index & ~from_bits) | xyz_index_i
     
-    _, idx, counts = torch.unique(
+    u, idx, counts = torch.unique(
             from_keys_masked, sorted=True, return_inverse=True, return_counts=True, dim=0)
     weighted_data = (weight[xyz_index] * data.unsqueeze(-1)).sum(dim=1)
 
-    out = scatter_add(dim=0, index=idx, src=weighted_data)
+    # out = scatter_add(dim=0, index=idx, src=weighted_data)
+
+    N = u.shape[0]
+    out_c = weighted_data.shape[-1]
+    out = torch.ones((N, out_c)).to(torch.device("cuda"))
+    out = out.scatter_add(dim=0, index=idx.unsqueeze(-1).repeat(1, out_c), src=weighted_data)
+    
     if need_mean:
         out /= counts.unsqueeze(1)
     
@@ -57,9 +64,14 @@ def hextree_avg_pool_xyz(data: torch.Tensor,
     from_keys = htree.unique_keys[from_depth]
     assert from_keys.shape[0] == data.shape[0], 'Data shape error'
     from_keys_masked = key2masked(from_keys, htree.depth - to_depth)
-    _, idx, counts = torch.unique(
+    u, idx, counts = torch.unique(
             from_keys_masked, sorted=True, return_inverse=True, return_counts=True, dim=0)
-    out = scatter_add(dim=0, index=idx, src=data)
+    # out = scatter_add(dim=0, index=idx, src=data)
+    N = u.shape[0]
+    out_c = data.shape[-1]
+    out = torch.ones((N, out_c)).to(torch.device("cuda"))
+    out = out.scatter_add(dim=0, index=idx.unsqueeze(-1).repeat(1, out_c), src=data)
+    
     out /= counts.unsqueeze(1)
 
     return out

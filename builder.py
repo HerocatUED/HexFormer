@@ -56,17 +56,6 @@ def hexsegformer_toy(in_channels, out_channels, init_depth, **kwargs):
         init_depth=init_depth)
 
 
-# def hexsegformer_cls(in_channels, out_channels, nemtpy, **kwargs):
-#     return HexFormerCls(
-#         in_channels, out_channels,
-#         channels=[96, 192],
-#         num_blocks=[6, 6],
-#         num_heads=[6, 12],
-#         patch_size=32, dilation=2,
-#         drop_path=0.5, nempty=nemtpy,
-#         stem_down=2, head_drop=0.5)
-
-
 def get_segmentation_model(flags):
     params = {
         'in_channels': flags.channel, 'out_channels': flags.nout,
@@ -81,20 +70,6 @@ def get_segmentation_model(flags):
     }
 
     return networks[flags.name.lower()](**params)
-
-
-# def get_classification_model(flags):
-#     if flags.name.lower() == 'lenet':
-#         model = ocnn.models.LeNet(
-#             flags.channel, flags.nout, flags.stages, flags.nempty)
-#     elif flags.name.lower() == 'hrnet':
-#         model = ocnn.models.HRNet(
-#             flags.channel, flags.nout, flags.stages, nempty=flags.nempty)
-#     elif flags.name.lower() == 'hexformercls':
-#         model = hexsegformer_cls(flags.channel, flags.nout, flags.nempty)
-#     else:
-#         raise ValueError
-#     return model
 
 
 def get_segmentation_dataset(flags):
