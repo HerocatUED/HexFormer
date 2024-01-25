@@ -11,3 +11,4 @@ thsolver # new
 tqdm
 packaging
 plyfile
+h5py
