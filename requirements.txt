@@ -1,9 +1,8 @@
-# python 3.8, CUDA11.7
-torch
-torchvision
-torchaudio
-
-torch_scatter # see https://pypi.org/project/torch-scatter/ for details
+# python 3.8, CUDA11.8
+# torch
+# torchvision
+# torchaudio
+# torch_scatter # see https://pypi.org/project/torch-scatter/ for details
 tensorboard
 torch_tb_profiler
 

@@ -16,7 +16,7 @@ SOLVER:
   lr_type: step_warmup
   gamma: 0.2
   warmup_epoch: 20
-  milestones: (160, 220, 260)
+  milestones: (80, 160, 220, 260)
   dist_url: tcp://localhost:10002  # for distributed training
 
 DATA:
