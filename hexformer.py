@@ -231,7 +231,7 @@ class HexFormerStage(torch.nn.Module):
     def forward(self, data: torch.Tensor, hextree: HextreeT, depth: int):
         for i in range(self.num_blocks):
             if self.use_checkpoint and self.training:
-                data = checkpoint(self.blocks[i], data, hextree, depth)
+                data = checkpoint(self.blocks[i], data, hextree, depth, use_reentrant=False)
             else:
                 data = self.blocks[i](data, hextree, depth)
             # if i % self.interval == 0 and i != 0:

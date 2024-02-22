@@ -1,13 +1,13 @@
 SOLVER:
   gpu: 0,1,2,3
   run: train
-  logdir: logs/log_full2
+  logdir: logs/log_run
   best_val: max:mIoU
 
   ckpt_num: 200
-  max_epoch: 300
-  test_every_epoch: 5
-  log_per_iter: 100
+  max_epoch: 30
+  test_every_epoch: 1
+  log_per_iter: 10
 
   weight_decay: 0.05
   type: adamw_attn
@@ -83,7 +83,7 @@ MODEL:
   depth: 9
   sync_bn: True
   find_unused_parameters: False
-  use_compile: True
+  # use_compile: True
 
 LOSS:
   mask: -1

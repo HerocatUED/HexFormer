@@ -195,7 +195,7 @@ def construct_test(dir_path:str, dataset_name: str, clip_length: int):
             test_list += f'{dataset_name}/data_{video}_{N}.npz\n'
             
     # save config file
-    f_test = open(f'{dataset_name}/train_data.txt', 'w')
+    f_test = open(f'{dataset_name}/test_data.txt', 'w')
     f_test.write(test_list)
     f_test.close()
 
