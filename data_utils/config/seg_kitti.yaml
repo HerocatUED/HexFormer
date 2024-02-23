@@ -38,7 +38,7 @@ DATA:
     # data loading
     has_label: True
     location: dataset/kitti
-    filelist: dataset/kitti/frame4_full/train_data.txt
+    filelist: dataset/kitti/frame4_all/train_data.txt
     batch_size: 2 # for a single GPU, real batch size = GPU_num * batch_size
     shuffle: True
     num_workers: 2
@@ -63,14 +63,14 @@ DATA:
     # data loading
     has_label: True
     location: dataset/kitti
-    filelist: dataset/kitti/frame4_full/val_data.txt
+    filelist: dataset/kitti/frame4_all/val_data.txt
     batch_size: 2
     shuffle: False
     num_workers: 2
 
 MODEL:
   name: hexsegformer_toy
-  feature: P
+  feature: R
   channel: 4
   nout: 20
   nempty: True

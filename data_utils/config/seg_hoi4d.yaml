@@ -1,13 +1,13 @@
 SOLVER:
   gpu: 0,1,2,3
   run: train
-  logdir: logs/log_run
+  logdir: logs/log_all
   best_val: max:mIoU
 
   ckpt_num: 200
-  max_epoch: 30
-  test_every_epoch: 1
-  log_per_iter: 10
+  max_epoch: 300
+  test_every_epoch: 5
+  log_per_iter: 100
 
   weight_decay: 0.05
   type: adamw_attn
@@ -42,9 +42,9 @@ DATA:
     location: dataset/hoi4d
     filelist: dataset/hoi4d/frame8_full/train_data.txt
     # filelist: dataset/hoi4d/frame8/train_data1.txt
-    batch_size: 8 # for a single GPU, real batch size = GPU_num * batch_size
+    batch_size: 12 # for a single GPU, real batch size = GPU_num * batch_size
     shuffle: True
-    num_workers: 2
+    num_workers: 3
 
   test:
     name: hoi4d

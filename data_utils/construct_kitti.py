@@ -33,7 +33,7 @@ def remap(semantic: np.array, config_path: str, inverse: bool = False):
     return remap_lut[semantic]
     
     
-def construct_train(dir_path:str, config_path: str, dataset_name: str, clip_length: int, val_videos: list, n_frame:int = -1):
+def construct_train(dir_path:str, config_path: str, dataset_name: str, clip_length: int, n_frame:int = -1):
     '''
     Construct dataset and config files.
     Args:
@@ -41,7 +41,6 @@ def construct_train(dir_path:str, config_path: str, dataset_name: str, clip_leng
     config_path: path to KITTI config.
     dataset_name: name of folder to save clipped file, $batch size$ will be number of clipped file to read in a batch.
     clip_length: number of frame in a single clip.
-    val_videos: if is not None, videos that (id) in val_videos will be taken as validation data. 
     n_frame: number of frame to load from single video.
     '''  
     train_list = ''
@@ -110,7 +109,7 @@ def construct_train(dir_path:str, config_path: str, dataset_name: str, clip_leng
                 pcd[i][index[k]:index[k+1], :] = points_txyz[id][:depad[id]]
                 label[i][index[k]:index[k+1]] = labels[id][:depad[id]]  
             np.savez(f'{dataset_name}/data_{video}_{i}.npz', points=pcd[i], labels=label[i])
-            if video in val_videos: val_list += f'{dataset_name}/data_{video}_{i}.npz\n'
+            if video == '08': val_list += f'{dataset_name}/data_{video}_{i}.npz\n'
             else: train_list += f'{dataset_name}/data_{video}_{i}.npz\n'
         
         # left frames
@@ -124,7 +123,7 @@ def construct_train(dir_path:str, config_path: str, dataset_name: str, clip_leng
                 pcd[index[k]:index[k+1], :] = points_txyz[id][:depad[id]]
                 label[index[k]:index[k+1]] = labels[id][:depad[id]] 
             np.savez(f'{dataset_name}/data_{video}_{N}.npz', points=pcd, labels=label)
-            if video in val_videos: val_list += f'{dataset_name}/data_{video}_{N}.npz\n'
+            if video == '08': val_list += f'{dataset_name}/data_{video}_{N}.npz\n'
             else: train_list += f'{dataset_name}/data_{video}_{N}.npz\n'
             
     # save config file
@@ -200,7 +199,7 @@ def construct_test(dir_path:str, dataset_name: str, clip_length: int):
     f_test.close()
 
 
-def construct_dataset(dir_path:str, config_path: str, dataset_name: str, clip_length: int, val_videos: list, n_frame:int = -1):
+def construct_dataset(dir_path:str, config_path: str, dataset_name: str, clip_length: int, n_frame:int = -1):
     '''
     Construct dataset and config files.
     mode: 'train' use 00-10; 'test' use 11-21.
@@ -210,13 +209,12 @@ def construct_dataset(dir_path:str, config_path: str, dataset_name: str, clip_le
     config_path: path to KITTI config.
     dataset_name: name of folder to save clipped file, $batch size$ will be number of clipped file to read in a batch.
     clip_length: number of frame in a single clip.
-    val_videos: if is not None, videos that (id) in val_videos will be taken as validation data. 
     n_frame: number of frame to load from single video.
     '''  
     print(f"Constructing dataset into {dataset_name}...")
     os.makedirs(dataset_name, exist_ok=True)
     print(f"Constructing trainingset into {dataset_name}...")
-    construct_train(dir_path, config_path, dataset_name, clip_length, val_videos, n_frame)
+    construct_train(dir_path, config_path, dataset_name, clip_length, n_frame)
     print(f"Constructing testset into {dataset_name}...")
     construct_test(dir_path, dataset_name, clip_length)
 
@@ -226,10 +224,9 @@ if __name__ == '__main__':
     # example of building dataset using KITTI
     clip_length = 4
     kitti_dir = '/mnt/sdc/wangrh/data/SemanticKITTI'
-    dataset_name = f'/mnt/sdc/wangx/HexFormer/dataset/kitti/frame{clip_length}_full'
+    dataset_name = f'/mnt/sdc/wangx/HexFormer/dataset/kitti/frame{clip_length}_all'
     config_path = '/mnt/sdc/wangx/HexFormer/data_utils/config/semantic-kitti.yaml'
-    assert NotImplementedError # test need record point_num for every frame 
-    construct_dataset(kitti_dir, config_path, dataset_name, clip_length, val_videos=[8])
+    construct_dataset(kitti_dir, config_path, dataset_name, clip_length)
 
 
     
