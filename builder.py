@@ -4,7 +4,7 @@ from data_utils import get_hoi4d_seg_dataset, get_kitti_seg_dataset
 from hexformerseg import HexFormerSeg
 
 
-def hexsegformer_large(in_channels, out_channels, **kwargs):
+def hexsegformer_large(in_channels, out_channels, init_depth, **kwargs):
     return HexFormerSeg(
         in_channels, out_channels,
         channels=[192, 384, 768, 768],
@@ -14,10 +14,11 @@ def hexsegformer_large(in_channels, out_channels, **kwargs):
         drop_path=0.5, nempty=True,
         stem_down=2, head_up=2,
         fpn_channel=168,
-        head_drop=[0.5, 0.5])
+        head_drop=[0.5, 0.5], 
+        init_depth=init_depth)
 
 
-def hexsegformer(in_channels, out_channels, **kwargs):
+def hexsegformer(in_channels, out_channels, init_depth, **kwargs):
     return HexFormerSeg(
         in_channels, out_channels,
         channels=[96, 192, 384, 384],
@@ -27,10 +28,11 @@ def hexsegformer(in_channels, out_channels, **kwargs):
         drop_path=0.5, nempty=True,
         stem_down=2, head_up=2,
         fpn_channel=168,
-        head_drop=[0.5, 0.5])
+        head_drop=[0.5, 0.5], 
+        init_depth=init_depth)
 
 
-def hexsegformer_small(in_channels, out_channels, **kwargs):
+def hexsegformer_small(in_channels, out_channels, init_depth, **kwargs):
     return HexFormerSeg(
         in_channels, out_channels,
         channels=[96, 192, 384, 384],
@@ -40,7 +42,8 @@ def hexsegformer_small(in_channels, out_channels, **kwargs):
         drop_path=0.5, nempty=True,
         stem_down=2, head_up=2,
         fpn_channel=168,
-        head_drop=[0.5, 0.5])
+        head_drop=[0.5, 0.5], 
+        init_depth=init_depth)
     
 def hexsegformer_toy(in_channels, out_channels, init_depth, **kwargs):
     return HexFormerSeg(

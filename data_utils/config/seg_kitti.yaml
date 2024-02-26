@@ -1,12 +1,12 @@
 SOLVER:
   gpu: 0,1,2,3
   run: train
-  logdir: logs/log_run
+  logdir: logs/log_all_small
   best_val: max:mIoU
 
   ckpt_num: 200
-  max_epoch: 250
-  test_every_epoch: 1
+  max_epoch: 300
+  test_every_epoch: 5
   log_per_iter: 10
 
   weight_decay: 0.05
@@ -14,8 +14,8 @@ SOLVER:
 
   lr: 0.0025
   lr_type: step_warmup
-  warmup_epoch: 20
-  milestones: (100, 200)
+  warmup_epoch: 5
+  milestones: (80, 160, 220, 260)
   dist_url: tcp://localhost:10002  # for distributed training
 
 DATA:
@@ -33,15 +33,15 @@ DATA:
     flip: (0.5, 0.5, 0.0)
     uniform: True
     cutmix: 0.0        # no cutmix
-    crop_ratio: 0.8    # random ratio of random cropping
-    max_npt: 100000    # max point number of random cropping
+    crop_ratio: 0.9    # random ratio of random cropping
+    max_npt: 400000    # max point number of random cropping
     # data loading
     has_label: True
     location: dataset/kitti
     filelist: dataset/kitti/frame4_all/train_data.txt
     batch_size: 2 # for a single GPU, real batch size = GPU_num * batch_size
     shuffle: True
-    num_workers: 2
+    num_workers: 1
 
   test:
     name: kitti
@@ -64,12 +64,12 @@ DATA:
     has_label: True
     location: dataset/kitti
     filelist: dataset/kitti/frame4_all/val_data.txt
-    batch_size: 2
+    batch_size: 1
     shuffle: False
-    num_workers: 2
+    num_workers: 1
 
 MODEL:
-  name: hexsegformer_toy
+  name: hexsegformer_small
   feature: R
   channel: 4
   nout: 20
