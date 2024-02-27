@@ -222,10 +222,10 @@ def construct_dataset(dir_path:str, config_path: str, dataset_name: str, clip_le
 if __name__ == '__main__':
     
     # example of building dataset using KITTI
-    clip_length = 4
+    clip_length = 8
     kitti_dir = '/mnt/sdc/wangrh/data/SemanticKITTI'
-    dataset_name = f'/mnt/sdc/wangx/HexFormer/dataset/kitti/frame{clip_length}_all'
-    config_path = '/mnt/sdc/wangx/HexFormer/data_utils/config/semantic-kitti.yaml'
+    dataset_name = f'/mnt/sdc/wangx/HexFormer/dataset/kitti/frame{clip_length}_MultiScan_8'
+    config_path = '/mnt/sdc/wangx/HexFormer/data_utils/config/semantic-kitti-all.yaml'
     construct_dataset(kitti_dir, config_path, dataset_name, clip_length)
 
 

@@ -1,7 +1,7 @@
 SOLVER:
   gpu: 0,1,2,3
   run: train
-  logdir: logs/log_all_small
+  logdir: logs/log_all
   best_val: max:mIoU
 
   ckpt_num: 200
@@ -12,7 +12,7 @@ SOLVER:
   weight_decay: 0.05
   type: adamw_attn
 
-  lr: 0.0025
+  lr: 0.0015
   lr_type: step_warmup
   warmup_epoch: 5
   milestones: (80, 160, 220, 260)
@@ -39,7 +39,7 @@ DATA:
     has_label: True
     location: dataset/kitti
     filelist: dataset/kitti/frame4_all/train_data.txt
-    batch_size: 2 # for a single GPU, real batch size = GPU_num * batch_size
+    batch_size: 3 # for a single GPU, real batch size = GPU_num * batch_size
     shuffle: True
     num_workers: 1
 
@@ -69,7 +69,7 @@ DATA:
     num_workers: 1
 
 MODEL:
-  name: hexsegformer_small
+  name: hexsegformer_toy
   feature: R
   channel: 4
   nout: 20
