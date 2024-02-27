@@ -3,14 +3,14 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-def visualize_point_cloud(points, mode):
-    # 49 for hoi4d
-    colors = plt.cm.jet(np.linspace(0, 1, 49))
+def visualize_point_cloud(points, mode, class_num:int = 26):
+    # 49 for hoi4d, 26 for kitti
+    colors = plt.cm.jet(np.linspace(0, 1, class_num))
 
     fig = plt.figure(figsize=(9, 7))
     ax = fig.add_subplot(111, projection='3d')
 
-    for i in range(49):
+    for i in range(class_num):
         mask = points[:, 3] == i
         if np.any(mask):
             ax.scatter(points[mask, 0], points[mask, 1], points[mask, 2], c=colors[i].reshape(1,-1), label=f"Category {i}", s=1)
@@ -35,32 +35,34 @@ def trans_visualize(rand_ids, logdir):
     script for visualization
     '''
     for i, rand_id in enumerate(rand_ids):
-        points = np.load(f"../logs/log_{logdir}_hoi4d/result_sample/points_{rand_id}.npz")
-        points = np.array(points['arr_0'][:8192, 1:])
+        points = np.array(np.load(f"logs/log_{logdir}_kitti/result_sample/points_{rand_id}.npz")['arr_0'])
+        mask = points[:, 0] == 0
+        points = points[mask]
+        points = points[:, 1:]
         print("points", np.shape(points))
-        pred = np.load(f"../logs/log_{logdir}_hoi4d/result_sample/pred_{rand_id}.npz")
-        pred = np.array(pred['arr_0'][:8192])
+        pts_num = np.shape(points)[0]
+        pred = np.array(np.load(f"logs/log_{logdir}_kitti/result_sample/pred_{rand_id}.npz")['arr_0'])
+        pred = pred[:pts_num]
         print("pred", np.shape(pred))
-        label = np.load(f"../logs/log_{logdir}_hoi4d/result_sample/label_{rand_id}.npz")
-        label = np.array(label['arr_0'][:8192])
+        label = np.array(np.load(f"logs/log_{logdir}_kitti/result_sample/label_{rand_id}.npz")['arr_0'])
+        label = label[:pts_num]
         print("label", np.shape(label))
         prediction = np.concatenate([points, np.expand_dims(pred, 1)], axis=-1)
         groundtruth = np.concatenate([points, np.expand_dims(label, 1)], axis=-1)
-        np.save(f"./visualize/prediction_{i}.npy", prediction)
-        np.save(f"./visualize/groundtruth_{i}.npy", groundtruth)  
+        np.save(f"dataset/visualize/prediction_{i}.npy", prediction)
+        np.save(f"dataset/visualize/groundtruth_{i}.npy", groundtruth)  
         
 
 if __name__ == '__main__':
     # TODO: add annotations to functions
-    pcds = np.load('train1_train1_sample.npy')
-    points = pcds[0]
+    trans_visualize(["135.0000"], "all")
+    pred = np.load('dataset/visualize/prediction_0.npy')
     # print_range(pcds)
-    visualize_point_cloud(points, 'predict')
+    visualize_point_cloud(pred, 'predict')
     
-    pcds_gt = np.load('train1_sample_gt.npy')
-    points_gt = pcds_gt[0]
+    gt = np.load('dataset/visualize/groundtruth_0.npy')
     # print_range(pcds_gt)
-    visualize_point_cloud(points_gt, 'groundtruth')
+    visualize_point_cloud(gt, 'groundtruth')
     
     plt.draw()
     plt.show()

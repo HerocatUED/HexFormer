@@ -18,7 +18,7 @@ torch.multiprocessing.set_sharing_strategy('file_system')
 
 def save_pcd(batch, logit, path, rand_id: float):
     pred = logit.argmax(dim=1)
-    print(f"saving to {path}")
+    # print(f"saving to {path}")
     if not os.path.exists(path):
         os.makedirs(path)
     np.savez(path+'/points_{:.4f}.npz'.format(rand_id),

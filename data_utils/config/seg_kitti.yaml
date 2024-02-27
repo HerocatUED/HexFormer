@@ -1,21 +1,22 @@
 SOLVER:
   gpu: 0,1,2,3
   run: train
-  logdir: logs/log_all
+  logdir: logs/log_MultiScan
+  # NOTE: MultiScan has 26 classes
   best_val: max:mIoU
 
-  ckpt_num: 200
-  max_epoch: 300
+  ckpt_num: 20
+  max_epoch: 200
   test_every_epoch: 5
   log_per_iter: 10
 
-  weight_decay: 0.05
+  weight_decay: 5e-3
   type: adamw_attn
 
-  lr: 0.0015
+  lr: 2e-3
   lr_type: step_warmup
   warmup_epoch: 5
-  milestones: (80, 160, 220, 260)
+  milestones: (100, 160)
   dist_url: tcp://localhost:10002  # for distributed training
 
 DATA:
@@ -38,8 +39,8 @@ DATA:
     # data loading
     has_label: True
     location: dataset/kitti
-    filelist: dataset/kitti/frame4_all/train_data.txt
-    batch_size: 3 # for a single GPU, real batch size = GPU_num * batch_size
+    filelist: dataset/kitti/frame8_MultiScan_8/train_data.txt
+    batch_size: 2 # for a single GPU, real batch size = GPU_num * batch_size
     shuffle: True
     num_workers: 1
 
@@ -63,7 +64,7 @@ DATA:
     # data loading
     has_label: True
     location: dataset/kitti
-    filelist: dataset/kitti/frame4_all/val_data.txt
+    filelist: dataset/kitti/frame8_MultiScan_8/val_data.txt
     batch_size: 1
     shuffle: False
     num_workers: 1
@@ -72,7 +73,7 @@ MODEL:
   name: hexsegformer_toy
   feature: R
   channel: 4
-  nout: 20
+  nout: 26
   nempty: True
   interp: nearest
   depth: 12
@@ -82,4 +83,4 @@ MODEL:
 
 LOSS:
   mask: -1
-  num_class: 20
+  num_class: 26
