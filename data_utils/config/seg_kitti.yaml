@@ -1,7 +1,7 @@
 SOLVER:
   gpu: 0,1,2,3
   run: train
-  logdir: logs/log_MultiScan
+  logdir: logs/log_MultiScan-1
   # NOTE: MultiScan has 26 classes
   best_val: max:mIoU
 
@@ -16,7 +16,7 @@ SOLVER:
   lr: 2e-3
   lr_type: step_warmup
   warmup_epoch: 5
-  milestones: (100, 160)
+  milestones: (70, 140)
   dist_url: tcp://localhost:10002  # for distributed training
 
 DATA:
@@ -35,12 +35,12 @@ DATA:
     uniform: True
     cutmix: 0.0        # no cutmix
     crop_ratio: 0.9    # random ratio of random cropping
-    max_npt: 400000    # max point number of random cropping
+    max_npt: 800000    # max point number of random cropping
     # data loading
     has_label: True
     location: dataset/kitti
     filelist: dataset/kitti/frame8_MultiScan_8/train_data.txt
-    batch_size: 2 # for a single GPU, real batch size = GPU_num * batch_size
+    batch_size: 1 # for a single GPU, real batch size = GPU_num * batch_size
     shuffle: True
     num_workers: 1
 
