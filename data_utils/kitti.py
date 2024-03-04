@@ -1,4 +1,4 @@
-# build KITTI dataset for Solver
+# build HOI4D dataset for Solver
 
 
 import torch
@@ -25,7 +25,7 @@ def rand_crop(points: Points, max_npt: int):
     crop_mask = torch.ones(npt, dtype=torch.bool)
     if npt > max_npt:
         rand_idx = torch.randint(low=0, high=npt, size=(1,))
-        sort_idx = torch.argsort(torch.sum((pts - pts[rand_idx])**2, 1))
+        sort_idx = torch.argsort(torch.sum(((pts - pts[rand_idx])[1:])**2, 1))
         crop_idx = sort_idx[max_npt:]
         crop_mask[crop_idx] = False
         points = points[crop_mask]
@@ -35,17 +35,20 @@ def rand_crop(points: Points, max_npt: int):
 class KITTITransform(Transform):
 
     def __init__(self, flags):
-        super().__init__(flags.depth, flags.full_depth, flags.distort)
+        super().__init__(**flags)
 
         # The `self.scale_factor` is used to normalize the input point cloud to the
         # range of [-1, 1]. If this parameter is modified, the `self.elastic_params`
         # and the `jittor` in the data augmentation should be scaled accordingly.
         # self.scale_factor = 5.12
-        self.scale_factor = 10.24
+        # self.scale_factor = 10.24
+        self.flags = flags
 
     def __call__(self, sample, idx=None):
         # construct and normalize points
-        pcds = Points(points=torch.from_numpy(sample['points']),
+        txyz = torch.from_numpy(sample['points'])
+        txyz[:, 0] = txyz[:, 0] - torch.min(txyz[:, 0])
+        pcds = Points(points=txyz,
                       labels=torch.from_numpy(sample['labels']))
         pcds.normalize_xyz(keep_shape=True)
 
@@ -55,7 +58,6 @@ class KITTITransform(Transform):
 
         # random crop
         if self.distort:
-            raise NotImplementedError
             max_npt = self.flags.max_npt if self.flags.max_npt > 0 else points.npt
             max_npt = min(max_npt, int(points.npt * self.flags.crop_ratio))
             points, crop_mask = rand_crop(points, max_npt)

@@ -123,7 +123,7 @@ class HextreeAttention(torch.nn.Module):
         self.proj = torch.nn.Linear(dim, dim)
         self.proj_drop = torch.nn.Dropout(proj_drop)
         self.softmax = torch.nn.Softmax(dim=-1)
-        self.rpe = RPE2(patch_size, num_heads, dilation) if self.use_rpe else None
+        self.rpe = RPE(patch_size, num_heads, dilation) if self.use_rpe else None
 
     def forward(self, data: torch.Tensor, hextree: HextreeT, depth: int):
         H = self.num_heads
@@ -231,7 +231,7 @@ class HexFormerStage(torch.nn.Module):
     def forward(self, data: torch.Tensor, hextree: HextreeT, depth: int):
         for i in range(self.num_blocks):
             if self.use_checkpoint and self.training:
-                data = checkpoint(self.blocks[i], data, hextree, depth)
+                data = checkpoint(self.blocks[i], data, hextree, depth, use_reentrant=False)
             else:
                 data = self.blocks[i](data, hextree, depth)
             # if i % self.interval == 0 and i != 0:
@@ -285,7 +285,7 @@ class HexFormer(torch.nn.Module):
             dilation=dilation, nempty=nempty, num_blocks=num_blocks[i],)
             for i in range(self.num_stages)])
         self.feature_up = torch.nn.ModuleList([MLP(channels[i], int(
-            (channels[i]+channels[i+1])/2), channels[i+1]) for i in range(self.num_stages - 2)])
+            (channels[i]+channels[i+1])/2), channels[i+1]) for i in range(self.num_stages - 1)])
         self.downsample = HextreeAvgPoolXYZ()
 
     def forward(self, data: torch.Tensor, hextree: Hextree, depth: int):
@@ -300,7 +300,6 @@ class HexFormer(torch.nn.Module):
             data = self.layers[i](data, hextree, depth_i)
             features[depth_i] = data
             if i < self.num_stages - 1:
+                data = self.feature_up[i](data)
                 data = self.downsample(data, hextree, depth_i)
-                if i < self.num_stages - 2:
-                    data = self.feature_up[i](data)
         return features

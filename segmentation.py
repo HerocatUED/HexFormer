@@ -18,7 +18,7 @@ torch.multiprocessing.set_sharing_strategy('file_system')
 
 def save_pcd(batch, logit, path, rand_id: float):
     pred = logit.argmax(dim=1)
-    print(f"saving to {path}")
+    # print(f"saving to {path}")
     if not os.path.exists(path):
         os.makedirs(path)
     np.savez(path+'/points_{:.4f}.npz'.format(rand_id),
@@ -103,8 +103,8 @@ class SegSolver(Solver):
 
         # randomly save 1/100 data for visualization
         rand_id = np.random.uniform()
-        if batch['epoch'] == self.FLAGS.SOLVER.max_epoch and rand_id < 0.01:
-            save_pcd(batch, logit, self.logdir+'/result_sample', rand_id)
+        if batch['epoch'] % 10 == 0 and batch['epoch'] != 0 and rand_id < 0.01:
+            save_pcd(batch, logit, self.logdir+'/result_sample', batch['epoch'])
 
         names = ['test/loss', 'test/accu', 'test/mIoU'] + \
                 ['test/IoU_%d' % i for i in range(num_class)]

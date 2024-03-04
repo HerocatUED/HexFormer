@@ -1,7 +1,8 @@
 from typing import Optional
 import torch 
 import torch.nn as nn
-from torch_scatter import scatter_add
+from hextree.utils import scatter_add
+# from torch_scatter import scatter_add
 from hextree import Hextree, key2masked
 
 
@@ -37,6 +38,7 @@ def hextree_weighted_pooling_xyz(data: torch.Tensor,
     weighted_data = (weight[xyz_index] * data.unsqueeze(-1)).sum(dim=1)
 
     out = scatter_add(dim=0, index=idx, src=weighted_data)
+    
     if need_mean:
         out /= counts.unsqueeze(1)
     
@@ -60,6 +62,7 @@ def hextree_avg_pool_xyz(data: torch.Tensor,
     _, idx, counts = torch.unique(
             from_keys_masked, sorted=True, return_inverse=True, return_counts=True, dim=0)
     out = scatter_add(dim=0, index=idx, src=data)
+    
     out /= counts.unsqueeze(1)
 
     return out

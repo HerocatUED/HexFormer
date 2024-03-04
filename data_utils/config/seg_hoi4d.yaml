@@ -1,21 +1,22 @@
 SOLVER:
   gpu: 0,1,2,3
   run: train
-  logdir: logs/log_full
-  best_val: max:mIoU_part
+  logdir: logs/log_all
+  best_val: max:mIoU
 
   ckpt_num: 200
-  max_epoch: 250
+  max_epoch: 300
   test_every_epoch: 5
   log_per_iter: 10
 
-  weight_decay: 0.05
+  weight_decay: 0.005
   type: adamw_attn
 
-  lr: 0.0025
+  lr: 0.0015
   lr_type: step_warmup
-  warmup_epoch: 20
-  milestones: (180, 220)
+  gamma: 0.2
+  warmup_epoch: 5
+  milestones: (80, 160, 220, 260)
   dist_url: tcp://localhost:10002  # for distributed training
 
 DATA:
@@ -31,7 +32,6 @@ DATA:
     # angle: (5, 5, 180)
     angle: (0, 9, 0) # HOI4D
     scale: 0.2
-    # jitter: 0.1       # no jitter
     flip: (0.5, 0.5, 0.0)
     uniform: True
     cutmix: 0.0        # no cutmix
@@ -41,9 +41,10 @@ DATA:
     has_label: True
     location: dataset/hoi4d
     filelist: dataset/hoi4d/frame8_full/train_data.txt
-    batch_size: 8 # for a single GPU, real batch size = GPU_num * batch_size
+    # filelist: dataset/hoi4d/frame8/train_data1.txt
+    batch_size: 10 # for a single GPU, real batch size = GPU_num * batch_size
     shuffle: True
-    num_workers: 4
+    num_workers: 2
 
   test:
     name: hoi4d
@@ -56,7 +57,6 @@ DATA:
     distort: False  # no data augmentation by default
     angle: (5, 5, 180)
     scale: 0.2
-    # jitter: 0.1
     flip: (0.5, 0.5, 0.0)
     uniform: False
     crop_ratio: 0.8
@@ -64,11 +64,12 @@ DATA:
     cutmix: 0.0   # no cutmix
 
     # data loading
-    has_label: False
+    has_label: True
     location: dataset/hoi4d
+    # filelist: dataset/hoi4d/frame8/val_data1.txt
     filelist: dataset/hoi4d/frame8_full/val_data.txt
     # filelist: dataset/hoi4d/frame8_test/test_data.txt
-    batch_size: 4
+    batch_size: 8
     shuffle: False
     num_workers: 2
 
@@ -85,5 +86,5 @@ MODEL:
   # use_compile: True
 
 LOSS:
-  mask: -255
+  mask: -1
   num_class: 49
