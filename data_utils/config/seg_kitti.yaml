@@ -1,12 +1,12 @@
 SOLVER:
   gpu: 0,1,2,3
   run: train
-  logdir: logs/log_MultiScan-1
+  logdir: logs/log_MultiScan-12depth-64patch-DAasPTv3
   # NOTE: MultiScan has 26 classes
   best_val: max:mIoU
 
   ckpt_num: 20
-  max_epoch: 200
+  max_epoch: 100
   test_every_epoch: 5
   log_per_iter: 10
 
@@ -14,9 +14,9 @@ SOLVER:
   type: adamw_attn
 
   lr: 2e-3
-  lr_type: step_warmup
+  lr_type: cos_warmup
   warmup_epoch: 5
-  milestones: (70, 140)
+  # milestones: (70, 140)
   dist_url: tcp://localhost:10002  # for distributed training
 
 DATA:
@@ -29,13 +29,14 @@ DATA:
 
     # data augmentations
     distort: True
-    angle: (5, 5, 180)
-    scale: 0.2
+    angle: (0, 0, 180)
+    scale: 0.1
     flip: (0.5, 0.5, 0.0)
     uniform: True
     cutmix: 0.0        # no cutmix
-    crop_ratio: 0.9    # random ratio of random cropping
-    max_npt: 800000    # max point number of random cropping
+    # no crop for kitti
+    crop_ratio: 0.8    # random ratio of random cropping
+    max_npt: -1    # max point number of random cropping
     # data loading
     has_label: True
     location: dataset/kitti
