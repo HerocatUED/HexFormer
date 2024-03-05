@@ -1,8 +1,7 @@
 SOLVER:
   gpu: 0,1,2,3
   run: train
-  logdir: logs/log_MultiScan-12depth-64patch-DAasPTv3
-  # NOTE: MultiScan has 26 classes
+  logdir: logs/log_SingleScan # NOTE: MultiScan has 26 classes
   best_val: max:mIoU
 
   ckpt_num: 20
@@ -40,10 +39,10 @@ DATA:
     # data loading
     has_label: True
     location: dataset/kitti
-    filelist: dataset/kitti/frame8_MultiScan_8/train_data.txt
-    batch_size: 1 # for a single GPU, real batch size = GPU_num * batch_size
+    filelist: dataset/kitti/frame1_SingleScan/train_data.txt
+    batch_size: 8 # for a single GPU, real batch size = GPU_num * batch_size
     shuffle: True
-    num_workers: 1
+    num_workers: 2
 
   test:
     name: kitti
@@ -65,16 +64,16 @@ DATA:
     # data loading
     has_label: True
     location: dataset/kitti
-    filelist: dataset/kitti/frame8_MultiScan_8/val_data.txt
+    filelist: dataset/kitti/frame1_SingleScan/val_data.txt
     batch_size: 1
     shuffle: False
     num_workers: 1
 
 MODEL:
   name: hexsegformer_toy
-  feature: R
+  feature: G
   channel: 4
-  nout: 26
+  nout: 20
   nempty: True
   interp: nearest
   depth: 12
@@ -84,4 +83,4 @@ MODEL:
 
 LOSS:
   mask: -1
-  num_class: 26
+  num_class: 20
