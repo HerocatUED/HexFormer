@@ -219,14 +219,60 @@ def construct_dataset(dir_path:str, config_path: str, dataset_name: str, clip_le
     construct_test(dir_path, dataset_name, clip_length)
 
 
+def construct_filelist(dir_path:str, config_path: str, dataset_dir: str):
+    '''
+    Construct filelist.
+    mode: 'train' use 00-10; 'test' use 11-21.
+    
+    Args:
+    dir_path: path to KITTI.
+    config_path: path to KITTI config.
+    dataset_dir: path to save filelist.
+    '''  
+    train_list = ''
+    val_list = ''
+    test_list = ''
+
+    path = dir_path + '/dataset/sequences/'
+    videos = os.listdir(path)
+    videos.sort()
+    for video in videos:
+        pcd_dir = path + video + '/velodyne/'
+        pcd_files = os.listdir(pcd_dir)
+        pcd_files.sort()
+        if int(video) >= 11:
+            for pcd in pcd_files:
+                test_list += pcd_dir + pcd + '\n'
+        elif int(video) == 8:
+            for pcd in pcd_files:
+                val_list += pcd_dir + pcd + '\n'
+        else:
+            for pcd in pcd_files:
+                train_list += pcd_dir + pcd + '\n'
+                
+    f_train = open(f'{dataset_dir}/train_data.txt', 'w')
+    f_train.write(train_list)
+    f_train.close()
+    f_val = open(f'{dataset_dir}/val_data.txt', 'w')
+    f_val.write(val_list)
+    f_val.close()
+    f_test = open(f'{dataset_dir}/test_data.txt', 'w')
+    f_test.write(test_list)
+    f_test.close()
+    
+    
+    
+
 if __name__ == '__main__':
     
     # example of building dataset using KITTI
     clip_length = 8
     kitti_dir = '/mnt/sdc/wangrh/data/SemanticKITTI'
+    dataset_dir = '/mnt/sdc/wangx/HexFormer/dataset/kitti'
     dataset_name = f'/mnt/sdc/wangx/HexFormer/dataset/kitti/frame{clip_length}_MultiScan_8'
     config_path = '/mnt/sdc/wangx/HexFormer/data_utils/config/semantic-kitti-all.yaml'
-    construct_dataset(kitti_dir, config_path, dataset_name, clip_length)
+    # construct_dataset(kitti_dir, config_path, dataset_name, clip_length)
+    construct_filelist(kitti_dir, config_path, dataset_dir)
 
 
     

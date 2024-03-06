@@ -98,40 +98,49 @@ class ReadBin:
     def __init__(self, has_label: bool = False):
         self.has_label = has_label
         self.config_file = '/mnt/sdc/wangx/HexFormer/data_utils/config/semantic-kitti-all.yaml'
+        self.poses = []
+        for i in range(22):
+            filename = '/mnt/sdc/wangrh/data/SemanticKITTI/dataset/sequences/{:0>2d}/poses.txt'.format(i)
+            pose = np.loadtxt(filename).reshape(-1, 3, 4).transpose((0, 2, 1))
+            self.poses.append(pose)
 
     def __call__(self, filename: str):
         output = dict()
-        root_pos = filename.find('velodyne')
+        root_pos = filename.find('/velodyne')
         assert root_pos > 0 # not found will be -1
         root_dir = filename[: root_pos]
-        frame_num = int(filename[root_pos+9: filename.find('.bin')])
+        sequence_id = int(root_dir[-2:])
+        frame_num = int(filename[root_pos+10: filename.find('.bin')])
         
         # point clouds
         pcds = []
-        for i in range(max(frame_num - 3, 0), frame_num + 1):
-            scan_name = root_dir + 'velodyne/{:0>6d}.bin'.format(i)
+        past_frame = max(frame_num - 3, 0)
+        if frame_num == 2: 
+            past_frame = 1
+        j = 0
+        for i in range(past_frame, frame_num + 1):
+            scan_name = root_dir + '/velodyne/{:0>6d}.bin'.format(i)
             scan = np.fromfile(scan_name, dtype=np.float32)
             scan = scan.reshape((-1, 4))
             points = np.ones_like(scan)
             # put in attribute
-            points[:, 1:3] = scan[:, 0:3]    # get xyz
-            points[:, 0] *= i
-            pcds.append(points)  
-        output['points'] = np.array(pcds).reshape(-1, 4)
+            R, T = self.poses[sequence_id][i, :3], self.poses[sequence_id][i, -1]
+            points[:, 1:] = scan[:, 0:3] @ R + T    # get xyz
+            points[:, 0] *= j
+            pcds.append(points) 
+            j = j + 1
+        output['points'] = np.vstack(pcds)
         
         # label
         if self.has_label:
-            labels = []
-            for i in range(max(frame_num - 3, 0), frame_num + 1):
-                label_name = root_dir + 'labels/{:0>6d}.label'.format(i)
-                label = np.fromfile(label_name, dtype=np.uint32)
-                label = label.reshape((-1))
-                sem_label = label & 0xFFFF  # semantic label in lower half
-                inst_label = label >> 16    # instance id in upper half
-                # sanity check
-                assert((sem_label + (inst_label << 16) == label).all())
-                labels.append(remap(sem_label, self.config_file))
-            output['labels'] =  np.array(labels).reshape(-1)
+            label_name = root_dir + '/labels/{:0>6d}.label'.format(frame_num)
+            label = np.fromfile(label_name, dtype=np.uint32)
+            label = label.reshape((-1))
+            sem_label = label & 0xFFFF  # semantic label in lower half
+            inst_label = label >> 16    # instance id in upper half
+            # sanity check
+            assert((sem_label + (inst_label << 16) == label).all())
+            output['labels'] = remap(sem_label, self.config_file)
         
         return output
     
@@ -228,8 +237,10 @@ class Transform:
         #     points.orient_normal(self.orient_normal)
 
         # !!! NOTE: Clip the point cloud to [-1, 1] before building the hextree
-        inbox_mask = points.clip_xyz(bbmin=-1, bbmax=1)
-        return {'points': points, 'inbox_mask': inbox_mask}
+        # inbox_mask = points.clip_xyz(bbmin=-1, bbmax=1)
+        # return {'points': points, 'inbox_mask': inbox_mask}
+    
+        return {'points': points}
 
     def points2hextree(self, points: Points):
         ''' 

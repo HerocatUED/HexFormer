@@ -53,21 +53,25 @@ class SegSolver(Solver):
             batch['points'] = batch['points'].cuda(non_blocking=True)
         else:
             points = [pts.cuda(non_blocking=True) for pts in batch['points']]
+            query_mask = [pts.points[:, 0] == torch.max(pts.points[:, 0]) for pts in points]
             hextrees = [points2hextree(pts) for pts in points]
             hextree = merge_hextrees(hextrees)
             # hextree.construct_all_neigh()
             batch['points'] = merge_points(points)
             batch['hextree'] = hextree
+            batch['query_mask'] = torch.hstack(query_mask)
         return batch
 
     def model_forward(self, batch):
         hextree, points = batch['hextree'], batch['points']
         data = self.get_input_feature(hextree)
+        
         query_pts = torch.cat([points.points, points.batch_id], dim=1)
-
+        query_pts = query_pts[batch['query_mask']]
         logit = self.model(data, hextree, hextree.depth, query_pts)
-        label_mask = points.labels > self.FLAGS.LOSS.mask  # filter labels
-        return logit[label_mask], points.labels[label_mask]
+        # label_mask = points.labels > self.FLAGS.LOSS.mask  # filter labels
+        # return logit[label_mask], points.labels[label_mask]
+        return logit, points.labels
 
     def config_optimizer(self):
         flags = self.FLAGS.SOLVER

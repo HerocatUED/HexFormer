@@ -52,18 +52,18 @@ class HOI4DTransform(Transform):
 
         # transform including rotatation, translation, scaling, and flipping
         output = self.transform(pcds, idx)   # points and inbox_mask
-        points, inbox_mask = output['points'], output['inbox_mask']
+        points = output['points']
 
         # random crop
         if self.distort:
             max_npt = self.flags.max_npt if self.flags.max_npt > 0 else points.npt
             max_npt = min(max_npt, int(points.npt * self.flags.crop_ratio))
             points, crop_mask = rand_crop(points, max_npt)
-            inbox_mask[inbox_mask.clone()] = crop_mask   # update inbox_mask
+            # inbox_mask[inbox_mask.clone()] = crop_mask   # update inbox_mask
 
         # align z
         points = align_z(points)
-        return {'points': points, 'inbox_mask': inbox_mask}
+        return {'points': points}
 
 
 # def apply_cutmix(points: List[Points], cutmix: float):
