@@ -54,7 +54,7 @@ def hexsegformer_toy(in_channels, out_channels, init_depth, **kwargs):
         patch_size=64, dilation=4,
         drop_path=0.3, nempty=True,
         stem_down=2, head_up=2,
-        fpn_channel=168,
+        fpn_channel=128,
         head_drop=[0.5, 0.5], 
         init_depth=init_depth)
 

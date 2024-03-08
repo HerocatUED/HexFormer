@@ -8,23 +8,23 @@ from plyfile import PlyData
 from hextree import Points, Hextree
 
 
-def remap(semantic: np.array, config_path: str, inverse: bool = False):
+def remap(semantic: np.array, cfg, inverse: bool = False):
     '''
     Remap semantic classes.
     
     Args:
     semantic: semantic classes to remap.
-    config_path: path to KITTI config.
+    cfg: KITTI config data.
     inverse: class2num if True, num2class if False. NOTE: See KITTI config for more.
     '''
-    DATA = yaml.safe_load(open(config_path, 'r'))
+    # DATA = yaml.safe_load(open(config_path, 'r'))
 
     # get number of interest classes, and the label mappings
     if inverse:
         print("Mapping xentropy to original labels")
-        remapdict = DATA["learning_map_inv"]
+        remapdict = cfg["learning_map_inv"]
     else:
-        remapdict = DATA["learning_map"]
+        remapdict = cfg["learning_map"]
 
     # make lookup table for mapping
     maxkey = max(remapdict.keys())
@@ -33,15 +33,6 @@ def remap(semantic: np.array, config_path: str, inverse: bool = False):
     remap_lut = np.zeros((maxkey + 100), dtype=np.int32)
     remap_lut[list(remapdict.keys())] = list(remapdict.values())
     return remap_lut[semantic]
-
-
-def local2global(pcds, frame):
-    filename = '/mnt/sdc/wangrh/data/SemanticKITTI/dataset/sequences/00/poses.txt'
-    poses = np.loadtxt(filename).reshape(-1, 3, 4)
-    pose = poses[frame]
-    R, T = pose[:, :3], pose[:, 3]
-    global_pcds = R @ pcds + T
-    return global_pcds
     
 
 class ReadPly:
@@ -94,10 +85,11 @@ class ReadNpz:
 
 
 class ReadBin:
-
+    # NOTE: noly used to load SemanticKITTI
     def __init__(self, has_label: bool = False):
         self.has_label = has_label
-        self.config_file = '/mnt/sdc/wangx/HexFormer/data_utils/config/semantic-kitti-all.yaml'
+        self.config_path = '/mnt/sdc/wangx/HexFormer/data_utils/config/semantic-kitti-all.yaml'
+        self.cfg = yaml.safe_load(open(self.config_path, 'r'))
         self.poses = []
         for i in range(22):
             filename = '/mnt/sdc/wangrh/data/SemanticKITTI/dataset/sequences/{:0>2d}/poses.txt'.format(i)
@@ -122,10 +114,12 @@ class ReadBin:
             scan_name = root_dir + '/velodyne/{:0>6d}.bin'.format(i)
             scan = np.fromfile(scan_name, dtype=np.float32)
             scan = scan.reshape((-1, 4))
-            points = np.ones_like(scan)
+            N = np.shape(scan)[0]
+            points = np.ones((N, 5))
             # put in attribute
             R, T = self.poses[sequence_id][i, :3], self.poses[sequence_id][i, -1]
-            points[:, 1:] = scan[:, 0:3] @ R + T    # get xyz
+            points[:, 1:4] = scan[:, 0:3] @ R + T    # get xyz
+            points[:, 4] = scan[:, 3] # density
             points[:, 0] *= j
             pcds.append(points) 
             j = j + 1
@@ -140,7 +134,7 @@ class ReadBin:
             inst_label = label >> 16    # instance id in upper half
             # sanity check
             assert((sem_label + (inst_label << 16) == label).all())
-            output['labels'] = remap(sem_label, self.config_file)
+            output['labels'] = remap(sem_label, self.cfg)
         
         return output
     

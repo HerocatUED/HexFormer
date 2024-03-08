@@ -71,8 +71,9 @@ DATA:
 
 MODEL:
   name: hexsegformer_toy
-  feature: GP
-  channel: 7
+  feature: GF # G -> Position txyz (4 channels);
+              # F -> Lidar Density (1 channel)
+  channel: 5 
   nout: 26
   nempty: True
   interp: nearest
