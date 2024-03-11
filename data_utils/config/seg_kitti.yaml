@@ -1,11 +1,11 @@
 SOLVER:
   gpu: 0,1,2,3
   run: train
-  logdir: logs/log_MultiScan # NOTE: MultiScan has 26 classes
+  logdir: logs/log_MultiScan-GF # NOTE: MultiScan has 26 classes
   best_val: max:mIoU
 
   ckpt_num: 20
-  max_epoch: 100
+  max_epoch: 50
   test_every_epoch: 5
   log_per_iter: 10
 
@@ -72,11 +72,11 @@ DATA:
 MODEL:
   name: hexsegformer_toy
   feature: GF # G -> Position txyz (4 channels);
-              # F -> Lidar Density (1 channel)
+            # F -> Lidar Density (1 channel)
   channel: 5 
   nout: 26
   nempty: True
-  interp: nearest
+  interp: linear
   depth: 12
   sync_bn: True
   find_unused_parameters: False

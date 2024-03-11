@@ -115,7 +115,7 @@ class ReadBin:
             scan = np.fromfile(scan_name, dtype=np.float32)
             scan = scan.reshape((-1, 4))
             N = np.shape(scan)[0]
-            points = np.ones((N, 5))
+            points = np.ones((N, 5), dtype=np.float32)
             # put in attribute
             R, T = self.poses[sequence_id][i, :3], self.poses[sequence_id][i, -1]
             points[:, 1:4] = scan[:, 0:3] @ R + T    # get xyz

@@ -48,7 +48,7 @@ class KITTITransform(Transform):
         # construct and normalize points
         pcds = Points(points=torch.from_numpy(sample['points'][:, :4]),
                       labels=torch.from_numpy(sample['labels']),
-                      features=torch.from_numpy(sample['points'][:, 4]))
+                      features=torch.from_numpy(sample['points'][:, 4:]))
         pcds.normalize_xyz(keep_shape=True)
 
         # transform including rotatation, translation, scaling, and flipping
