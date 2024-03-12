@@ -2,6 +2,5 @@
 .vscode
 *.npy
 *.npz
-logs
 dataset
-logs-hoi4d
+logs*

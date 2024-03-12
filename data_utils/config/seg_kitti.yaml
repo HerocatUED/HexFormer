@@ -1,12 +1,11 @@
 SOLVER:
   gpu: 0,1,2,3
   run: train
-  logdir: logs/log_MultiScan-12depth-64patch-DAasPTv3
-  # NOTE: MultiScan has 26 classes
+  logdir: logs/log_MultiScan-GF # NOTE: MultiScan has 26 classes
   best_val: max:mIoU
 
   ckpt_num: 20
-  max_epoch: 100
+  max_epoch: 50
   test_every_epoch: 5
   log_per_iter: 10
 
@@ -39,9 +38,9 @@ DATA:
     max_npt: -1    # max point number of random cropping
     # data loading
     has_label: True
-    location: dataset/kitti
-    filelist: dataset/kitti/frame8_MultiScan_8/train_data.txt
-    batch_size: 1 # for a single GPU, real batch size = GPU_num * batch_size
+    # location: dataset/kitti
+    filelist: dataset/kitti/train_data.txt
+    batch_size: 2 # for a single GPU, real batch size = GPU_num * batch_size
     shuffle: True
     num_workers: 1
 
@@ -64,16 +63,17 @@ DATA:
 
     # data loading
     has_label: True
-    location: dataset/kitti
-    filelist: dataset/kitti/frame8_MultiScan_8/val_data.txt
+    # location: dataset/kitti
+    filelist: dataset/kitti/val_data.txt
     batch_size: 1
     shuffle: False
     num_workers: 1
 
 MODEL:
   name: hexsegformer_toy
-  feature: R
-  channel: 4
+  feature: GF # G -> Position txyz (4 channels);
+            # F -> Lidar Density (1 channel)
+  channel: 5 
   nout: 26
   nempty: True
   interp: nearest
@@ -83,5 +83,5 @@ MODEL:
   # use_compile: True
 
 LOSS:
-  mask: -1
+  mask: 0
   num_class: 26

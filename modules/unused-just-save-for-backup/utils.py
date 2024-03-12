@@ -6,6 +6,33 @@ import numpy as np
 from plyfile import PlyData
 
 from hextree import Points, Hextree
+
+
+def remap(semantic: np.array, cfg, inverse: bool = False):
+    '''
+    Remap semantic classes.
+    
+    Args:
+    semantic: semantic classes to remap.
+    cfg: KITTI config data.
+    inverse: class2num if True, num2class if False. NOTE: See KITTI config for more.
+    '''
+    # DATA = yaml.safe_load(open(config_path, 'r'))
+
+    # get number of interest classes, and the label mappings
+    if inverse:
+        print("Mapping xentropy to original labels")
+        remapdict = cfg["learning_map_inv"]
+    else:
+        remapdict = cfg["learning_map"]
+
+    # make lookup table for mapping
+    maxkey = max(remapdict.keys())
+
+    # +100 hack making lut bigger just in case there are unknown labels
+    remap_lut = np.zeros((maxkey + 100), dtype=np.int32)
+    remap_lut[list(remapdict.keys())] = list(remapdict.values())
+    return remap_lut[semantic]
     
 
 class ReadPly:
@@ -55,6 +82,61 @@ class ReadNpz:
         if self.has_label:
             output['labels'] = raw['labels'].astype(np.int32)
         return output
+
+
+class ReadBin:
+    # NOTE: noly used to load SemanticKITTI
+    def __init__(self, has_label: bool = False):
+        self.has_label = has_label
+        self.config_path = '/mnt/sdc/wangx/HexFormer/data_utils/config/semantic-kitti-all.yaml'
+        self.cfg = yaml.safe_load(open(self.config_path, 'r'))
+        self.poses = []
+        for i in range(22):
+            filename = '/mnt/sdc/wangrh/data/SemanticKITTI/dataset/sequences/{:0>2d}/poses.txt'.format(i)
+            pose = np.loadtxt(filename).reshape(-1, 3, 4).transpose((0, 2, 1))
+            self.poses.append(pose)
+
+    def __call__(self, filename: str):
+        output = dict()
+        root_pos = filename.find('/velodyne')
+        assert root_pos > 0 # not found will be -1
+        root_dir = filename[: root_pos]
+        sequence_id = int(root_dir[-2:])
+        frame_num = int(filename[root_pos+10: filename.find('.bin')])
+        
+        # point clouds
+        pcds = []
+        past_frame = max(frame_num - 3, 0)
+        if frame_num == 2: 
+            past_frame = 1
+        j = 0
+        for i in range(past_frame, frame_num + 1):
+            scan_name = root_dir + '/velodyne/{:0>6d}.bin'.format(i)
+            scan = np.fromfile(scan_name, dtype=np.float32)
+            scan = scan.reshape((-1, 4))
+            N = np.shape(scan)[0]
+            points = np.ones((N, 5), dtype=np.float32)
+            # put in attribute
+            R, T = self.poses[sequence_id][i, :3], self.poses[sequence_id][i, -1]
+            points[:, 1:4] = scan[:, 0:3] @ R + T    # get xyz
+            points[:, 4] = scan[:, 3] # density
+            points[:, 0] *= j
+            pcds.append(points) 
+            j = j + 1
+        output['points'] = np.vstack(pcds)
+        
+        # label
+        if self.has_label:
+            label_name = root_dir + '/labels/{:0>6d}.label'.format(frame_num)
+            label = np.fromfile(label_name, dtype=np.uint32)
+            label = label.reshape((-1))
+            sem_label = label & 0xFFFF  # semantic label in lower half
+            inst_label = label >> 16    # instance id in upper half
+            # sanity check
+            assert((sem_label + (inst_label << 16) == label).all())
+            output['labels'] = remap(sem_label, self.cfg)
+        
+        return output
     
 
 class ReadFile:
@@ -63,9 +145,10 @@ class ReadFile:
                  has_label: bool = False):
         self.read_npz = ReadNpz(has_normal, has_color, has_label)
         self.read_ply = ReadPly(has_normal, has_color, has_label)
+        self.read_bin = ReadBin(has_label)
 
     def __call__(self, filename: str):
-        func = {'npz': self.read_npz, 'ply': self.read_ply}
+        func = {'npz': self.read_npz, 'ply': self.read_ply, 'bin': self.read_bin}
         suffix = filename.split('.')[-1]
         return func[suffix](filename)
 

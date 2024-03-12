@@ -1,6 +1,6 @@
 # build HOI4D dataset for Solver
 
-
+import yaml
 import torch
 import numpy as np
 
@@ -11,9 +11,9 @@ from typing import List
 from .utils import ReadFile, Transform
 
 
-def align_z(points: Points):
-    points.points[:, 3] -= points.points[:, 3].min()
-    return points
+# def align_z(points: Points):
+#     points.points[:, 3] -= points.points[:, 3].min()
+#     return points
 
 
 def rand_crop(points: Points, max_npt: int):
@@ -37,68 +37,135 @@ class KITTITransform(Transform):
     def __init__(self, flags):
         super().__init__(**flags)
 
-        # The `self.scale_factor` is used to normalize the input point cloud to the
-        # range of [-1, 1]. If this parameter is modified, the `self.elastic_params`
-        # and the `jittor` in the data augmentation should be scaled accordingly.
-        # self.scale_factor = 5.12
-        # self.scale_factor = 10.24
         self.flags = flags
 
     def __call__(self, sample, idx=None):
         # construct and normalize points
-        txyz = torch.from_numpy(sample['points'])
-        txyz[:, 0] = txyz[:, 0] - torch.min(txyz[:, 0])
-        pcds = Points(points=txyz,
-                      labels=torch.from_numpy(sample['labels']))
+        pcds = Points(points=torch.from_numpy(sample['points'][:, :4]),
+                      labels=torch.from_numpy(sample['labels']),
+                      features=torch.from_numpy(sample['points'][:, 4:]))
         pcds.normalize_xyz(keep_shape=True)
 
         # transform including rotatation, translation, scaling, and flipping
         output = self.transform(pcds, idx)   # points and inbox_mask
-        points, inbox_mask = output['points'], output['inbox_mask']
-
-        # random crop
-        if self.distort:
-            max_npt = self.flags.max_npt if self.flags.max_npt > 0 else points.npt
-            max_npt = min(max_npt, int(points.npt * self.flags.crop_ratio))
-            points, crop_mask = rand_crop(points, max_npt)
-            inbox_mask[inbox_mask.clone()] = crop_mask   # update inbox_mask
+        points = output['points']
 
         # align z
-        points = align_z(points)
-        return {'points': points, 'inbox_mask': inbox_mask}
+        # points = align_z(points)
+        return {'points': points}
 
 
-# def apply_cutmix(points: List[Points], cutmix: float):
-#     if cutmix <= 0:
-#         return points
+class ReadKITTI:
+    def __init__(self, has_label: bool = False):
+        self.has_label = has_label
+        self.config_path = '/mnt/sdc/wangx/HexFormer/data_utils/config/semantic-kitti-all.yaml'
+        self.cfg = yaml.safe_load(open(self.config_path, 'r'))
+        self.poses = []
+        for i in range(22):
+            filename = '/mnt/sdc/wangrh/data/SemanticKITTI/dataset/sequences/{:0>2d}/poses.txt'.format(i)
+            pose = np.loadtxt(filename).reshape(-1, 3, 4)
+            self.poses.append(pose)
+        self.cam2vel = np.array([
+            [0, 0, 1, 0],
+            [-1, 0, 0, 0],
+            [0, -1, 0, 0.08],
+            [0, 0, 0, 1]
+        ])
+        self.vel2cam = np.array([
+            [0, -1, 0, 0],
+            [0, 0, -1, 0],
+            [1, 0, 0, -0.08],
+            [0, 0, 0, 1]
+        ])
 
-#     batch_size = len(points)
-#     outputs = [None] * batch_size
-#     for i in range(batch_size):
-#         j = (i + 1) % batch_size
-#         points_a = points[i]
-#         points_b = points[j]
+    def __call__(self, filename: str):
+        output = dict()
+        root_pos = filename.find('/velodyne')
+        assert root_pos > 0 # not found will be -1
+        root_dir = filename[: root_pos]
+        sequence_id = int(root_dir[-2:])
+        frame_num = int(filename[root_pos+10: filename.find('.bin')])
+        
+        # point clouds
+        pcds = []
+        past_frame = max(frame_num - 3, 0)
+        if frame_num == 2: 
+            past_frame = 1
+        j = 0
+        for i in range(past_frame, frame_num + 1):
+            scan_name = root_dir + '/velodyne/{:0>6d}.bin'.format(i)
+            scan = np.fromfile(scan_name, dtype=np.float32)
+            scan = scan.reshape((-1, 4))
+            N = np.shape(scan)[0]
+            points = np.ones((N, 5), dtype=np.float32)
+            # put in attribute
+            points[:, 1:4] = self.local2global(scan[:, 0:3], i, sequence_id)    # get xyz
+            points[:, 4] = scan[:, 3] # density
+            points[:, 0] *= j
+            pcds.append(points) 
+            j = j + 1
+        output['points'] = np.vstack(pcds)
+        
+        # label
+        if self.has_label:
+            label_name = root_dir + '/labels/{:0>6d}.label'.format(frame_num)
+            label = np.fromfile(label_name, dtype=np.uint32)
+            label = label.reshape((-1))
+            sem_label = label & 0xFFFF  # semantic label in lower half
+            inst_label = label >> 16    # instance id in upper half
+            # sanity check
+            assert((sem_label + (inst_label << 16) == label).all())
+            output['labels'] = self.remap(sem_label)
+        
+        return output
+    
+    def local2global(self, pcd: np.array, frame_id: int, sequence_id: int):
+        '''
+        Trans local coordinates to global coordinates.
+        
+        Args:
+        pcd: local xyz coordinates.
+        frame_id: ID of frame that point cloud belones to.
+        sequence_id: ID of sequence that point cloud belones to.
+        '''
+        # cam2cam transition matrix
+        matrix = np.zeros((4, 4))
+        matrix[:3] = self.poses[sequence_id][frame_id]
+        matrix[3, 3] = 1
+        # prepare local_xyz matrix
+        local_xyz = np.ones((np.shape(pcd)[0], 4))
+        local_xyz[:, :3] = pcd
+        local_xyz = np.expand_dims(local_xyz, axis=-1)
+        # vel2cel transition matrix
+        trans_matrix = self.cam2vel @ matrix @ self.vel2cam
+        # global_xyz
+        global_xyz = (trans_matrix @ local_xyz).reshape((-1, 4))
+        
+        return global_xyz[:, :3]
+    
+    def remap(self, semantic: np.array, inverse: bool = False):
+        '''
+        Remap semantic classes.
+        
+        Args:
+        semantic: semantic classes to remap.
+        inverse: class2num if True, num2class if False. NOTE: See KITTI config for more.
+        '''
+        
+        # get number of interest classes, and the label mappings
+        if inverse:
+            print("Mapping xentropy to original labels")
+            remapdict = self.cfg["learning_map_inv"]
+        else:
+            remapdict = self.cfg["learning_map"]
 
-#         npt_a = points_a.points.shape[0]
-#         npt_b = points_b.points.shape[0]
-#         na = int(cutmix * npt_a)
-#         nb = int((1 - cutmix) * npt_b)
+        # make lookup table for mapping
+        maxkey = max(remapdict.keys())
 
-#         rand_idx = torch.randint(0, npt_a, size=(1,))
-#         rand_pts = points_a.points[rand_idx]
-#         dist_a, idx_a = torch.sort(
-#             torch.sum((points_a.points - rand_pts)**2, 1))
-#         cut_a = idx_a[:na]
-
-#         dist_b = torch.sum((points_b.points - rand_pts)**2, 1) - dist_a[na]
-#         mask_b = dist_b < 0
-#         dist_b[mask_b] += 1.0e3
-#         dist_b, idx_b = torch.sort(dist_b)
-#         cut_b = idx_b[:nb]
-
-#         outputs[i] = merge_points(
-#             [points_a[cut_a], points_b[cut_b]], update_batch_info=False)
-#     return outputs
+        # +100 hack making lut bigger just in case there are unknown labels
+        remap_lut = np.zeros((maxkey + 100), dtype=np.int32)
+        remap_lut[list(remapdict.keys())] = list(remapdict.values())
+        return remap_lut[semantic]
 
 
 class CollateBatch:
@@ -113,18 +180,12 @@ class CollateBatch:
         # a list of dicts -> a dict of lists
         outputs = {key: [b[key] for b in batch] for key in batch[0].keys()}
 
-        # apply cutmix
-        points = outputs['points']
-        if self.cutmix > 0:  # and torch.rand(1) > 0.3:
-            raise NotImplementedError
-            points = apply_cutmix(points, self.cutmix)
-        outputs['points'] = points
         return outputs
 
 
 def get_kitti_seg_dataset(flags):
     transform = KITTITransform(flags)
-    read_file = ReadFile(has_normal=False, has_color=False, has_label=flags.has_label)
+    read_file = ReadKITTI(has_label=flags.has_label)
     collate_batch = CollateBatch(flags.cutmix)
 
     dataset = Dataset(flags.location, flags.filelist,
