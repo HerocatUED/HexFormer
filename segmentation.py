@@ -69,9 +69,8 @@ class SegSolver(Solver):
         query_pts = torch.cat([points.points, points.batch_id], dim=1)
         query_pts = query_pts[batch['query_mask']]
         logit = self.model(data, hextree, hextree.depth, query_pts)
-        # label_mask = points.labels > self.FLAGS.LOSS.mask  # filter labels
-        # return logit[label_mask], points.labels[label_mask]
-        return logit, points.labels
+        label_mask = points.labels > self.FLAGS.LOSS.mask  # filter labels
+        return logit[label_mask], points.labels[label_mask]
 
     def config_optimizer(self):
         flags = self.FLAGS.SOLVER

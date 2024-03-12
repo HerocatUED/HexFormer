@@ -3,6 +3,37 @@ import yaml
 import numpy as np
 import matplotlib.pyplot as plt
 
+cam2vel = np.array([
+            [0, 0, 1, 0],
+            [-1, 0, 0, 0],
+            [0, -1, 0, 0.08],
+            [0, 0, 0, 1]
+        ])
+vel2cam = np.array([
+    [0, -1, 0, 0],
+    [0, 0, -1, 0],
+    [1, 0, 0, -0.08],
+    [0, 0, 0, 1]
+])
+
+def local2global(pose, pcd: np.array, frame_id: int, sequence_id: int):
+        '''
+        Trans local coordinates to global coordinates.
+        
+        Args:
+        pcd: local xyz coordinates.
+        frame_id: ID of frame that point cloud belones to.
+        sequence_id: ID of sequence that point cloud belones to.
+        '''
+        matrix = np.zeros((4, 4))
+        matrix[:3] = pose[frame_id]
+        matrix[3, 3] = 1
+        local_xyz = np.ones((np.shape(pcd)[0], 4))
+        local_xyz[:, :3] = pcd
+        local_xyz = np.expand_dims(local_xyz, axis=-1)
+        trans_matrix = cam2vel @ matrix @ vel2cam
+        global_xyz = (trans_matrix @ local_xyz).reshape((-1, 4))
+        return global_xyz[:, :3]
 
 def remap(semantic: np.array, cfg, inverse: bool = False):
     '''
@@ -78,7 +109,8 @@ def kitti_pcd(filename: str):
     config_path = '/mnt/sdc/wangx/HexFormer/data_utils/config/semantic-kitti-all.yaml'
     cfg = yaml.safe_load(open(config_path, 'r'))
     posefile = '/mnt/sdc/wangrh/data/SemanticKITTI/dataset/sequences/{:0>2d}/poses.txt'.format(0)
-    pose = np.loadtxt(posefile).reshape(-1, 3, 4).transpose((0, 2, 1))
+    pose = np.loadtxt(posefile).reshape(-1, 3, 4)
+    
     
     output = dict()
     root_pos = filename.find('/velodyne')
@@ -99,11 +131,7 @@ def kitti_pcd(filename: str):
         N = np.shape(scan)[0]
         points = np.ones((N, 4), dtype=np.float32)
         # put in attribute
-        # R, T = np.expand_dims(pose[i][:, :3], 0), pose[i][:, -1]
-        # local_pcds = np.expand_dims(scan[:, 0:3], -1)
-        # points[:, 1:4] = np.matmul(R, local_pcds).reshape(-1, 3) + T   # get xyz
-        R, T = pose[i, :3], pose[i, -1]
-        points[:, 1:4] = scan[:, 0:3] @ R + T
+        points[:, 1:4] = local2global(pose, scan[:, 0:3], i, 0) # get xyz
         # points[:, 4:] = scan[:, 3:] # density
         points[:, 0] *= j
         pcds.append(points) 

@@ -76,12 +76,12 @@ MODEL:
   channel: 5 
   nout: 26
   nempty: True
-  interp: linear
+  interp: nearest
   depth: 12
   sync_bn: True
   find_unused_parameters: False
   # use_compile: True
 
 LOSS:
-  mask: -1
+  mask: 0
   num_class: 26
