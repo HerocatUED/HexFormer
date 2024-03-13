@@ -1,15 +1,15 @@
 SOLVER:
   gpu: 0,1,2,3
   run: train
-  logdir: logs/log_MultiScan-GF # NOTE: MultiScan has 26 classes
+  logdir: logs/log_MultiScan_GF_EncoderDecoder # NOTE: MultiScan has 26 classes
   best_val: max:mIoU
 
   ckpt_num: 20
-  max_epoch: 50
-  test_every_epoch: 5
+  max_epoch: 30
+  test_every_epoch: 2
   log_per_iter: 10
 
-  weight_decay: 5e-3
+  weight_decay: 1e-3
   type: adamw_attn
 
   lr: 2e-3
@@ -40,7 +40,7 @@ DATA:
     has_label: True
     # location: dataset/kitti
     filelist: dataset/kitti/train_data.txt
-    batch_size: 2 # for a single GPU, real batch size = GPU_num * batch_size
+    batch_size: 3 # for a single GPU, real batch size = GPU_num * batch_size
     shuffle: True
     num_workers: 1
 
