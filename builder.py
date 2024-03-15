@@ -48,13 +48,13 @@ def hexsegformer_small(in_channels, out_channels, init_depth, **kwargs):
 def hexsegformer_toy(in_channels, out_channels, init_depth, **kwargs):
     return HexFormerSeg(
         in_channels, out_channels,
-        channels=[48, 96, 192, 192],
+        channels=[32, 64, 128, 256],
         num_blocks=[2, 2, 6, 2],
         num_heads=[4, 8, 16, 32],
         patch_size=64, dilation=4,
         drop_path=0.3, nempty=True,
         stem_down=2, head_up=2,
-        fpn_channel=128,
+        fpn_channel=96,
         head_drop=[0.5, 0.5], 
         init_depth=init_depth)
 

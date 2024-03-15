@@ -1,15 +1,15 @@
 SOLVER:
   gpu: 0,1,2,3
   run: train
-  logdir: logs/log_MultiScan-GF # NOTE: MultiScan has 26 classes
+  logdir: logs/log_MultiScan_GF_EncoderDecoder # NOTE: MultiScan has 26 classes
   best_val: max:mIoU
 
   ckpt_num: 20
   max_epoch: 50
-  test_every_epoch: 5
+  test_every_epoch: 1
   log_per_iter: 10
 
-  weight_decay: 5e-3
+  weight_decay: 1e-4
   type: adamw_attn
 
   lr: 2e-3
@@ -29,7 +29,7 @@ DATA:
     # data augmentations
     distort: True
     angle: (0, 0, 180)
-    scale: 0.1
+    scale: 0.05
     flip: (0.5, 0.5, 0.0)
     uniform: True
     cutmix: 0.0        # no cutmix
@@ -38,7 +38,7 @@ DATA:
     max_npt: -1    # max point number of random cropping
     # data loading
     has_label: True
-    # location: dataset/kitti
+    location: /mnt/sdc/wangrh/data/SemanticKITTI
     filelist: dataset/kitti/train_data.txt
     batch_size: 2 # for a single GPU, real batch size = GPU_num * batch_size
     shuffle: True
@@ -63,7 +63,7 @@ DATA:
 
     # data loading
     has_label: True
-    # location: dataset/kitti
+    location: /mnt/sdc/wangrh/data/SemanticKITTI
     filelist: dataset/kitti/val_data.txt
     batch_size: 1
     shuffle: False

@@ -1,5 +1,6 @@
-# build HOI4D dataset for Solver
+# build KITTI dataset for Solver
 
+import os
 import yaml
 import torch
 import numpy as np
@@ -56,13 +57,13 @@ class KITTITransform(Transform):
 
 
 class ReadKITTI:
-    def __init__(self, has_label: bool = False):
+    def __init__(self, kitti_dir: str, has_label: bool = False):
         self.has_label = has_label
-        self.config_path = '/mnt/sdc/wangx/HexFormer/data_utils/config/semantic-kitti-all.yaml'
+        self.config_path = 'data_utils/config/semantic-kitti-all.yaml'
         self.cfg = yaml.safe_load(open(self.config_path, 'r'))
         self.poses = []
         for i in range(22):
-            filename = '/mnt/sdc/wangrh/data/SemanticKITTI/dataset/sequences/{:0>2d}/poses.txt'.format(i)
+            filename = kitti_dir + '/dataset/sequences/{:0>2d}/poses.txt'.format(i)
             pose = np.loadtxt(filename).reshape(-1, 3, 4)
             self.poses.append(pose)
         self.cam2vel = np.array([
@@ -185,9 +186,58 @@ class CollateBatch:
 
 def get_kitti_seg_dataset(flags):
     transform = KITTITransform(flags)
-    read_file = ReadKITTI(has_label=flags.has_label)
+    read_file = ReadKITTI(has_label=flags.has_label, kitti_dir=flags.location)
     collate_batch = CollateBatch(flags.cutmix)
 
     dataset = Dataset(flags.location, flags.filelist,
                       transform, read_file=read_file)
     return dataset, collate_batch
+
+
+def construct_filelist(kitti_dir:str, dataset_dir: str):
+    '''
+    Construct filelist.
+    mode: 'train' use 00-10; 'test' use 11-21.
+    
+    Args:
+    kitti_dir: path to KITTI.
+    dataset_dir: path to save filelist.
+    '''  
+    train_list = ''
+    val_list = ''
+    test_list = ''
+
+    path = kitti_dir + '/dataset/sequences/'
+    videos = os.listdir(path)
+    videos.sort()
+    for video in videos:
+        pcd_dir = path + video + '/velodyne/'
+        pcd_files = os.listdir(pcd_dir)
+        pcd_files.sort()
+        if int(video) >= 11:
+            for pcd in pcd_files:
+                test_list += pcd_dir + pcd + '\n'
+        elif int(video) == 8:
+            for pcd in pcd_files:
+                val_list += pcd_dir + pcd + '\n'
+        else:
+            for pcd in pcd_files:
+                train_list += pcd_dir + pcd + '\n'
+                
+    f_train = open(f'{dataset_dir}/train_data.txt', 'w')
+    f_train.write(train_list)
+    f_train.close()
+    f_val = open(f'{dataset_dir}/val_data.txt', 'w')
+    f_val.write(val_list)
+    f_val.close()
+    f_test = open(f'{dataset_dir}/test_data.txt', 'w')
+    f_test.write(test_list)
+    f_test.close()
+
+
+if __name__ == '__main__':
+    
+    # example of building dataset using KITTI
+    kitti_dir = '/mnt/sdc/wangrh/data/SemanticKITTI'
+    dataset_dir = '/mnt/sdc/wangx/HexFormer/dataset/kitti'
+    construct_filelist(kitti_dir, dataset_dir)

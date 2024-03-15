@@ -1,16 +1,31 @@
 # HexFormer
-VIT/Swin  - rpe(relative positional encoding/embedding)
-~~ PVT/CoAt/Twins - conv / cpe(conditional positional encoding/embedding) ~~
+Task: point cloud sequence segmentation (for now)
 
-Potential bugs: hextree.utils
+## Quick Stark
+1. Clone the repository.
+```
+git clone git@github.com:HerocatUED/HexFormer.git
+```
+2. Install [Pytorch](https://pytorch.org/) and other requirements (enter the folder *HexFormer*). 
+```
+cd HexFormer
+pip3 install torch torchvision torchaudio
+pip install -r requirements.txt
+```
+3. Prepare datasets.
+- [SemanticKITTI](http://www.semantic-kitti.org/dataset.html#download)
+- [HOI4D]()
+4. Modify config file and train with 4 nvidia GPUs.
+```
+python run_seg.py --gpu 0,1,2,3 --alias kitti --port 10008
+```
 
 **Note** 
-torch version: function next() used in thsolver.solver;
+- torch version: function next() used in thsolver.solver;
+- Only tested with Python 3.8, torch 2.2.1 with CUDA 11.8
 
-Step 3. Expirements
 
 TODO： 
 - update to pytorch 2.0, speedup with torch.compile()
 - loss design(lower weight for classes that have higher acc)
-- 3 history + 1 now: loss only consider the last frame(what if 3 frames?)
-- local to global
+- CPE: 3D DwConv + 1D Conv
