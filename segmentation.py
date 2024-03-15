@@ -2,6 +2,7 @@
 
 import os
 import torch
+import random
 import numpy as np
 from tqdm import tqdm
 from thsolver import Solver
@@ -15,6 +16,14 @@ from modules import InputFeature
 # Refer: https://github.com/pytorch/pytorch/issues/973
 torch.multiprocessing.set_sharing_strategy('file_system')
 
+def setup_seed(seed):
+     torch.manual_seed(seed)
+     torch.cuda.manual_seed_all(seed)
+     np.random.seed(seed)
+     random.seed(seed)
+     torch.backends.cudnn.deterministic = True
+     
+setup_seed(3146)
 
 def save_pcd(batch, logit, path, rand_id: float):
     pred = logit.argmax(dim=1)
@@ -140,14 +149,14 @@ class SegSolver(Solver):
                 np.savez(full_filename, prob=self.eval_rst[filename].cpu().numpy())
 
     def result_callback(self, avg_tracker, epoch):
-        r''' Calculate the part mIoU for PartNet and ScanNet.
+        r''' Calculate the part mIoU.
         '''
 
         iou_part = 0.0
         avg = avg_tracker.average()
 
         # Labels smaller than `mask` is ignored. The points with the label 0 in
-        # PartNet are background points, i.e., unlabeled points
+        # KITTI are background points, i.e., unlabeled points
         mask = self.FLAGS.LOSS.mask + 1
         num_class = self.FLAGS.LOSS.num_class
         for i in range(mask, num_class):
@@ -170,9 +179,10 @@ class SegSolver(Solver):
     def IoU_per_class(self, logit, label, class_num):
         pred = logit.argmax(dim=1)
 
+        mask = self.FLAGS.LOSS.mask + 1
         mIoU, valid_part_num, esp = 0.0, 0.0, 1.0e-10
         IoU, intsc, union = [None] * class_num, [None] * class_num, [None] * class_num
-        for k in range(class_num):
+        for k in range(mask, class_num):
             pk, lk = pred.eq(k), label.eq(k)
             intsc[k] = torch.sum(torch.logical_and(pk, lk).float())
             union[k] = torch.sum(torch.logical_or(pk, lk).float())
@@ -182,7 +192,7 @@ class SegSolver(Solver):
             valid_part_num += valid.item()
             mIoU += valid * intsc[k] / (union[k] + esp)
 
-        # Calculate the shape IoU for ShapeNet
+        # Calculate the mIoU
         mIoU /= valid_part_num + esp
         return mIoU, IoU
 
