@@ -15,7 +15,7 @@ pip install -r requirements.txt
 3. Prepare datasets.
 - [SemanticKITTI](http://www.semantic-kitti.org/dataset.html#download)
 - [HOI4D]()
-4. Trained with 4 nvidia 4090 GPUs.
+4. Modify config file and train with 4 nvidia GPUs.
 ```
 python run_seg.py --gpu 0,1,2,3 --alias kitti --port 10008
 ```
