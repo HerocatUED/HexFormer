@@ -38,7 +38,7 @@ DATA:
     max_npt: -1    # max point number of random cropping
     # data loading
     has_label: True
-    # location: dataset/kitti
+    location: /mnt/sdc/wangrh/data/SemanticKITTI
     filelist: dataset/kitti/train_data.txt
     batch_size: 2 # for a single GPU, real batch size = GPU_num * batch_size
     shuffle: True
@@ -63,7 +63,7 @@ DATA:
 
     # data loading
     has_label: True
-    # location: dataset/kitti
+    location: /mnt/sdc/wangrh/data/SemanticKITTI
     filelist: dataset/kitti/val_data.txt
     batch_size: 1
     shuffle: False
