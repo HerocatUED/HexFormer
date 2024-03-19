@@ -17,11 +17,12 @@ from modules import InputFeature
 torch.multiprocessing.set_sharing_strategy('file_system')
 
 def setup_seed(seed):
-     torch.manual_seed(seed)
-     torch.cuda.manual_seed_all(seed)
-     np.random.seed(seed)
-     random.seed(seed)
-     torch.backends.cudnn.deterministic = True
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    np.random.seed(seed)
+    random.seed(seed)
+    torch.backends.cudnn.deterministic = True
+    torch.backends.cudnn.benchmark = False
      
 setup_seed(3146)
 
@@ -111,6 +112,7 @@ class SegSolver(Solver):
         loss = self.loss_function(logit, label)
         accu = self.accuracy(logit, label)
         num_class = self.FLAGS.LOSS.num_class
+        mask = self.FLAGS.LOSS.mask + 1
         mIoU, IoU = self.IoU_per_class(logit, label, num_class)
 
         # randomly save 1/100 data for visualization
@@ -119,8 +121,8 @@ class SegSolver(Solver):
             save_pcd(batch, logit, self.logdir+'/result_sample', batch['epoch'])
 
         names = ['test/loss', 'test/accu', 'test/mIoU'] + \
-                ['test/IoU_%d' % i for i in range(num_class)]
-        tensors = [loss, accu, mIoU] + IoU
+                ['test/IoU_%d' % i for i in range(mask, num_class)]
+        tensors = [loss, accu, mIoU] + IoU[mask:]
         return dict(zip(names, tensors))
 
     def eval_step(self, batch):

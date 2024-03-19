@@ -48,7 +48,7 @@ def hexsegformer_small(in_channels, out_channels, init_depth, **kwargs):
 def hexsegformer_toy(in_channels, out_channels, init_depth, **kwargs):
     return HexFormerSeg(
         in_channels, out_channels,
-        channels=[32, 64, 128, 256],
+        channels=[32, 48, 64, 128],
         num_blocks=[2, 2, 6, 2],
         num_heads=[4, 8, 16, 32],
         patch_size=64, dilation=4,
@@ -58,6 +58,20 @@ def hexsegformer_toy(in_channels, out_channels, init_depth, **kwargs):
         head_drop=[0.5, 0.5], 
         init_depth=init_depth)
 
+
+def hexsegformer_sin(in_channels, out_channels, init_depth, **kwargs):
+    return HexFormerSeg(
+        in_channels, out_channels,
+        channels=[32, 64, 128, 256],
+        num_blocks=[2, 2, 6, 2],
+        num_heads=[4, 8, 16, 32],
+        patch_size=32, dilation=4,
+        drop_path=0.3, nempty=True,
+        stem_down=2, head_up=2,
+        fpn_channel=128,
+        head_drop=[0.5, 0.5], 
+        init_depth=init_depth)
+    
 
 def get_segmentation_model(flags):
     params = {
