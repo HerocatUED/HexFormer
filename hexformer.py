@@ -297,6 +297,7 @@ class HexFormer(torch.nn.Module):
             for i in range(self.num_stages-1)])
         # Decoder
         self.upsample = HextreeAvgUnpoolXYZ()
+        self.act = torch.nn.GELU()
         self.norm = torch.nn.LayerNorm(fpn_channel)
         self.conv1x1 = torch.nn.ModuleList([torch.nn.Linear(
             channels[i], fpn_channel) for i in range(self.num_stages-1, -1, -1)])
@@ -334,17 +335,17 @@ class HexFormer(torch.nn.Module):
             depth_i = depth + i
             data = self.upsample(data, hextree, depth_i-1, depth_i)
             data = self.conv1x1[i](features[depth_i]) + data
-            data = self.norm(data)
+            data = self.norm(self.act(data))
             # data = self.decoders[i-1](data, hextree, depth_i)
             out = out + self.upsample(data, hextree, depth_i, target_depth)
-            out = self.norm(out)
+            out = self.norm(self.act(out))
         # PE upsample
         for i in range(self.stem_down, 0, -1):
             depth_i = target_depth - i + 1
             data = self.upsample(data, hextree, depth_i-1, depth_i) + features[depth_i] 
-            data = self.norm(data)
+            data = self.norm(self.act(data))
             if depth_i == target_depth: out += data
             else: out += self.upsample(data, hextree, depth_i, target_depth)
-            out = self.norm(out)
+            out = self.norm((self.act))
         
         return out

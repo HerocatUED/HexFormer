@@ -57,7 +57,7 @@ class ReadKITTI:
     def __init__(self, kitti_dir: str, has_label: bool = False, history: int = 3):
         self.has_label = has_label
         self.history = history
-        self.config_path = 'data_utils/config/semantic-kitti-all.yaml'
+        self.config_path = 'config/kitti/semantic-kitti-all.yaml'
         self.cfg = yaml.safe_load(open(self.config_path, 'r'))
         self.poses = []
         for i in range(22):
@@ -88,8 +88,6 @@ class ReadKITTI:
         # point clouds
         pcds = []
         past_frame = max(frame_num - self.history, 0)
-        if frame_num == 2: 
-            past_frame = 1
         j = 0
         for i in range(past_frame, frame_num + 1):
             scan_name = root_dir + '/velodyne/{:0>6d}.bin'.format(i)
@@ -240,7 +238,7 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--kitti_dir', type=str, required=True)
-    parser.add_argument('--save_dir', type=str, required=False, default='dataset/kitti')
+    parser.add_argument('--save_dir', type=str, required=False, default='config/kitti')
     args = parser.parse_args()
     
     construct_filelist(args.kitti_dir, args.save_dir)

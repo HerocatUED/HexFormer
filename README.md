@@ -14,7 +14,7 @@ pip install -r requirements.txt
 ```
 3. Prepare datasets, download and unzip.
 - [SemanticKITTI](http://www.semantic-kitti.org/dataset.html#download)
-- [HOI4D]()
+- [HOI4D]()**TODO**
 4. Generate filelist and Modify config file(Take kitti for example)
 ```
 python data_utils/kitti.py --kitti_dir $.../SemanticKITTI$
