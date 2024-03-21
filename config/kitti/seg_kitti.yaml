@@ -1,21 +1,21 @@
 SOLVER:
   gpu: 0,1,2,3
   run: train
-  logdir: logs/log_MultiScan_GF_conv_norm_iou # NOTE: MultiScan has 26 classes
+  logdir: logs/log_SinScan_GF_conv_norm # NOTE: MultiScan has 26 classes
   best_val: max:mIoU
 
   ckpt_num: 20
-  max_epoch: 40
+  max_epoch: 30
   test_every_epoch: 1
   log_per_iter: 10
 
   weight_decay: 1e-4
   type: adamw_attn
-
-  lr: 2e-3
+  lr: 2.5e-3
   lr_type: cos_warmup
-  warmup_epoch: 4
+  warmup_epoch: 3
   # milestones: (70, 140)
+  rand_seed: 3146
   dist_url: tcp://localhost:10002 # for distributed training
 
 DATA:
@@ -38,7 +38,7 @@ DATA:
     max_npt: -1 # max point number of random cropping
     # data loading
     has_label: True
-    history: 3
+    history: 0
     location: /mnt/sdc/wangrh/data/SemanticKITTI
     filelist: config/kitti/train_data.txt
     batch_size: 2 # for a single GPU, real batch size = GPU_num * batch_size
@@ -64,7 +64,7 @@ DATA:
 
     # data loading
     has_label: True
-    history: 3
+    history: 0
     location: /mnt/sdc/wangrh/data/SemanticKITTI
     filelist: config/kitti/val_data.txt
     batch_size: 1
