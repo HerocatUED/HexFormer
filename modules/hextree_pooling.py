@@ -12,7 +12,8 @@ def hextree_weighted_pooling_xyz(data: torch.Tensor,
                                  from_depth: int, 
                                  to_depth: Optional[int]=None,
                                  bias: Optional[torch.Tensor]=None,
-                                 need_mean: bool=False):
+                                 need_mean: bool=False,
+                                 max_buff: int=5000):
     r'''
     data: (N, in_channels)
     weight: (8 ** (from_depth - to_depth), in_channels, out_channels)
@@ -35,7 +36,17 @@ def hextree_weighted_pooling_xyz(data: torch.Tensor,
     
     _, idx, counts = torch.unique(
             from_keys_masked, sorted=True, return_inverse=True, return_counts=True, dim=0)
-    weighted_data = (weight[xyz_index] * data.unsqueeze(-1)).sum(dim=1)
+    
+    N, out_channel = data.size(0), weight.size(2)
+    weighted_data = torch.zeros((N, out_channel)).to(data.device)
+    
+    cnt = N // max_buff + 1
+    for i in range(cnt):
+        start = i * max_buff
+        end = min((i+1)*max_buff, N)
+        weights = weight[xyz_index[start: end]]
+        datas = data[start: end]
+        weighted_data[start: end] = (weights * datas.unsqueeze(-1)).sum(dim=1)
 
     out = scatter_add(dim=0, index=idx, src=weighted_data)
     
