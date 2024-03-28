@@ -2,7 +2,7 @@
 
 import os
 import torch
-import random
+import yaml
 import numpy as np
 from tqdm import tqdm
 from thsolver import Solver
@@ -30,6 +30,10 @@ def save_pcd(batch, logit, dir_path, rand_id: float):
 
 
 class SegSolver(Solver):
+    
+    def __init__(self, FLAGS, is_master=True):
+        super().__init__(FLAGS, is_master)
+        self.weights = None
 
     def get_model(self, flags):
         return builder.get_segmentation_model(flags)
@@ -162,7 +166,10 @@ class SegSolver(Solver):
         tqdm.write('=> Epoch: %d, test/mIoU_part: %f' % (epoch, iou_part))
 
     def loss_function(self, logit, label):
-        criterion = torch.nn.CrossEntropyLoss()
+        class_weight = None
+        if self.FLAGS.LOSS.weighted:
+            class_weight = self.get_weight()
+        criterion = torch.nn.CrossEntropyLoss(weight=class_weight)
         loss = criterion(logit, label.long())
         return loss
 
@@ -189,6 +196,30 @@ class SegSolver(Solver):
         mIoU /= valid_part_num + esp
         return mIoU, intsc, union
 
+    def get_weight(self):
+        '''
+        Get weights for weighted CrossEntropyLoss, only used in SemanticKITTI.
+        '''
+        if self.weights is not None:
+            return self.weights
+        DATA = yaml.safe_load(open('config/kitti/semantic-kitti-all.yaml', 'r'))
+        remapdict = DATA["learning_map_inv"]
+        # make lookup table for mapping
+        maxkey = max(remapdict.keys())
+        # +100 hack making lut bigger just in case there are unknown labels
+        remap_lut = np.zeros((maxkey + 100), dtype = np.int32)
+        remap_lut[list(remapdict.keys())] = list(remapdict.values())
+        labels = remap_lut[np.arange(1, 26)]
+        # content
+        content = DATA["content"]
+        content_lut = np.zeros((300), dtype = np.float32)
+        content_lut[list(content.keys())] = list(content.values())
+        weight = np.zeros(26)
+        weight[1:] = np.array(content_lut[labels])
+        weight = weight / weight.sum()
+        weight = np.clip(1 / (weight + 1e-10), 0, self.FLAGS.LOSS.weight_clip)
+        self.weights = torch.tensor(weight, dtype = torch.float32).cuda()
+        return self.weights
 
 if __name__ == "__main__":
     SegSolver.main()

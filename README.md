@@ -30,9 +30,8 @@ python run_seg.py --gpu 0,1,2,3 --alias kitti --port 10008
 
 TODO： 
 - update to pytorch 2.0, speedup with torch.compile()
-- lean data_utils, config, dataset
+- clean data_utils, config, dataset
 - loss design
-- data contribution balance
 - CPE: 3D DwConv + 1D Conv
 - reuse history prediction
 - Use corlor infomation as init feature

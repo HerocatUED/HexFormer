@@ -300,11 +300,11 @@ class HexFormer(torch.nn.Module):
         self.norm = torch.nn.LayerNorm(fpn_channel)
         self.conv1x1 = torch.nn.ModuleList([torch.nn.Linear(
             channels[i], fpn_channel) for i in range(self.num_stages-1, -1, -1)])
-        # self.decoders = torch.nn.ModuleList([HexFormerStage(
-        #     dim=fpn_channel, num_heads=num_heads[i], patch_size=patch_size,
-        #     drop_path=drop_ratio[sum(num_blocks[:i]):sum(num_blocks[:i+1])],
-        #     dilation=dilation, nempty=nempty, num_blocks=2,)
-        #     for i in range(self.num_stages-2, -1, -1)])
+        self.decoders = torch.nn.ModuleList([HexFormerStage(
+            dim=fpn_channel, num_heads=num_heads[i], patch_size=patch_size,
+            drop_path=drop_ratio[sum(num_blocks[:i]):sum(num_blocks[:i+1])],
+            dilation=dilation, nempty=nempty, num_blocks=2,)
+            for i in range(self.num_stages-2, -1, -1)])
         
 
     def forward(self, data: torch.Tensor, hextree: Hextree, depth: int):
@@ -334,7 +334,7 @@ class HexFormer(torch.nn.Module):
             data = self.upsample(data, hextree, depth_i-1, depth_i)
             data = self.conv1x1[i](features[depth_i]) + data
             data = self.norm(self.act(data))
-            # data = self.decoders[i-1](data, hextree, depth_i)
+            data = self.decoders[i-1](data, hextree, depth_i)
             out = out + self.upsample(data, hextree, depth_i, target_depth)
 
         # PE upsample

@@ -1,7 +1,7 @@
 SOLVER:
   gpu: 0,1,2,3
   run: train
-  logdir: logs/log_MultiScan_base # NOTE: MultiScan has 26 classes
+  logdir: logs/log_MultiScan_conv_norm # NOTE: MultiScan has 26 classes
   best_val: max:mIoU
 
   ckpt_num: 20
@@ -9,12 +9,12 @@ SOLVER:
   test_every_epoch: 1
   log_per_iter: 100
 
-  weight_decay: 1e-4
+  weight_decay: 2e-4
   type: adamw_attn
-  lr: 2.5e-3
-  lr_min: 5e-5
-  lr_type: poly
-  # warmup_epoch: 5
+  lr: 2.5e-2
+  lr_min: 1e-6
+  lr_type: cos
+  warmup_epoch: 5
   # milestones: (70, 140)
   rand_seed: 3146
   dist_url: tcp://localhost:10002 # for distributed training
@@ -89,3 +89,5 @@ MODEL:
 LOSS:
   mask: 0
   num_class: 26
+  weighted: True
+  weight_clip: 1000
