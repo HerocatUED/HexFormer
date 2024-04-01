@@ -1,11 +1,11 @@
 SOLVER:
   gpu: 0,1,2,3
   run: train
-  logdir: logs/log_MultiScan_conv_norm # NOTE: MultiScan has 26 classes
-  best_val: max:mIoU
+  logdir: logs/log_MultiScan_big_weighted # NOTE: MultiScan has 26 classes
+  best_val: max:mIoU_part
 
   ckpt_num: 20
-  max_epoch: 30
+  max_epoch: 50
   test_every_epoch: 1
   log_per_iter: 100
 
@@ -39,7 +39,7 @@ DATA:
     max_npt: -1 # max point number of random cropping
     # data loading
     has_label: True
-    history: 3
+    history: 2
     location: /mnt/sdc/wangrh/data/SemanticKITTI
     filelist: config/kitti/train_data.txt
     batch_size: 1 # for a single GPU, real batch size = GPU_num * batch_size
@@ -65,7 +65,7 @@ DATA:
 
     # data loading
     has_label: True
-    history: 3
+    history: 2
     location: /mnt/sdc/wangrh/data/SemanticKITTI
     filelist: config/kitti/val_data.txt
     batch_size: 1
@@ -90,4 +90,4 @@ LOSS:
   mask: 0
   num_class: 26
   weighted: True
-  weight_clip: 1000
+  # weight_clip: 100

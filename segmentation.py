@@ -217,7 +217,9 @@ class SegSolver(Solver):
         weight = np.zeros(26)
         weight[1:] = np.array(content_lut[labels])
         weight = weight / weight.sum()
-        weight = np.clip(1 / (weight + 1e-10), 0, self.FLAGS.LOSS.weight_clip)
+        weight[0] = 1 # log 0 will be a bug
+        weight = - np.log(weight)
+        # weight = np.clip(1 / (weight + 1e-10), 0, self.FLAGS.LOSS.weight_clip)
         self.weights = torch.tensor(weight, dtype = torch.float32).cuda()
         return self.weights
 

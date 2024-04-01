@@ -22,7 +22,7 @@ class KeyMaskLUT:
 _scatter_mask_lut = KeyMaskLUT()
 
 
-def key2masked(key: torch.Tensor(), steps: int, need_index: bool=False):
+def key2masked(key: torch.Tensor, steps: int, need_index: bool=False):
     keys_masked = key.long()
     mask_lut = _scatter_mask_lut.encode_lut(key.device)
     xyz_index = keys_masked & ~mask_lut[steps]
