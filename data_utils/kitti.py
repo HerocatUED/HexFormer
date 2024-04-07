@@ -88,8 +88,7 @@ class ReadKITTI:
         # point clouds
         pcds = []
         past_frame = max(frame_num - self.history, 0)
-        j = 0
-        for i in range(past_frame, frame_num + 1):
+        for j, i in enumerate(range(past_frame, frame_num + 1)):
             scan_name = root_dir + '/velodyne/{:0>6d}.bin'.format(i)
             scan = np.fromfile(scan_name, dtype=np.float32)
             scan = scan.reshape((-1, 4))
@@ -100,7 +99,6 @@ class ReadKITTI:
             points[:, 4] = scan[:, 3] # density
             points[:, 0] *= j
             pcds.append(points) 
-            j = j + 1
         output['points'] = np.vstack(pcds)
         
         # label
