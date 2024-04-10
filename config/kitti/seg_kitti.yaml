@@ -1,11 +1,11 @@
 SOLVER:
   gpu: 0,1,2,3
   run: train
-  logdir: logs/log_MultiScan_weighted # NOTE: MultiScan has 26 classes
+  logdir: logs/log_MultiScan_weighted_poly # NOTE: MultiScan has 26 classes
   best_val: max:mIoU_part
 
   ckpt_num: 20
-  max_epoch: 50
+  max_epoch: 20
   test_every_epoch: 1
   log_per_iter: 100
 
@@ -13,10 +13,10 @@ SOLVER:
   type: adamw_attn
   lr: 5e-3
   lr_min: 1e-6
-  lr_type: cos_warmup
-  warmup_epoch: 5
+  lr_type: poly
+  # warmup_epoch: 5
   # milestones: (70, 140)
-  rand_seed: 3146
+  rand_seed: 13
   dist_url: tcp://localhost:10002 # for distributed training
 
 DATA:
@@ -89,4 +89,4 @@ MODEL:
 LOSS:
   mask: 0
   num_class: 26
-  weighted: True
+  weighted: False

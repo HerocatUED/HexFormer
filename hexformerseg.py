@@ -13,7 +13,7 @@ class SegHeader(torch.nn.Module):
 
     def __init__(
             self, out_channels: int, fpn_channel: int,
-            nempty: bool, num_up: int = 2, dropout: List[float] = [0.0, 0.0]):
+            nempty: bool, num_up: int, dropout: List[float]):
         super().__init__()
         self.num_up = num_up
 
@@ -37,18 +37,16 @@ class HexFormerSeg(torch.nn.Module):
 
     def __init__(
             self, in_channels: int, out_channels: int,
-            channels: List[int] = [96, 192, 384, 384],
-            num_blocks: List[int] = [2, 2, 18, 2],
-            num_heads: List[int] = [6, 12, 24, 24],
-            patch_size: int = 32, dilation: int = 4, drop_path: float = 0.5,
-            nempty: bool = True, stem_down: int = 2, head_up: int = 1, fpn_channel: int = 168,
-            head_drop: List[float] = [0.0, 0.0], init_depth: int = 10, **kwargs):
+            channels: List[int], num_blocks: List[int],
+            num_heads: List[int],
+            patch_size: int, dilation: int, drop_path: float,
+            nempty: bool, stem_down: int, fpn_channel: int,
+            head_drop: List[float], init_depth: int, **kwargs):
         super().__init__()
-        assert stem_down == head_up
         self.backbone = HexFormer(
             in_channels, channels, num_blocks, num_heads, fpn_channel, patch_size, 
             dilation, drop_path, nempty, stem_down, init_depth)
-        self.head = SegHeader(out_channels, fpn_channel, nempty, head_up, head_drop)
+        self.head = SegHeader(out_channels, fpn_channel, nempty, stem_down, head_drop)
         self.apply(self.init_weights)
 
     def init_weights(self, m):
