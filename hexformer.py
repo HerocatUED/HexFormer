@@ -330,7 +330,7 @@ class HexFormer(torch.nn.Module):
             depth_i = depth + i
             data = self.upsample(data, hextree, depth_i-1, depth_i)
             data = self.conv1x1[i](features[depth_i]) + data
-            data = self.norm(data)
+            # data = self.norm(data)
             data = self.decoders[i-1](data, hextree, depth_i)
             out = out + self.upsample(data, hextree, depth_i, target_depth)
 

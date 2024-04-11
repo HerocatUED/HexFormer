@@ -22,18 +22,12 @@ class TestHextree(unittest.TestCase):
             [octree.Points(octree_pts[i], features=octree_feat[i]) for i in range(len(octree_pts))]
     
     def build_hextree(self, device):
-        point_cloud, pcds = self.init_points()
+        point_cloud, _ = self.init_points()
         point_cloud = point_cloud.to(device)
         htree = hextree.Hextree(depth=5, full_depth=1, device=device)
         htree.build_hextree(point_cloud)
         htree = htree.to('cpu')
-        otrees = []
-        for pcd in pcds:
-            pcd = pcd.to(device)
-            otree = octree.Octree(depth=5, full_depth=1, device=device)
-            otree.build_octree(pcd)
-            otree = otree.to('cpu')
-            otrees.append(otree)
+        
         # test node number
         nnum = torch.Tensor([1, 16, 32, 48, 48, 48])
         nnum_nempty = torch.Tensor([1, 2, 3, 3, 3, 3])
@@ -94,14 +88,6 @@ class TestHextree(unittest.TestCase):
         ]
         for d in range(6):
             self.assertTrue((htree.scatter_idx[d] == scatter_idx[d]).all())
-
-        # test mapping index
-        octree_feat = torch.concatenate([otrees[i].features[5] for i in range(len(otrees))])
-        hextree_feat = htree.features[5]
-        o2h = octree_feat[htree.octree2hextree[5]]
-        h20 = hextree_feat[htree.hextree2octree[5]]
-        self.assertTrue((o2h == hextree_feat).all())
-        self.assertTrue((h20 == octree_feat).all())
         
         # test the children 
         children = [
@@ -134,8 +120,10 @@ class TestHextree(unittest.TestCase):
             self.build_hextree('cuda')
     
     def merge_hextree(self, device):
-        point_cloud1 = self.init_points()[0].to(device)
-        point_cloud2 = self.init_points()[0].to(device)
+        point_cloud1, pcds1 = self.init_points()
+        point_cloud1 = point_cloud1.to(device)
+        point_cloud2, pcds2 = self.init_points()
+        point_cloud2 = point_cloud2.to(device)
         htree1 = hextree.Hextree(depth=5, full_depth=1, device=device)
         htree2 = hextree.Hextree(depth=5, full_depth=1, device=device)
         htree1.build_hextree(point_cloud1)
@@ -237,6 +225,25 @@ class TestHextree(unittest.TestCase):
         features = torch.Tensor([[1, -1], [2, -2], [3, -3]]).repeat(2, 1)
         self.assertTrue((htree.normals[5] == normals).all())
         self.assertTrue((htree.features[5] == features).all())
+        
+        otrees = []
+        for pcds in [pcds1, pcds2]:
+            for pcd in pcds:
+                pcd = pcd.to(device)
+                otree = octree.Octree(depth=5, full_depth=1, device=device)
+                otree.build_octree(pcd)
+                otree = otree.to('cpu')
+                otrees.append(otree)
+        otrees = octree.merge_octrees(otrees)
+            
+        # test mapping index
+        octree_feat = otrees.features[5]
+        hextree_feat = htree.features[5]
+        o2h = octree_feat[htree.octree2hextree[5]]
+        h20 = hextree_feat[htree.hextree2octree[5]]
+        self.assertTrue((o2h == hextree_feat).all())
+        self.assertTrue((h20 == octree_feat).all())
+        self.assertTrue((otrees.key(5, True) == htree.otrees.key(5, True)).all())
 
     def test_merge_hextree(self):
         self.merge_hextree('cpu')

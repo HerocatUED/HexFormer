@@ -17,16 +17,16 @@ from modules import InputFeature
 torch.multiprocessing.set_sharing_strategy('file_system')
 
 
-def save_pcd(batch, logit, dir_path, rand_id: float):
-    pred = logit.argmax(dim=1)
-    # print(f"saving to {path}")
-    if not os.path.exists(dir_path):
-        os.makedirs(dir_path, exist_ok=True)
-    np.savez(dir_path+'/points_{:.4f}.npz'.format(rand_id),
-             batch['points'].points.cpu().numpy())
-    np.savez(dir_path+'/label_{:.4f}.npz'.format(rand_id),
-             batch['points'].labels.cpu().numpy())
-    np.savez(dir_path+'/pred_{:.4f}.npz'.format(rand_id), pred.cpu().numpy())
+# def save_pcd(batch, logit, dir_path, rand_id: float):
+#     pred = logit.argmax(dim=1)
+#     # print(f"saving to {path}")
+#     if not os.path.exists(dir_path):
+#         os.makedirs(dir_path, exist_ok=True)
+#     np.savez(dir_path+'/points_{:.4f}.npz'.format(rand_id),
+#              batch['points'].points.cpu().numpy())
+#     np.savez(dir_path+'/label_{:.4f}.npz'.format(rand_id),
+#              batch['points'].labels.cpu().numpy())
+#     np.savez(dir_path+'/pred_{:.4f}.npz'.format(rand_id), pred.cpu().numpy())
 
 
 class SegSolver(Solver):
@@ -110,9 +110,9 @@ class SegSolver(Solver):
         mIoU, insc, union = self.IoU_per_class(logit, label, num_class)
 
         # randomly save 1/100 data for visualization
-        rand_id = np.random.uniform()
-        if batch['epoch'] % 10 == 0 and batch['epoch'] != 0 and rand_id < 0.01:
-            save_pcd(batch, logit, self.logdir+'/result_sample', batch['epoch'])
+        # rand_id = np.random.uniform()
+        # if batch['epoch'] % 10 == 0 and batch['epoch'] != 0 and rand_id < 0.01:
+        #     save_pcd(batch, logit, self.logdir+'/result_sample', batch['epoch'])
 
         names = ['test/loss', 'test/accu', 'test/mIoU'] + \
                 ['test/intsc_%d' % i for i in range(num_class)] + \
