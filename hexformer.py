@@ -285,12 +285,12 @@ class HexFormer(torch.nn.Module):
             drop_path=drop_ratio[sum(num_blocks[:i]):sum(num_blocks[:i+1])],
             dilation=dilation, nempty=nempty, num_blocks=num_blocks[i],)
             for i in range(self.num_stages)])
-        self.feature_up = torch.nn.ModuleList([MLP(channels[i], int(
-            (channels[i]+channels[i+1])/2), channels[i+1]) for i in range(self.num_stages - 1)])
-        self.downsample = HextreeAvgPoolXYZ()
-        # self.downsamples = torch.nn.ModuleList([
-        #     HextreeWeightedPoolXYZ(channels[i], channels[i+1], init_depth-stem_down-i, init_depth-stem_down-i-1)
-        #     for i in range(self.num_stages-1)])
+        # self.feature_up = torch.nn.ModuleList([MLP(channels[i], int(
+        #     (channels[i]+channels[i+1])/2), channels[i+1]) for i in range(self.num_stages - 1)])
+        # self.downsample = HextreeAvgPoolXYZ()
+        self.downsamples = torch.nn.ModuleList([
+            HextreeWeightedPoolXYZ(channels[i], channels[i+1], init_depth-stem_down-i, init_depth-stem_down-i-1)
+            for i in range(self.num_stages-1)])
         # Decoder
         self.upsample = HextreeAvgUnpoolXYZ()
         self.norm = torch.nn.LayerNorm(fpn_channel)
@@ -316,9 +316,9 @@ class HexFormer(torch.nn.Module):
             data = self.encoders[i](data, hextree, depth_i)
             features[depth_i] = data
             if i < self.num_stages - 1:
-                data = self.feature_up[i](data)
-                data = self.downsample(data, hextree, depth_i)
-                # data = self.downsamples[i](data, hextree, depth_i)
+                # data = self.feature_up[i](data)
+                # data = self.downsample(data, hextree, depth_i)
+                data = self.downsamples[i](data, hextree, depth_i)
         
         # Decoder
         depth = min(features.keys())

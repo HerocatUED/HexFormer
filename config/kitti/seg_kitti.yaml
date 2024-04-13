@@ -1,11 +1,11 @@
 SOLVER:
   gpu: 0,1,2,3
   run: train
-  logdir: logs/log_MultiScan_weighted_small_weighted # NOTE: MultiScan has 26 classes
+  logdir: logs/log_MultiScan_big_conv # NOTE: MultiScan has 26 classes
   best_val: max:mIoU_part
 
   ckpt_num: 20
-  max_epoch: 30
+  max_epoch: 50
   test_every_epoch: 1
   log_per_iter: 100
 
@@ -89,4 +89,4 @@ MODEL:
 LOSS:
   mask: 0
   num_class: 26
-  weighted: True
+  weighted: False

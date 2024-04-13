@@ -213,7 +213,7 @@ class Hextree:
         # valid only after merge hextree
         self.hextree2octree = [None] * num
         self.octree2hextree = [None] * num
-        self.otrees = None
+        self.octrees = None
 
         # hextree node numbers in each hextree layers
         # TODO: decide whether to settle them to 'gpu' or not
@@ -483,8 +483,8 @@ class Hextree:
                 otree = ocnn.octree.Octree(self.depth, self.full_depth)
                 otree.build_octree(points)
                 otrees.append(otree)
-        self.otrees = ocnn.octree.merge_octrees(otrees)
-        self.otrees.construct_all_neigh()
+        self.octrees = ocnn.octree.merge_octrees(otrees)
+        self.octrees.construct_all_neigh()
 
     def construct_neigh(self, depth: int):
         r''' Constructs the :obj:`3x3x3x3` neighbors for each hextree node.
@@ -639,7 +639,7 @@ class Hextree:
         hextree.nnum_nempty = self.nnum_nempty.clone()
         hextree.batch_nnum = self.batch_nnum.clone()
         hextree.batch_nnum_nempty = self.batch_nnum_nempty.clone()
-        hextree.otrees = self.otrees.to(device)
+        hextree.octrees = self.octrees.to(device)
         return hextree
 
     def cuda(self, non_blocking: bool = False):
