@@ -1,17 +1,17 @@
 SOLVER:
   gpu: 0,1,2,3
   run: train
-  logdir: logs/log_MultiScan_big_conv # NOTE: MultiScan has 26 classes
+  logdir: logs/log_MultiScan_big_conv_1 # NOTE: MultiScan has 26 classes
   best_val: max:mIoU_part
 
   ckpt_num: 20
-  max_epoch: 50
+  max_epoch: 30
   test_every_epoch: 1
   log_per_iter: 100
 
   weight_decay: 1e-4
   type: adamw_attn
-  lr: 5e-3
+  lr: 1e-3
   lr_min: 1e-6
   lr_type: cos
   # warmup_epoch: 5

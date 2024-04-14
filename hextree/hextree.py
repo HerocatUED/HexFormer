@@ -449,10 +449,10 @@ class Hextree:
     def build_mapping_idx(self):
         r''' Sets attributes `hextree2octree` and `octree2hextree`
         '''
-        hextree_keys = self.key(self.depth, nempty=True)
 
         for d in range(self.depth, -1, -1):
-            t, x, y, z, b = key2txyz(hextree_keys, d)
+            hextree_key = self.key(d, nempty=True)
+            t, x, y, z, b = key2txyz(hextree_key, d)
             bt = t.clone()
             cnt = 0
             for i in torch.unique(b, sorted=True):
@@ -466,8 +466,8 @@ class Hextree:
             
     def build_octrees(self):
         otrees = []
-        hextree_keys = self.key(self.depth, nempty=True)
-        t, x, y, z, b = key2txyz(hextree_keys, self.depth)
+        hextree_key = self.key(self.depth, nempty=True)
+        t, x, y, z, b = key2txyz(hextree_key, self.depth)
         for i in torch.unique(b, sorted=True):
             mask = b == i
             for j in torch.unique(t[mask], sorted=True):
