@@ -2,7 +2,7 @@
 
 import os
 import torch
-import random
+import yaml
 import numpy as np
 from tqdm import tqdm
 from thsolver import Solver
@@ -16,28 +16,24 @@ from modules import InputFeature
 # Refer: https://github.com/pytorch/pytorch/issues/973
 torch.multiprocessing.set_sharing_strategy('file_system')
 
-def setup_seed(seed):
-     torch.manual_seed(seed)
-     torch.cuda.manual_seed_all(seed)
-     np.random.seed(seed)
-     random.seed(seed)
-     torch.backends.cudnn.deterministic = True
-     
-setup_seed(3146)
 
-def save_pcd(batch, logit, path, rand_id: float):
-    pred = logit.argmax(dim=1)
-    # print(f"saving to {path}")
-    if not os.path.exists(path):
-        os.makedirs(path)
-    np.savez(path+'/points_{:.4f}.npz'.format(rand_id),
-             batch['points'].points.cpu().numpy())
-    np.savez(path+'/label_{:.4f}.npz'.format(rand_id),
-             batch['points'].labels.cpu().numpy())
-    np.savez(path+'/pred_{:.4f}.npz'.format(rand_id), pred.cpu().numpy())
+# def save_pcd(batch, logit, dir_path, rand_id: float):
+#     pred = logit.argmax(dim=1)
+#     # print(f"saving to {path}")
+#     if not os.path.exists(dir_path):
+#         os.makedirs(dir_path, exist_ok=True)
+#     np.savez(dir_path+'/points_{:.4f}.npz'.format(rand_id),
+#              batch['points'].points.cpu().numpy())
+#     np.savez(dir_path+'/label_{:.4f}.npz'.format(rand_id),
+#              batch['points'].labels.cpu().numpy())
+#     np.savez(dir_path+'/pred_{:.4f}.npz'.format(rand_id), pred.cpu().numpy())
 
 
 class SegSolver(Solver):
+    
+    def __init__(self, FLAGS, is_master=True):
+        super().__init__(FLAGS, is_master)
+        self.weights = None
 
     def get_model(self, flags):
         return builder.get_segmentation_model(flags)
@@ -111,16 +107,17 @@ class SegSolver(Solver):
         loss = self.loss_function(logit, label)
         accu = self.accuracy(logit, label)
         num_class = self.FLAGS.LOSS.num_class
-        mIoU, IoU = self.IoU_per_class(logit, label, num_class)
+        mIoU, insc, union = self.IoU_per_class(logit, label, num_class)
 
         # randomly save 1/100 data for visualization
-        rand_id = np.random.uniform()
-        if batch['epoch'] % 10 == 0 and batch['epoch'] != 0 and rand_id < 0.01:
-            save_pcd(batch, logit, self.logdir+'/result_sample', batch['epoch'])
+        # rand_id = np.random.uniform()
+        # if batch['epoch'] % 10 == 0 and batch['epoch'] != 0 and rand_id < 0.01:
+        #     save_pcd(batch, logit, self.logdir+'/result_sample', batch['epoch'])
 
         names = ['test/loss', 'test/accu', 'test/mIoU'] + \
-                ['test/IoU_%d' % i for i in range(num_class)]
-        tensors = [loss, accu, mIoU] + IoU
+                ['test/intsc_%d' % i for i in range(num_class)] + \
+                ['test/union_%d' % i for i in range(num_class)]
+        tensors = [loss, accu, mIoU] + insc + union
         return dict(zip(names, tensors))
 
     def eval_step(self, batch):
@@ -160,14 +157,19 @@ class SegSolver(Solver):
         mask = self.FLAGS.LOSS.mask + 1
         num_class = self.FLAGS.LOSS.num_class
         for i in range(mask, num_class):
-            iou_part += avg['test/IoU_%d' % i]
+            instc_i = avg['test/intsc_%d' % i]
+            union_i = avg['test/union_%d' % i]
+            iou_part += instc_i / (union_i + 1.0e-10)
         iou_part = iou_part / (num_class - mask)
 
         avg_tracker.update({'test/mIoU_part': torch.Tensor([iou_part])})
         tqdm.write('=> Epoch: %d, test/mIoU_part: %f' % (epoch, iou_part))
 
     def loss_function(self, logit, label):
-        criterion = torch.nn.CrossEntropyLoss()
+        class_weight = None
+        if self.FLAGS.LOSS.weighted:
+            class_weight = self.get_weight()
+        criterion = torch.nn.CrossEntropyLoss(weight=class_weight)
         loss = criterion(logit, label.long())
         return loss
 
@@ -179,14 +181,12 @@ class SegSolver(Solver):
     def IoU_per_class(self, logit, label, class_num):
         pred = logit.argmax(dim=1)
 
-        mask = self.FLAGS.LOSS.mask + 1
         mIoU, valid_part_num, esp = 0.0, 0.0, 1.0e-10
-        IoU, intsc, union = [None] * class_num, [None] * class_num, [None] * class_num
-        for k in range(mask, class_num):
+        intsc, union = [None] * class_num, [None] * class_num
+        for k in range(class_num):
             pk, lk = pred.eq(k), label.eq(k)
             intsc[k] = torch.sum(torch.logical_and(pk, lk).float())
             union[k] = torch.sum(torch.logical_or(pk, lk).float())
-            IoU[k] = intsc[k] / (union[k] + esp)
 
             valid = torch.sum(lk.any()) > 0
             valid_part_num += valid.item()
@@ -194,8 +194,34 @@ class SegSolver(Solver):
 
         # Calculate the mIoU
         mIoU /= valid_part_num + esp
-        return mIoU, IoU
+        return mIoU, intsc, union
 
+    def get_weight(self):
+        '''
+        Get weights for weighted CrossEntropyLoss, only used in SemanticKITTI.
+        '''
+        if self.weights is not None:
+            return self.weights
+        DATA = yaml.safe_load(open('config/kitti/semantic-kitti-all.yaml', 'r'))
+        remapdict = DATA["learning_map_inv"]
+        # make lookup table for mapping
+        maxkey = max(remapdict.keys())
+        # +100 hack making lut bigger just in case there are unknown labels
+        remap_lut = np.zeros((maxkey + 100), dtype = np.int32)
+        remap_lut[list(remapdict.keys())] = list(remapdict.values())
+        labels = remap_lut[np.arange(1, 26)]
+        # content
+        content = DATA["content"]
+        content_lut = np.zeros((300), dtype = np.float32)
+        content_lut[list(content.keys())] = list(content.values())
+        weight = np.zeros(26)
+        weight[1:] = np.array(content_lut[labels])
+        weight = weight / weight.sum()
+        weight[0] = 1 # log 0 will be a bug
+        weight = - np.log(weight)
+        # weight = np.clip(1 / (weight + 1e-10), 0, self.FLAGS.LOSS.weight_clip)
+        self.weights = torch.tensor(weight, dtype = torch.float32).cuda()
+        return self.weights
 
 if __name__ == "__main__":
     SegSolver.main()

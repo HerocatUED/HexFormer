@@ -19,10 +19,10 @@ def execute_command(cmds):
 
 
 def train():
-    print(f"using dataset {args.alias}")
+    print(f"Training on dataset {args.alias}")
     cmds = [
         'python segmentation.py',
-        f'--config data_utils/config/seg_{args.alias}.yaml',
+        f'--config config/{args.alias}/seg_{args.alias}.yaml',
         'SOLVER.gpu  {},'.format(args.gpu),
         'SOLVER.alias  {}'.format(args.alias),
         'SOLVER.dist_url tcp://localhost:{}'.format(args.port),]
@@ -31,10 +31,12 @@ def train():
 
 def test():
     # get the predicted probabilities for each point
+    print(f"Testing on dataset {args.alias}")
+    print(f"Using checkpoint {args.ckpt}")
     ckpt = (args.ckpt)   # use args.ckpt if provided
     cmds = [
         'python segmentation.py',
-        '--config data_utils/config/seg_{}.yaml'.format(args.alias),
+        f'--config config/{args.alias}/seg_{args.alias}.yaml',
         'LOSS.mask -255',       # to keep all points
         'SOLVER.gpu  {},'.format(args.gpu),
         'SOLVER.run evaluate',
@@ -42,15 +44,6 @@ def test():
         'SOLVER.alias test_{}'.format(args.alias),
         'SOLVER.ckpt {}'.format(ckpt),]
     execute_command(cmds)
-
-#   # map the probabilities to labels
-#   cmds = [
-#       'python tools/seg_scannet.py',
-#       '--run generate_output_seg',
-#       '--path_pred logs/scannet/octformer_test_{}'.format(args.alias),
-#       '--path_out logs/scannet/octformer_test_seg_{}'.format(args.alias),
-#       '--filelist  data/scannet.npz/scannetv2_test.txt', ]
-#   execute_command(cmds)
 
 
 # def validate():
@@ -68,23 +61,6 @@ def test():
 #       'SOLVER.ckpt {}'.format(ckpt),
 #       'DATA.test.batch_size 1',
 #       'DATA.test.distort True',]
-#   execute_command(cmds)
-
-#   # map the probabilities to labels
-#   cmds = [
-#       'python tools/seg_scannet.py',
-#       '--run generate_output_seg',
-#       '--path_pred logs/scannet/octformer_val_{}'.format(args.alias),
-#       '--path_out  logs/scannet/octformer_val_seg_{}'.format(args.alias),
-#       '--filelist  data/scannet.npz/scannetv2_val_npz.txt', ]
-#   execute_command(cmds)
-
-#   # calculate the mIoU
-#   cmds = [
-#       'python tools/seg_scannet.py',
-#       '--run calc_iou',
-#       '--path_in data/scannet.npz/train',
-#       '--path_pred logs/scannet/octformer_val_seg_{}'.format(args.alias), ]
 #   execute_command(cmds)
 
 

@@ -1,15 +1,12 @@
 # build KITTI dataset for Solver
 
-import os
 import yaml
 import torch
 import numpy as np
 
-from hextree import Points, merge_points
+from hextree import Points
 from thsolver import Dataset
-from typing import List
-
-from .utils import ReadFile, Transform
+from .utils import Transform
 
 
 # def align_z(points: Points):
@@ -57,9 +54,10 @@ class KITTITransform(Transform):
 
 
 class ReadKITTI:
-    def __init__(self, kitti_dir: str, has_label: bool = False):
+    def __init__(self, kitti_dir: str, has_label: bool = False, history: int = 3):
         self.has_label = has_label
-        self.config_path = 'data_utils/config/semantic-kitti-all.yaml'
+        self.history = history
+        self.config_path = 'config/kitti/semantic-kitti-all.yaml'
         self.cfg = yaml.safe_load(open(self.config_path, 'r'))
         self.poses = []
         for i in range(22):
@@ -89,11 +87,8 @@ class ReadKITTI:
         
         # point clouds
         pcds = []
-        past_frame = max(frame_num - 3, 0)
-        if frame_num == 2: 
-            past_frame = 1
-        j = 0
-        for i in range(past_frame, frame_num + 1):
+        past_frame = max(frame_num - self.history, 0)
+        for j, i in enumerate(range(past_frame, frame_num + 1)):
             scan_name = root_dir + '/velodyne/{:0>6d}.bin'.format(i)
             scan = np.fromfile(scan_name, dtype=np.float32)
             scan = scan.reshape((-1, 4))
@@ -104,7 +99,6 @@ class ReadKITTI:
             points[:, 4] = scan[:, 3] # density
             points[:, 0] *= j
             pcds.append(points) 
-            j = j + 1
         output['points'] = np.vstack(pcds)
         
         # label
@@ -186,7 +180,7 @@ class CollateBatch:
 
 def get_kitti_seg_dataset(flags):
     transform = KITTITransform(flags)
-    read_file = ReadKITTI(has_label=flags.has_label, kitti_dir=flags.location)
+    read_file = ReadKITTI(has_label=flags.has_label, kitti_dir=flags.location, history=flags.history)
     collate_batch = CollateBatch(flags.cutmix)
 
     dataset = Dataset(flags.location, flags.filelist,
@@ -203,6 +197,8 @@ def construct_filelist(kitti_dir:str, dataset_dir: str):
     kitti_dir: path to KITTI.
     dataset_dir: path to save filelist.
     '''  
+    import os
+    
     train_list = ''
     val_list = ''
     test_list = ''
@@ -236,8 +232,11 @@ def construct_filelist(kitti_dir:str, dataset_dir: str):
 
 
 if __name__ == '__main__':
+    import argparse
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--kitti_dir', type=str, required=True)
+    parser.add_argument('--save_dir', type=str, required=False, default='config/kitti')
+    args = parser.parse_args()
     
-    # example of building dataset using KITTI
-    kitti_dir = '/mnt/sdc/wangrh/data/SemanticKITTI'
-    dataset_dir = '/mnt/sdc/wangx/HexFormer/dataset/kitti'
-    construct_filelist(kitti_dir, dataset_dir)
+    construct_filelist(args.kitti_dir, args.save_dir)

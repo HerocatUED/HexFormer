@@ -5,7 +5,7 @@
 
 tensorboard
 torch_tb_profiler
-
+ocnn
 thsolver # new
 tqdm
 packaging

@@ -2,10 +2,12 @@ import torch
 import torch.nn.functional as F
 from typing import Union, List
 
+import ocnn
 from .utils import meshgrid, scatter_add, cumsum, trunc_div
 from .points import Points
 from .shuffled_key import txyz2key, key2txyz
 from .key_mask import key2masked
+from ocnn.octree.shuffled_key import xyz2key
 
 
 class Hextree:
@@ -206,6 +208,12 @@ class Hextree:
         self.masked_counts = [None] * num
         self.scatter_idx = [None] * num
         self.unique_keys = [None] * num
+        
+        # mapping index between hextree and octree
+        # valid only after merge hextree
+        self.hextree2octree = [None] * num
+        self.octree2hextree = [None] * num
+        self.octrees = None
 
         # hextree node numbers in each hextree layers
         # TODO: decide whether to settle them to 'gpu' or not
@@ -302,6 +310,10 @@ class Hextree:
 
         # build scatter idx
         self.build_scatter_idx()
+        
+        # build mapping index
+        self.build_mapping_idx()
+        self.build_octrees()
 
         # set the children for the layer full_layer,
         # now the node_keys are the key for full_layer
@@ -433,6 +445,46 @@ class Hextree:
             )
             self.masked_counts[d] = count
             self.scatter_idx[d] = idx
+            
+    def build_mapping_idx(self):
+        r''' Sets attributes `hextree2octree` and `octree2hextree`
+        '''
+
+        for d in range(self.depth, -1, -1):
+            hextree_key = self.key(d, nempty=True)
+            t, x, y, z, b = key2txyz(hextree_key, d)
+            bt = t.clone()
+            cnt = 0
+            for i in torch.unique(b, sorted=True):
+                mask = b == i
+                bt[mask] += cnt
+                cnt += t[mask].max() + 1
+            octree_keys = xyz2key(x, y, z, bt, d)
+            _, idx = torch.sort(octree_keys)
+            self.octree2hextree[d] = idx # hextree key idx
+            _, self.hextree2octree[d] = torch.sort(idx) # octree key idx
+            
+    def build_octrees(self):
+        otrees = []
+        hextree_key = self.key(self.depth, nempty=True)
+        t, x, y, z, b = key2txyz(hextree_key, self.depth)
+        for i in torch.unique(b, sorted=True):
+            mask = b == i
+            for j in torch.unique(t[mask], sorted=True):
+                mask1 = (t == j) & mask
+                ox = x[mask1].unsqueeze(1)
+                oy = y[mask1].unsqueeze(1)
+                oz = z[mask1].unsqueeze(1)
+                pts = torch.concatenate([ox, oy, oz], dim=1)
+                # normalize points from  [0, 2^depth] to [-1, 1]
+                scale = 2 ** (self.depth - 1)
+                pts = pts / scale - 1
+                points = ocnn.octree.Points(pts)
+                otree = ocnn.octree.Octree(self.depth, self.full_depth)
+                otree.build_octree(points)
+                otrees.append(otree)
+        self.octrees = ocnn.octree.merge_octrees(otrees)
+        self.octrees.construct_all_neigh()
 
     def construct_neigh(self, depth: int):
         r''' Constructs the :obj:`3x3x3x3` neighbors for each hextree node.
@@ -581,10 +633,13 @@ class Hextree:
         hextree.features = list_to_device(self.features)
         hextree.normals = list_to_device(self.normals)
         hextree.points = list_to_device(self.points)
+        hextree.octree2hextree = list_to_device(self.octree2hextree)
+        hextree.hextree2octree = list_to_device(self.hextree2octree)
         hextree.nnum = self.nnum.clone()  # TODO: whether to move nnum to the self.device?
         hextree.nnum_nempty = self.nnum_nempty.clone()
         hextree.batch_nnum = self.batch_nnum.clone()
         hextree.batch_nnum_nempty = self.batch_nnum_nempty.clone()
+        hextree.octrees = self.octrees.to(device)
         return hextree
 
     def cuda(self, non_blocking: bool = False):
@@ -687,4 +742,10 @@ def merge_hextrees(hextrees: List['Hextree']):
             points = [hextrees[i].points[d] for i in range(hextree.batch_size)]
             hextree.points[d] = torch.cat(points, dim=0)
 
+    # mapping index between hextree and octree
+    num = hextree.depth + 1
+    hextree.hextree2octree = [None] * num
+    hextree.octree2hextree = [None] * num
+    hextree.build_mapping_idx()
+    hextree.build_octrees()
     return hextree

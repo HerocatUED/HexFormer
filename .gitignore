@@ -4,3 +4,4 @@
 *.npz
 dataset
 logs*
+test/test_data
