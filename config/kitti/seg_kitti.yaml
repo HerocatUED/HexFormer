@@ -11,7 +11,7 @@ SOLVER:
 
   weight_decay: 1e-4
   type: adamw_attn
-  lr: 1e-3
+  lr: 2.5e-3
   lr_min: 1e-6
   lr_type: cos
   # warmup_epoch: 5
