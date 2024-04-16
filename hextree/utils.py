@@ -9,30 +9,36 @@ import math
 import torch
 from typing import Optional
 
-__all__ = ['trunc_div', 'meshgrid', 'cumsum', 'scatter_add', 'xavier_uniform_',
-           'resize_with_last_val', 'list2str']
+__all__ = [
+    "trunc_div",
+    "meshgrid",
+    "cumsum",
+    "scatter_add",
+    "xavier_uniform_",
+    "resize_with_last_val",
+    "list2str",
+]
 classes = __all__
 
 
 def trunc_div(input, other):
-    r''' Wraps :func:`torch.div` for compatibility. It rounds the results of the
+    r"""Wraps :func:`torch.div` for compatibility. It rounds the results of the
     division towards zero and is equivalent to C-style integer  division.
-    '''
+    """
 
-    version = torch.__version__.split('.')
+    version = torch.__version__.split(".")
     larger_than_170 = int(version[0]) > 0 and int(version[1]) > 7
 
     if larger_than_170:
-        return torch.div(input, other, rounding_mode='trunc')
+        return torch.div(input, other, rounding_mode="trunc")
     else:
         return torch.floor_divide(input, other)
 
 
 def meshgrid(*tensors, indexing: Optional[str] = None):
-    r''' Wraps :func:`torch.meshgrid` for compatibility.
-    '''
+    r"""Wraps :func:`torch.meshgrid` for compatibility."""
 
-    version = torch.__version__.split('.')
+    version = torch.__version__.split(".")
     larger_than_190 = int(version[0]) > 0 and int(version[1]) > 9
 
     if larger_than_190:
@@ -42,7 +48,7 @@ def meshgrid(*tensors, indexing: Optional[str] = None):
 
 
 def cumsum(data: torch.Tensor, dim: int, exclusive: bool = False):
-    r''' Extends :func:`torch.cumsum` with the input argument :attr:`exclusive`.
+    r"""Extends :func:`torch.cumsum` with the input argument :attr:`exclusive`.
 
     Args:
       data (torch.Tensor): The input data.
@@ -51,7 +57,7 @@ def cumsum(data: torch.Tensor, dim: int, exclusive: bool = False):
           if true, returns the cumulative sum exclusively. Note that if ture,
           the shape of output tensor is larger by 1 than :attr:`data` in the
           dimension where the computation occurs.
-    '''
+    """
 
     out = torch.cumsum(data, dim)
 
@@ -64,9 +70,9 @@ def cumsum(data: torch.Tensor, dim: int, exclusive: bool = False):
 
 
 def broadcast(src: torch.Tensor, other: torch.Tensor, dim: int):
-    r''' Broadcast :attr:`src` according to :attr:`other`, originally from the 
+    r"""Broadcast :attr:`src` according to :attr:`other`, originally from the
     library `pytorch_scatter`.
-    '''
+    """
 
     if dim < 0:
         dim = other.dim() + dim
@@ -81,10 +87,14 @@ def broadcast(src: torch.Tensor, other: torch.Tensor, dim: int):
     return src
 
 
-def scatter_add(src: torch.Tensor, index: torch.Tensor, dim: int = -1,
-                out: Optional[torch.Tensor] = None,
-                dim_size: Optional[int] = None,) -> torch.Tensor:
-    r''' Reduces all values from the :attr:`src` tensor into :attr:`out` at the
+def scatter_add(
+    src: torch.Tensor,
+    index: torch.Tensor,
+    dim: int = -1,
+    out: Optional[torch.Tensor] = None,
+    dim_size: Optional[int] = None,
+) -> torch.Tensor:
+    r"""Reduces all values from the :attr:`src` tensor into :attr:`out` at the
     indices specified in the :attr:`index` tensor along a given axis :attr:`dim`.
     This is just a wrapper of :func:`torch.scatter` in a boardcasting fashion.
 
@@ -97,7 +107,7 @@ def scatter_add(src: torch.Tensor, index: torch.Tensor, dim: int = -1,
             output with size :attr:`dim_size` at dimension :attr:`dim`. If
             :attr:`dim_size` is not given, a minimal sized output tensor according
             to :obj:`index.max() + 1` is returned.
-    '''
+    """
 
     index = broadcast(index, src, dim)
 
@@ -115,16 +125,16 @@ def scatter_add(src: torch.Tensor, index: torch.Tensor, dim: int = -1,
 
 
 def xavier_uniform_(weights: torch.Tensor):
-    r''' Initialize convolution weights with the same method as
+    r"""Initialize convolution weights with the same method as
     :obj:`torch.nn.init.xavier_uniform_`.
 
     :obj:`torch.nn.init.xavier_uniform_` initialize a tensor with shape
     :obj:`(out_c, in_c, kdim)`. It can not be used in :class:`ocnn.nn.OctreeConv`
     since the the shape of :attr:`OctreeConv.weights` is :obj:`(kdim, in_c,
     out_c)`.
-    '''
+    """
 
-    shape = weights.shape     # (kernel_dim, in_conv, out_conv)
+    shape = weights.shape  # (kernel_dim, in_conv, out_conv)
     fan_in = shape[0] * shape[1]
     fan_out = shape[0] * shape[2]
     std = math.sqrt(2.0 / float(fan_in + fan_out))
@@ -134,20 +144,19 @@ def xavier_uniform_(weights: torch.Tensor):
 
 
 def resize_with_last_val(list_in: list, num: int = 4):
-    r''' Resizes the number of elements of :attr:`list_in` to :attr:`num` with
+    r"""Resizes the number of elements of :attr:`list_in` to :attr:`num` with
     the last element of :attr:`list_in` if its number of elements is smaller
     than :attr:`num`.
-    '''
+    """
 
-    assert (type(list_in) is list and len(list_in) < num + 1)
+    assert type(list_in) is list and len(list_in) < num + 1
     for i in range(len(list_in), num):
         list_in.append(list_in[-1])
     return list_in
 
 
 def list2str(list_in: list):
-    r''' Returns a string representation of :attr:`list_in`
-    '''
+    r"""Returns a string representation of :attr:`list_in`"""
 
     out = [str(x) for x in list_in]
-    return ''.join(out)
+    return "".join(out)
