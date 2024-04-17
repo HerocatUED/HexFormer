@@ -1,9 +1,8 @@
 import torch
-import torch.nn.functional as F
 from typing import Union, List
 
 import ocnn
-from .utils import meshgrid, scatter_add, cumsum
+from .utils import cumsum
 from .points import Points
 from .shuffled_key import txyz2key, key2txyz
 
@@ -51,16 +50,6 @@ class Hextree:
         self.device = device
 
         self.reset()
-
-    # utils
-    def rng_grid(self, min_, max_):
-        r"""Builds a 4D grid in :obj:`[min, max]` (:attr:`max` included)."""
-
-        rng = torch.arange(min_, max_ + 1, dtype=torch.long, device=self.device)
-        grid = meshgrid(rng, rng, rng, rng, indexing="ij")
-        # ((max_ - min_) ** 4, 4)
-        grid = torch.stack(grid, dim=-1).view(-1, 4)
-        return grid
 
     def nempty_mask(self, depth: int):
         r"""Returns a binary mask (Tensor[bool]) which indicates whether the cooreponding
