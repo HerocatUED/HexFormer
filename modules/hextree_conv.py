@@ -18,12 +18,13 @@ class HextreeConv(torch.nn.Module):
         nempty: bool = False,
     ):
         super().__init__()
+        assert nempty == True, "nempty hardcode"
         self.conv = OctreeConv(in_channels, out_channels, kernel_size, stride, nempty)
 
     def forward(self, data: torch.Tensor, hextree: Hextree, depth: int):
-        data = data[hextree.hextree2octree[depth]]
+        data = data[hextree.hex2oct_nempty[depth]]
         data = self.conv(data, hextree.octrees, depth)
-        data = data[hextree.octree2hextree[depth - 1]]
+        data = data[hextree.oct2hex_nempty[depth - 1]]
         return data
 
 
@@ -39,14 +40,15 @@ class HextreeDeconv(torch.nn.Module):
         nempty: bool = False,
     ):
         super().__init__()
+        assert nempty == True, "nempty hardcode"
         self.deconv = OctreeDeconv(
             in_channels, out_channels, kernel_size, stride, nempty
         )
 
     def forward(self, data: torch.Tensor, hextree: Hextree, depth: int):
-        data = data[hextree.hextree2octree[depth]]
+        data = data[hextree.hex2oct_nempty[depth]]
         data = self.deconv(data, hextree.octrees, depth)
-        data = data[hextree.octree2hextree[depth + 1]]
+        data = data[hextree.oct2hex_nempty[depth + 1]]
         return data
 
 

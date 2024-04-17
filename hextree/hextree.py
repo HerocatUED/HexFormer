@@ -6,7 +6,6 @@ import ocnn
 from .utils import meshgrid, scatter_add, cumsum
 from .points import Points
 from .shuffled_key import txyz2key, key2txyz
-from ocnn.octree.shuffled_key import xyz2key
 
 
 class Hextree:
@@ -32,6 +31,9 @@ class Hextree:
 
     .. note::
         The point cloud must be in range :obj:`[-1, 1]`.
+        
+    .. note::
+        t is dense. e.g. if point_cloud has unique_t = [0, 2, 90], it will be taken as [0, 1, 2]
     """
 
     def __init__(
@@ -162,12 +164,14 @@ class Hextree:
         self.features = [None] * num
         self.normals = [None] * num
         self.points = [None] * num
-
-        # mapping index between hextree and octree
-        # valid only after merge hextree
-        self.hextree2octree = [None] * num
-        self.octree2hextree = [None] * num
+        
         self.octrees = None
+        self.octree_list = []
+        # mapping index between hextree and octree
+        self.hex2oct = [None] * num
+        self.oct2hex = [None] * num
+        self.hex2oct_nempty = [None] * num
+        self.oct2hex_nempty = [None] * num
 
         # hextree node numbers in each hextree layers
         # TODO: decide whether to settle them to 'gpu' or not
@@ -184,164 +188,64 @@ class Hextree:
         r"""Builds a hextree from a point cloud.
 
         Args:
-            point_cloud (Points): The input point cloud.
+            point_cloud (Points): The input point cloud, xyz in [-1, 1], t is int.
 
         .. note::
             Currently, the batch size of the point cloud must be 1.
         """
 
         self.device = point_cloud.device
-        assert point_cloud.batch_size == self.batch_size, "Inconsistent batch_size"
+        assert point_cloud.batch_size == self.batch_size, \
+            "Inconsistent batch_size, only supported when building hextree!"
 
-        # normalize points from [-1, 1] to [0, 2 ^ depth)
-        scale = 1 << (self.depth - 1)
-        ps = point_cloud.points
-        points = torch.cat(
-            [ps[:, [0]].long(), ((ps[:, 1:] + 1.0) * scale).long()], dim=1
-        )
-        points[points == 2 * scale] = 2 * scale - 1  # 2 ^ depth -> 2 ^ depth - 1
-
-        # check t
-        tmax = torch.max(points[:, 0])
-        assert tmax < (2 << 8 - 1)
-
-        # get the shuffled key and sort
+        # build octree frame by frame
+        points, normals, features = point_cloud.points, point_cloud.normals, point_cloud.features
         t, x, y, z = points[:, 0], points[:, 1], points[:, 2], points[:, 3]
-        # TODO: Allow multiple batches
-        b = None if self.batch_size == 1 else point_cloud.batch_id.view(-1)
-        key = txyz2key(t, x, y, z, b, self.depth)
-        node_key, idx, counts = torch.unique(
-            key, sorted=True, return_inverse=True, return_counts=True, dim=0
-        )
-
-        # layer 0 to full_layer: the hextree is full in these layers
-        for d in range(self.full_depth + 1):
-            self.hextree_grow_full(d, update_neigh=False)
-
-        # layer depth to full_layer
-        t = node_key & (2**8 - 1)
-        node_key = t << 56 | node_key >> 8  # tb(xyz)
-        for d in range(self.depth, self.full_depth, -1):
-            # compute parent key, i.e. keys of layer (d-1)
-            pkey = node_key >> 3
-            pkey, pidx = torch.unique_consecutive(pkey, return_inverse=True, dim=0)
-
-            # augmented key
-            key = (
-                (pkey.unsqueeze(-1) << 3) + torch.arange(9, device=self.device)
-            ).view(-1)
-            self.keys[d] = key >> 56 | key << 8
-            self.nnum[d] = key.numel()
-            self.nnum_nempty[d] = node_key.numel()
-
+        assert torch.max(t) < 2 ** 8 and torch.min(t) >= 0, \
+            "t should be in range [0, 255]"
+        assert torch.max(x) <= 1 and torch.min(x) <= 1 and \
+                torch.max(x) <= 1 and torch.min(x) <= 1 and \
+                torch.max(x) <= 1 and torch.min(x) <= 1 ,\
+            "You should normalize xyz to [-1, 1] before build tree."
+        t = t.long()
+        for i in torch.unique(t): 
+            normal = normals[mask] if normals is not None else None
+            feature = features[mask] if features is not None else None
+            mask = t == i
+            pts = torch.concatenate([x[mask].unsqueeze(1), y[mask].unsqueeze(1), z[mask].unsqueeze(1)], dim=1)
+            pts = ocnn.octree.Points(pts, normal, feature)
+            otree = ocnn.octree.Octree(self.depth, self.full_depth)
+            otree.build_octree(pts)
+            self.octree_list.append(otree)
+        self.octrees = ocnn.octree.merge_octrees(self.octree_list)
+        self.octrees.construct_all_neigh()
+        
+        # build hextree:
+        for d in range(self.depth, -1, -1):
+            # key
+            okey = self.octrees.keys[d]
+            hkey = ((okey << 16) >> 8) | ((okey << 8) >> 56)
+            self.keys[d], idx = torch.sort(hkey)
+            self.oct2hex[d] = idx
+            _, self.hex2oct[d] = torch.sort(idx)
+            self.nnum[d] = okey.numel()
+            # key_nempty
+            okey_nempty = self.octrees.key(d, True)
+            hkey_nempty = ((okey_nempty << 16) >> 8) | ((okey_nempty << 8) >> 56)
+            _, idx_nempty = torch.sort(hkey_nempty)
+            self.oct2hex_nempty[d] = idx_nempty
+            _, self.hex2oct_nempty[d] = torch.sort(idx_nempty)
+            self.nnum_nempty[d] = okey_nempty.numel()
             # children
-            addr = (pidx << 3) | (node_key % 8)
-            children = -torch.ones(self.nnum[d], dtype=torch.int64, device=self.device)
-            children[addr] = torch.arange(
-                self.nnum_nempty[d], dtype=torch.int64, device=self.device
-            )
-            self.children[d] = children
-
-            # cache pkey for the next iteration
-            node_key = pkey
-
-        # build mapping index
-        self.build_mapping_idx()
-        self.build_octrees()
-
-        # set the children for the layer full_layer,
-        # now the node_keys are the key for full_layer
-        d = self.full_depth
-        children = -torch.ones_like(self.children[d], dtype=torch.int64)
-        nempty_idx = (
-            node_key
-            if self.batch_size == 1
-            else ((node_key >> 48) << (3 * d)) | (node_key * ((1 << 48) - 1))
-        )
-        children[nempty_idx] = torch.arange(
-            node_key.numel(), dtype=torch.int64, device=self.device
-        )
-        self.children[d] = children
-        self.nnum_nempty[d] = node_key.numel()
+            self.children[d] = self.octrees.children[d][self.oct2hex[d]]
 
         # average the signal for the last hextree layer
         d = self.depth
-        # points is rescaled in [L:Scale]
-        points = scatter_add(points, idx, dim=0)
-        self.points[d] = points / counts.unsqueeze(1)
-        if point_cloud.normals is not None:
-            normals = scatter_add(point_cloud.normals, idx, dim=0)
-            self.normals[d] = F.normalize(normals)
-        if point_cloud.features is not None:
-            features = scatter_add(point_cloud.features, idx, dim=0)
-            self.features[d] = features / counts.unsqueeze(1)
-
-        return idx
-
-    def hextree_grow_full(self, depth: int):
-        r"""Builds the full hextree, which is essentially a dense volumetric grid.
-
-        Args:
-            depth (int): The depth of the hextree.
-        """
-
-        # check
-        assert depth <= self.full_depth, "error"
-
-        # node number
-        num = 1 << (4 * depth)
-        self.nnum[depth] = num * self.batch_size
-        self.nnum_nempty[depth] = num * self.batch_size
-
-        # update key
-        key = torch.arange(num, dtype=torch.long, device=self.device)
-        bs = torch.arange(self.batch_size, dtype=torch.long, device=self.device)
-        key = key.unsqueeze(0) | (bs.unsqueeze(1) << 56)
-        self.keys[depth] = key.view(-1)
-
-        # update children
-        self.children[depth] = torch.arange(
-            num * self.batch_size, dtype=torch.int64, device=self.device
-        )
-
-    def build_mapping_idx(self):
-        r"""Sets attributes `hextree2octree` and `octree2hextree`"""
-
-        for d in range(self.depth, -1, -1):
-            hextree_key = self.key(d, nempty=True)
-            t, x, y, z, b = key2txyz(hextree_key, d)
-            bt = t.clone()
-            cnt = 0
-            for i in torch.unique(b, sorted=True):
-                mask = b == i
-                bt[mask] += cnt
-                cnt += t[mask].max() + 1
-            octree_keys = xyz2key(x, y, z, bt, d)
-            _, idx = torch.sort(octree_keys)
-            self.octree2hextree[d] = idx  # hextree key idx
-            _, self.hextree2octree[d] = torch.sort(idx)  # octree key idx
-
-    def build_octrees(self):
-        otrees = []
-        hextree_key = self.key(self.depth, nempty=True)
-        t, x, y, z, b = key2txyz(hextree_key, self.depth)
-        for i in torch.unique(b, sorted=True):
-            mask = b == i
-            for j in torch.unique(t[mask], sorted=True):
-                mask1 = (t == j) & mask
-                ox = x[mask1].unsqueeze(1)
-                oy = y[mask1].unsqueeze(1)
-                oz = z[mask1].unsqueeze(1)
-                pts = torch.concatenate([ox, oy, oz], dim=1)
-                # normalize points from  [0, 2^depth] to [-1, 1]
-                scale = 2 ** (self.depth - 1)
-                pts = pts / scale - 1
-                points = ocnn.octree.Points(pts)
-                otree = ocnn.octree.Octree(self.depth, self.full_depth)
-                otree.build_octree(points)
-                otrees.append(otree)
-        self.octrees = ocnn.octree.merge_octrees(otrees)
-        self.octrees.construct_all_neigh()
+        self.points[d] = self.octrees.points[d][self.oct2hex_nempty[d]]
+        if self.octrees.normals[d] is not None:
+            self.normals[d] = self.octrees.normals[d][self.oct2hex_nempty[d]]
+        if self.octrees.features[d] is not None:
+            self.features[d] = self.octrees.features[d][self.oct2hex_nempty[d]]
 
     # tree to points transformation
     def get_input_feature(self):
@@ -444,15 +348,16 @@ class Hextree:
         hextree.features = list_to_device(self.features)
         hextree.normals = list_to_device(self.normals)
         hextree.points = list_to_device(self.points)
-        hextree.octree2hextree = list_to_device(self.octree2hextree)
-        hextree.hextree2octree = list_to_device(self.hextree2octree)
-        hextree.nnum = (
-            self.nnum.clone()
-        )  # TODO: whether to move nnum to the self.device?
+        hextree.oct2hex = list_to_device(self.oct2hex)
+        hextree.hex2oct = list_to_device(self.hex2oct)
+        hextree.oct2hex_nempty = list_to_device(self.oct2hex_nempty)
+        hextree.hex2oct_nempty = list_to_device(self.hex2oct_nempty)
+        hextree.nnum = (self.nnum.clone())  # TODO: whether to move nnum to the self.device?
         hextree.nnum_nempty = self.nnum_nempty.clone()
         hextree.batch_nnum = self.batch_nnum.clone()
         hextree.batch_nnum_nempty = self.batch_nnum_nempty.clone()
         hextree.octrees = self.octrees.to(device)
+        hextree.octree_list = list_to_device(self.octree_list)
         return hextree
 
     def cuda(self, non_blocking: bool = False):
@@ -499,7 +404,8 @@ def merge_hextrees(hextrees: List["Hextree"]):
     hextree.nnum_nempty = torch.sum(batch_nnum_nempty, dim=1)
     hextree.batch_nnum = batch_nnum
     hextree.batch_nnum_nempty = batch_nnum_nempty
-    nnum_cum = cumsum(batch_nnum_nempty, dim=1, exclusive=True)
+    nnum_cum = cumsum(batch_nnum, dim=1, exclusive=True)
+    nnum_cum_nempty = cumsum(batch_nnum_nempty, dim=1, exclusive=True)
 
     # merge hextree properties
     for d in range(hextree.depth + 1):
@@ -510,35 +416,59 @@ def merge_hextrees(hextrees: List["Hextree"]):
             keys[i] = key | (i << 56)
         hextree.keys[d] = torch.cat(keys, dim=0)
 
-        # children
+        # children and mapping index
         children = [None] * hextree.batch_size
+        hex2oct = [None] * hextree.batch_size
+        oct2hex = [None] * hextree.batch_size
+        hex2oct_nempty = [None] * hextree.batch_size
+        oct2hex_nempty = [None] * hextree.batch_size
         for i in range(hextree.batch_size):
             # !! `clone` is used here to avoid
             child = hextrees[i].children[d].clone()
             mask = child >= 0  # !! modifying the original hextrees
-            child[mask] = child[mask] + nnum_cum[d, i]
+            child[mask] = child[mask] + nnum_cum_nempty[d, i]
             children[i] = child
+            # mapping index nempty
+            idx_ho = hextrees[i].hex2oct_nempty[d].clone()
+            idx_ho += nnum_cum_nempty[d, i]
+            hex2oct_nempty[i] = idx_ho
+            idx_oh = hextrees[i].oct2hex_nempty[d].clone()
+            idx_oh += nnum_cum_nempty[d, i]
+            oct2hex_nempty[i] = idx_oh
+            # mapping index nempty
+            idx_ho = hextrees[i].hex2oct[d].clone()
+            idx_ho += nnum_cum[d, i]
+            hex2oct[i] = idx_ho
+            idx_oh = hextrees[i].oct2hex[d].clone()
+            idx_oh += nnum_cum[d, i]
+            oct2hex[i] = idx_oh
+            
         hextree.children[d] = torch.cat(children, dim=0)
+        hextree.hex2oct[d] = torch.cat(hex2oct, dim=0)
+        hextree.oct2hex[d] = torch.cat(oct2hex, dim=0)
+        hextree.hex2oct_nempty[d] = torch.cat(hex2oct_nempty, dim=0)
+        hextree.oct2hex_nempty[d] = torch.cat(oct2hex_nempty, dim=0)
 
-        # features
-        if hextrees[0].features[d] is not None and d == hextree.depth:
-            features = [hextrees[i].features[d] for i in range(hextree.batch_size)]
-            hextree.features[d] = torch.cat(features, dim=0)
+    d = hextree.depth
+    # features
+    if hextrees[0].features[d] is not None:
+        features = [hextrees[i].features[d] for i in range(hextree.batch_size)]
+        hextree.features[d] = torch.cat(features, dim=0)
 
-        # normals
-        if hextrees[0].normals[d] is not None and d == hextree.depth:
-            normals = [hextrees[i].normals[d] for i in range(hextree.batch_size)]
-            hextree.normals[d] = torch.cat(normals, dim=0)
+    # normals
+    if hextrees[0].normals[d] is not None:
+        normals = [hextrees[i].normals[d] for i in range(hextree.batch_size)]
+        hextree.normals[d] = torch.cat(normals, dim=0)
 
-        # points
-        if hextrees[0].points[d] is not None and d == hextree.depth:
-            points = [hextrees[i].points[d] for i in range(hextree.batch_size)]
-            hextree.points[d] = torch.cat(points, dim=0)
-
-    # mapping index between hextree and octree
-    num = hextree.depth + 1
-    hextree.hextree2octree = [None] * num
-    hextree.octree2hextree = [None] * num
-    hextree.build_mapping_idx()
-    hextree.build_octrees()
+    # points
+    if hextrees[0].points[d] is not None:
+        points = [hextrees[i].points[d] for i in range(hextree.batch_size)]
+        hextree.points[d] = torch.cat(points, dim=0)
+    
+    # octrees
+    for i in range(hextree.batch_size):
+        hextree.octree_list += hextrees[i].octree_list
+    hextree.octrees = ocnn.octree.merge_octrees(hextree.octree_list)
+    hextree.octrees.construct_all_neigh()
+    
     return hextree

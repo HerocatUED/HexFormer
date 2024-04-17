@@ -79,14 +79,13 @@ def txyz2key(
           :attr:`b` must be the same as :attr:`x`, :attr:`y`, and :attr:`z`.
       depth (int): The depth of the shuffled key, and must be smaller than 17 (< 17).
     """
-    assert 1 <= depth <= 16, "depth out of range[1, 16], maximum depth is 16"
-    assert (
-        (t < 2**8).all().logical_and((t >= 0).all())
-    ), "t out of range[1, 255], maximum is 255"
+    assert 1 <= depth <= 16, \
+        "depth out of range[1, 16], maximum depth is 16"
+    assert ((t < 2**8).all().logical_and((t >= 0).all())), \
+        "t out of range[0, 255], maximum is 255"
     if b is not None:
-        assert (
-            (b < 128).all().logical_and((b >= 0).all())
-        ), "batch id out of range[0, 127], or batch size should not be surpass 128(< 128)"
+        assert ((b < 128).all().logical_and((b >= 0).all())), \
+            "batch id out of range[0, 127], or batch size should not be surpass 128(< 128)"
 
     EX, EY, EZ = _key_lut.encode_lut(x.device)
     t, x, y, z = t.long(), x.long(), y.long(), z.long()

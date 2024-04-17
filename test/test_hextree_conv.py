@@ -28,13 +28,13 @@ class HextreeConvTest(unittest.TestCase):
         dims = [5, 16, 32, 64, 128]
         convs = torch.nn.ModuleList(
             [
-                HextreeConvBnRelu(dims[i], dims[i + 1], [2], 2, True)
+                HextreeConvBnRelu(dims[i], dims[i + 1], [2], 2, True).to(device)
                 for i in range(len(dims) - 1)
             ]
         )
         deconvs = torch.nn.ModuleList(
             [
-                HextreeDeconvBnRelu(dims[i], dims[i - 1], [2], 2, True)
+                HextreeDeconvBnRelu(dims[i], dims[i - 1], [2], 2, True).to(device)
                 for i in range(len(dims) - 1, 0, -1)
             ]
         )
@@ -42,18 +42,14 @@ class HextreeConvTest(unittest.TestCase):
         depth = htree.depth
         for i in range(len(dims) - 1):
             depth_i = depth - i
-            print(depth_i)
             data = convs[i](data, htree, depth_i)
             self.assertTrue(data.size()[0] == htree.nnum_nempty[depth_i - 1])
-        self.assertTrue(depth == htree.depth - len(dims) + 1)
         print("Deconv")
-        depth_min = htree.depth
-        for i in range(len(dims) - 1, 0, -1):
+        depth_min = depth_i - 1
+        for i in range(len(dims) - 1):
             depth_i = depth_min + i
-            print(depth_i)
             data = deconvs[i](data, htree, depth_i)
             self.assertTrue(data.size()[0] == htree.nnum_nempty[depth_i + 1])
-        self.assertTrue(depth == htree.depth)
 
     def test_hextree_conv_xyz(self):
         for device in ["cpu", "cuda"]:
