@@ -70,11 +70,11 @@ class HextreeT(Hextree):
         t, x, y, z, _ = key2txyz(key, depth)
         txyz = torch.stack([t, x, y, z], dim=1)
 
-        txyz = txyz.view(-1, self.patch_size, 3)
+        txyz = txyz.view(-1, self.patch_size, 4)
         self.rel_pos[depth] = txyz.unsqueeze(2) - txyz.unsqueeze(1)
 
-        txyz = txyz.view(-1, self.patch_size, self.dilation, 3)
-        txyz = txyz.transpose(1, 2).reshape(-1, self.patch_size, 3)
+        txyz = txyz.view(-1, self.patch_size, self.dilation, 4)
+        txyz = txyz.transpose(1, 2).reshape(-1, self.patch_size, 4)
         self.dilate_pos[depth] = txyz.unsqueeze(2) - txyz.unsqueeze(1)
 
     def patch_partition(self, data: torch.Tensor, depth: int, fill_value=0):

@@ -1,8 +1,9 @@
 import torch
+import torch.nn.functional as F
 from typing import Union, List
 
 import ocnn
-from .utils import cumsum
+from .utils import cumsum, scatter_add
 from .points import Points
 from .shuffled_key import txyz2key, key2txyz
 
@@ -185,7 +186,7 @@ class Hextree:
 
         self.device = point_cloud.device
         assert point_cloud.batch_size == self.batch_size, \
-            "Inconsistent batch_size, only supported when building hextree!"
+            "Inconsistent batch_size, only 1 supported when building hextree!"
 
         # build octree frame by frame
         points, normals, features = point_cloud.points, point_cloud.normals, point_cloud.features
@@ -198,9 +199,9 @@ class Hextree:
             "You should normalize xyz to [-1, 1] before build tree."
         t = t.long()
         for i in torch.unique(t): 
+            mask = t == i
             normal = normals[mask] if normals is not None else None
             feature = features[mask] if features is not None else None
-            mask = t == i
             pts = torch.concatenate([x[mask].unsqueeze(1), y[mask].unsqueeze(1), z[mask].unsqueeze(1)], dim=1)
             pts = ocnn.octree.Points(pts, normal, feature)
             otree = ocnn.octree.Octree(self.depth, self.full_depth)
@@ -230,11 +231,25 @@ class Hextree:
 
         # average the signal for the last hextree layer
         d = self.depth
-        self.points[d] = self.octrees.points[d][self.oct2hex_nempty[d]]
-        if self.octrees.normals[d] is not None:
-            self.normals[d] = self.octrees.normals[d][self.oct2hex_nempty[d]]
-        if self.octrees.features[d] is not None:
-            self.features[d] = self.octrees.features[d][self.oct2hex_nempty[d]]
+        # normalize points from [-1, 1] to [0, 2 ^ depth)
+        scale = 1 << (self.depth - 1)
+        ps = point_cloud.points
+        points = torch.cat([ps[:, [0]].long(), ((ps[:, 1:] + 1.0) * scale).long()], dim=1)
+        points[points == 2 * scale] = 2 * scale - 1  # 2 ^ depth -> 2 ^ depth - 1
+        # get the shuffled key and sort
+        t, x, y, z = points[:, 0], points[:, 1], points[:, 2], points[:, 3]
+        key = txyz2key(t, x, y, z, None, self.depth)
+        _, idx, counts = torch.unique(
+            key, sorted=True, return_inverse=True, return_counts=True, dim=0)
+        # points is rescaled in [L:Scale]
+        points = scatter_add(points, idx, dim=0)
+        self.points[d] = points / counts.unsqueeze(1)
+        if point_cloud.normals is not None:
+            normals = scatter_add(point_cloud.normals, idx, dim=0)
+            self.normals[d] = F.normalize(normals)
+        if point_cloud.features is not None:
+            features = scatter_add(point_cloud.features, idx, dim=0)
+            self.features[d] = features / counts.unsqueeze(1)
 
     # tree to points transformation
     def get_input_feature(self):

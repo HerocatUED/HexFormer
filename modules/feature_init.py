@@ -56,23 +56,14 @@ class InputFeature(torch.nn.Module):
         if "L" in self.feature:
             features.append(local_points)
 
-        if "G" in self.feature or "R" in self.feature or "P" in self.feature:
+        if "G" in self.feature:
             scale = 2 ** (1 - depth)  # normalize xyz [0, 2^depth] -> [-1, 1]
             global_points = hexree.points[depth] * scale - 1.0
-            # normalize t -> 0 [-1, 1]
+            # normalize t -> 0, ... not [-1, 1]
             global_points[:, 0] = hexree.points[depth][:, 0] - torch.min(
                 hexree.points[depth][:, 0]
             )
-            # global_points[:, 0] = global_points[:, 0] / torch.max(global_points[:, 0]) * 2 - 1
-
-        if "G" in self.feature:
             features.append(global_points)
-
-        if "R" in self.feature:
-            center = torch.mean(global_points, dim=0)
-            assert center.size(0) == 4
-            relative_points = global_points - center
-            features.append(relative_points)
 
         if "P" in self.feature:
             polar_points = cartesian_to_polar(global_points[:, 1:])

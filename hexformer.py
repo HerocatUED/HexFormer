@@ -5,7 +5,11 @@ from typing import Optional, List
 from torch.utils.checkpoint import checkpoint
 
 from hextree import Hextree
-from modules import HextreeT, HextreeDropPath, HextreeWeightedPoolXYZ, HextreeAvgPoolXYZ, HextreeAvgUnpoolXYZ
+from modules import (
+    HextreeT, HextreeDropPath, 
+    HextreeConvBn, HextreeConvBnRelu, 
+    HextreeDeconvBn, HextreeDeconvBnRelu
+    )
 
 
 class MLP(torch.nn.Module):
@@ -240,107 +244,92 @@ class HexFormerStage(torch.nn.Module):
     
 class PatchEmbed(torch.nn.Module):
 
-    def __init__(self, in_dim: int, dim: int, num_stages: int, nempty: bool, 
-                 init_depth: int, fpn_channel: int, **kwargs):
+    def __init__(self, in_dim: int, dim: int, num_down: int, nempty: bool, **kwargs):
         super().__init__()
-        self.num_stages = num_stages
-        self.channels = [int(dim * 2**i) for i in range(-self.num_stages, 1)]
-        self.downsample = torch.nn.ModuleList([
-            HextreeWeightedPoolXYZ(self.channels[i], self.channels[i+1], init_depth-i, init_depth-i-1)
+        self.num_stages = num_down
+        channels = [int(dim * 2**i) for i in range(-self.num_stages, 1)]
+
+        self.convs = torch.nn.ModuleList([HextreeConvBnRelu(
+            in_dim if i == 0 else channels[i], channels[i], kernel_size=[3],
+            stride=1, nempty=nempty) for i in range(self.num_stages)])
+        self.downsamples = torch.nn.ModuleList([HextreeConvBnRelu(
+            channels[i], channels[i+1], kernel_size=[2], stride=2, nempty=nempty)
             for i in range(self.num_stages)])
-        self.proj = MLP(in_dim, dim, self.channels[0])
-        self.norm = torch.nn.LayerNorm(self.channels[0])
-        self.head_up = torch.nn.ModuleList([MLP(self.channels[i], dim, fpn_channel) for i in range(self.num_stages)])
+        self.proj = HextreeConvBnRelu(
+            channels[-1], dim, kernel_size=[3], stride=1, nempty=nempty)
 
     def forward(self, data: torch.Tensor, hextree: Hextree, depth: int):
-        features = {}
-        data = self.norm(self.proj(data))
-        for i in range(self.num_stages): 
-            features[depth - i] = self.head_up[i](data)
-            data = self.downsample[i](data, hextree)
-            
-        return data, features
+        for i in range(self.num_stages):
+            depth_i = depth - i
+            data = self.convs[i](data, hextree, depth_i)
+            data = self.downsamples[i](data, hextree, depth_i)
+        data = self.proj(data, hextree, depth_i - 1)
+        return data
     
 
 class HexFormer(torch.nn.Module):
 
     def __init__(self, in_channels: int, channels: List[int],
                  num_blocks: List[int], num_heads: List[int],
-                 fpn_channel: int, patch_size: int, dilation: int, 
-                 drop_path: float, nempty: bool, stem_down: int, 
-                 init_depth:int, **kwargs):
+                 patch_size: int, dilation: int, drop_path: float, 
+                 nempty: bool, stem_down: int, **kwargs):
         super().__init__()
         self.patch_size = patch_size
         self.dilation = dilation
         self.nempty = nempty
         self.num_stages = len(num_blocks)
         self.stem_down = stem_down
-        self.init_depth = init_depth
         drop_ratio = torch.linspace(0, drop_path, sum(num_blocks)).tolist()
-        # Embdedding
-        self.patch_embed = PatchEmbed(in_channels, channels[0], stem_down, nempty, init_depth, fpn_channel)
+        # Patch Embdedding
+        self.patch_embed = PatchEmbed(in_channels, channels[0], stem_down, nempty)
         # Encoder
         self.encoders = torch.nn.ModuleList([HexFormerStage(
             dim=channels[i], num_heads=num_heads[i], patch_size=patch_size,
             drop_path=drop_ratio[sum(num_blocks[:i]):sum(num_blocks[:i+1])],
             dilation=dilation, nempty=nempty, num_blocks=num_blocks[i],)
             for i in range(self.num_stages)])
-        # self.feature_up = torch.nn.ModuleList([MLP(channels[i], int(
-        #     (channels[i]+channels[i+1])/2), channels[i+1]) for i in range(self.num_stages - 1)])
-        # self.downsample = HextreeAvgPoolXYZ()
-        self.downsamples = torch.nn.ModuleList([
-            HextreeWeightedPoolXYZ(channels[i], channels[i+1], init_depth-stem_down-i, init_depth-stem_down-i-1)
-            for i in range(self.num_stages-1)])
-        # Decoder
-        self.upsample = HextreeAvgUnpoolXYZ()
-        self.norm = torch.nn.LayerNorm(fpn_channel)
-        self.conv1x1 = torch.nn.ModuleList([torch.nn.Linear(
-            channels[i], fpn_channel) for i in range(self.num_stages-1, -1, -1)])
-        self.decoders = torch.nn.ModuleList([HexFormerStage(
-            dim=fpn_channel, num_heads=num_heads[i], patch_size=patch_size,
-            drop_path=drop_ratio[sum(num_blocks[:i]):sum(num_blocks[:i+1])],
-            dilation=dilation, nempty=nempty, num_blocks=2,)
-            for i in range(self.num_stages-2, -1, -1)])
+        self.downsamples = torch.nn.ModuleList([HextreeConvBn(
+        channels[i], channels[i + 1], kernel_size=[2], stride=2, 
+        nempty=nempty, use_bias=True) for i in range(self.num_stages - 1)])
         
-
     def forward(self, data: torch.Tensor, hextree: Hextree, depth: int):
-        assert self.init_depth == depth
         # PE
-        data, features = self.patch_embed(data, hextree, depth)
+        data = self.patch_embed(data, hextree, depth)
         depth = depth - self.stem_down   # current hextree depth
         hextree = HextreeT(hextree, self.patch_size, self.dilation, self.nempty,
                            max_depth=depth, start_depth=depth-self.num_stages+1)
+        features = {}
         # Encoder
         for i in range(self.num_stages):
             depth_i = depth - i
             data = self.encoders[i](data, hextree, depth_i)
             features[depth_i] = data
             if i < self.num_stages - 1:
-                # data = self.feature_up[i](data)
-                # data = self.downsample(data, hextree, depth_i)
                 data = self.downsamples[i](data, hextree, depth_i)
         
-        # Decoder
-        depth = min(features.keys())
-        target_depth = max(features.keys()) 
-        assert self.num_stages + self.stem_down == len(features)
-        data = self.conv1x1[0](features[depth])
-        out = self.upsample(data, hextree, depth, target_depth)
-        for i in range(1, self.num_stages):
-            depth_i = depth + i
-            data = self.upsample(data, hextree, depth_i-1, depth_i)
-            data = self.conv1x1[i](features[depth_i]) + data
-            # data = self.norm(data)
-            data = self.decoders[i-1](data, hextree, depth_i)
-            out = out + self.upsample(data, hextree, depth_i, target_depth)
-
-        # PE upsample
-        for i in range(self.stem_down, 0, -1):
-            depth_i = target_depth - i + 1
-            data = self.upsample(data, hextree, depth_i-1, depth_i) + features[depth_i]
-            data = self.norm(data)
-            if depth_i == target_depth: out += data
-            else: out += self.upsample(data, hextree, depth_i, target_depth)
-        out = self.norm(out)
+        return features
         
-        return out
+        # # Decoder
+        # depth = min(features.keys())
+        # target_depth = max(features.keys()) 
+        # assert self.num_stages + self.stem_down == len(features)
+        # data = self.conv1x1[0](features[depth])
+        # out = self.upsample(data, hextree, depth, target_depth)
+        # for i in range(1, self.num_stages):
+        #     depth_i = depth + i
+        #     data = self.upsample(data, hextree, depth_i-1, depth_i)
+        #     data = self.conv1x1[i](features[depth_i]) + data
+        #     # data = self.norm(data)
+        #     data = self.decoders[i-1](data, hextree, depth_i)
+        #     out = out + self.upsample(data, hextree, depth_i, target_depth)
+
+        # # PE upsample
+        # for i in range(self.stem_down, 0, -1):
+        #     depth_i = target_depth - i + 1
+        #     data = self.upsample(data, hextree, depth_i-1, depth_i) + features[depth_i]
+        #     data = self.norm(data)
+        #     if depth_i == target_depth: out += data
+        #     else: out += self.upsample(data, hextree, depth_i, target_depth)
+        # out = self.norm(out)
+        
+        # return out
