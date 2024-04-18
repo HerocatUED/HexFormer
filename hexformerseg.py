@@ -54,8 +54,8 @@ class SegHeader(torch.nn.Module):
 
         for i in range(self.num_up):
             out = self.up_conv[i](out, hextree, depth_max + i)  # upsample
-            out = self.interp(out, hextree, depth_max + self.num_up, query_pts)
-            out = self.classifier(out)
+        out = self.interp(out, hextree, depth_max + self.num_up, query_pts)
+        out = self.classifier(out)
         return out
 
 

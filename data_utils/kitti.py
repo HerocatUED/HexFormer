@@ -43,14 +43,12 @@ class KITTITransform(Transform):
             labels=torch.from_numpy(sample["labels"]),
             features=torch.from_numpy(sample["points"][:, 4:]),
         )
-        pcds.normalize_xyz(keep_shape=True)
-
+        
         # transform including rotatation, translation, scaling, and flipping
         output = self.transform(pcds, idx)  # points and inbox_mask
         points = output["points"]
+        points.normalize_xyz(keep_shape=True)
 
-        # align z
-        # points = align_z(points)
         return {"points": points}
 
 

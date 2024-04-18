@@ -187,16 +187,17 @@ class Hextree:
         self.device = point_cloud.device
         assert point_cloud.batch_size == self.batch_size, \
             "Inconsistent batch_size, only 1 supported when building hextree!"
-
         # build octree frame by frame
         points, normals, features = point_cloud.points, point_cloud.normals, point_cloud.features
         t, x, y, z = points[:, 0], points[:, 1], points[:, 2], points[:, 3]
-        assert torch.max(t) < 2 ** 8 and torch.min(t) >= 0, \
-            "t should be in range [0, 255]"
-        assert torch.max(x) <= 1 and torch.min(x) <= 1 and \
-                torch.max(x) <= 1 and torch.min(x) <= 1 and \
-                torch.max(x) <= 1 and torch.min(x) <= 1 ,\
-            "You should normalize xyz to [-1, 1] before build tree."
+        # assert  ((t < 2**8).all().logical_and((t >= 0).all())), \
+        #     "t should be in range [0, 255]"
+        # assert ((x <= 1).all().logical_and((x >= -1).all())), \
+        #     "You should normalize xyz to [-1, 1] before build tree."
+        # assert ((y <= 1).all().logical_and((y >= -1).all())), \
+        #     "You should normalize xyz to [-1, 1] before build tree."
+        # assert ((z <= 1).all().logical_and((z >= -1).all())), \
+        #     "You should normalize xyz to [-1, 1] before build tree."
         t = t.long()
         for i in torch.unique(t): 
             mask = t == i

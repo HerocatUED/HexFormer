@@ -1,9 +1,8 @@
 import torch
 import torch.sparse
 from typing import List, Optional
-
+from ocnn.nn import OctreeInterp, OctreeUpsample
 from hextree import Hextree
-from .hextree_pad import hextree_depad
 
 
 def hextree_nearest_pts(
@@ -45,83 +44,6 @@ def hextree_nearest_pts(
     return out
 
 
-def hextree_linear_pts(
-    data: torch.Tensor,
-    hextree: Hextree,
-    depth: int,
-    pts: torch.Tensor,
-    nempty: bool = False,
-    bound_check: bool = False,
-):
-    """Linear interpolatation with input points.
-
-    Refer to :func:`hextree_nearest_pts` for the meaning of the arguments.
-    """
-
-    nnum = hextree.nnum_nempty[depth] if nempty else hextree.nnum[depth]
-    assert data.shape[0] == nnum, "The shape of input data is wrong."
-
-    device = data.device
-    grid = torch.tensor(
-        [
-            [0, 0, 0, 0],
-            [0, 0, 0, 1],
-            [0, 0, 1, 0],
-            [0, 0, 1, 1],
-            [0, 1, 0, 0],
-            [0, 1, 0, 1],
-            [0, 1, 1, 0],
-            [0, 1, 1, 1],
-            [1, 0, 0, 0],
-            [1, 0, 0, 1],
-            [1, 0, 1, 0],
-            [1, 0, 1, 1],
-            [1, 1, 0, 0],
-            [1, 1, 0, 1],
-            [1, 1, 1, 0],
-            [1, 1, 1, 1],
-        ],
-        device=device,
-    )
-
-    # 1. Neighborhood searching
-    # the value is defined on the center of each voxel
-    txyzf = pts[:, :4] - torch.tensor([0, 0.5, 0.5, 0.5], device=device)
-    txyzi = txyzf.floor()  # the integer part  (N, 4)
-    frac = txyzf - txyzi  # the fraction part (N, 4)
-
-    txyzn = (txyzi.unsqueeze(1) + grid).view(-1, 4)
-    batch = pts[:, 4].unsqueeze(1).repeat(1, 16).view(-1, 1)
-    idx = hextree.search_txyzb(torch.cat([txyzn, batch], dim=1), depth, nempty)
-    valid = idx > -1  # valid indices
-    if bound_check:
-        bound = torch.logical_and(txyzn >= 0, txyzn < 2**depth).all(1)
-        valid = torch.logical_and(valid, bound)
-    idx = idx[valid]
-
-    # 2. Build the sparse matrix
-    npt = pts.shape[0]
-    ids = torch.arange(npt, device=idx.device)
-    ids = ids.unsqueeze(1).repeat(1, 16).view(-1)
-    ids = ids[valid]
-    indices = torch.stack([ids, idx], dim=0).long()
-
-    # (16, 4) - (N, 1, 4) -> (N, 16, 4)
-    frac = (1.0 - grid) - frac.unsqueeze(dim=1)
-    weight = frac.prod(dim=2).abs().view(-1)  # (16*N,)
-    weight = weight[valid]
-
-    h = data.shape[0]
-    mat = torch.sparse_coo_tensor(indices, weight, [npt, h], device=device)
-
-    # 3. Interpolatation
-    output = torch.sparse.mm(mat, data)
-    ones = torch.ones(h, 1, dtype=data.dtype, device=device)
-    norm = torch.sparse.mm(mat, ones)
-    output = torch.div(output, norm + 1e-12)
-    return output
-
-
 class HextreeInterp(torch.nn.Module):
     r"""Interpolates the points with an hextree feature.
 
@@ -136,11 +58,12 @@ class HextreeInterp(torch.nn.Module):
         rescale_pts: bool = True,
     ):
         super().__init__()
+        assert method == "nearest"
         self.method = method
         self.nempty = nempty
         self.bound_check = bound_check
         self.rescale_pts = rescale_pts
-        self.func = hextree_linear_pts if method == "linear" else hextree_nearest_pts
+        self.func = hextree_nearest_pts
 
     def forward(
         self, data: torch.Tensor, hextree: Hextree, depth: int, pts: torch.Tensor
@@ -162,30 +85,29 @@ class HextreeInterp(torch.nn.Module):
         )  # noqa
 
 
-def hextree_nearest_upsample(
-    data: torch.Tensor, hextree: Hextree, depth: int, nempty: bool = False
-):
-    r"""Upsamples the hextree node features from :attr:`depth` to :attr:`(depth+1)`
-    with the nearest-neighbor interpolation.
+# class HextreeInterp(torch.nn.Module):
+#     r"""Interpolates the points with an hextree feature.
 
-    Args:
-      data (torch.Tensor): The input data.
-      hextree (Hextree): The hextree to interpolate.
-      depth (int): The depth of the data.
-      nempty (bool): If true, the :attr:`data` only contains features of non-empty
-          hextree nodes.
-    """
+#     Refer to :func:`hextree_nearest_pts` for a description of arguments.
+#     """
 
-    nnum = hextree.nnum_nempty[depth] if nempty else hextree.nnum[depth]
-    assert data.shape[0] == nnum, "The shape of input data is wrong."
+#     def __init__(
+#         self,
+#         method: str = "linear",
+#         nempty: bool = False,
+#         bound_check: bool = False,
+#         rescale_pts: bool = True,
+#     ):
+#         super().__init__()
+#         self.interp = OctreeInterp(method, nempty, bound_check, rescale_pts)
 
-    out = data
-    if not nempty:
-        out = hextree_depad(out, hextree, depth)
-    out = out.unsqueeze(1).repeat(1, 16, 1).flatten(end_dim=1)
-    if nempty:
-        out = hextree_depad(out, hextree, depth + 1)  # !!! depth+1
-    return out
+#     def forward(
+#         self, data: torch.Tensor, hextree: Hextree, depth: int, pts: torch.Tensor
+#     ):
+#         data = data[hextree.hex2oct_nempty[depth]]
+#         data = self.interp(data, hextree.octrees, depth, pts)
+#         data = data[hextree.oct2hex_nempty[depth]]
+#         return data
 
 
 class HextreeUpsample(torch.nn.Module):
@@ -197,9 +119,7 @@ class HextreeUpsample(torch.nn.Module):
 
     def __init__(self, method: str = "linear", nempty: bool = False):
         super().__init__()
-        self.method = method
-        self.nempty = nempty
-        self.func = hextree_linear_pts if method == "linear" else hextree_nearest_pts
+        self.upsample = OctreeUpsample(method, nempty)
 
     def forward(
         self,
@@ -208,26 +128,9 @@ class HextreeUpsample(torch.nn.Module):
         depth: int,
         target_depth: Optional[int] = None,
     ):
-        r""""""
-
         if target_depth is None:
             target_depth = depth + 1
-        if target_depth == depth:
-            return data  # return, do nothing
-        assert target_depth >= depth, "target_depth must be larger than depth"
-
-        if target_depth == depth + 1 and self.method == "nearest":
-            return hextree_nearest_upsample(data, hextree, depth, self.nempty)
-
-        # hextree_linear_upsample is not implemented
-
-        txyzb = hextree.txyzb(target_depth, self.nempty)
-        pts = torch.stack(txyzb, dim=1).float()
-
-        pts[:, 1:4] = (pts[:, 1:4] + 0.5) * (2 ** (depth - target_depth))  # !!! rescale
-        return self.func(data, hextree, depth, pts, self.nempty)
-
-    def extra_repr(self) -> str:
-        r"""Sets the extra representation of the module."""
-
-        return ("method={}, nempty={}").format(self.method, self.nempty)
+        data = data[hextree.hex2oct_nempty[depth]]
+        data = self.upsample(data, hextree.octrees, depth, target_depth)
+        data = data[hextree.oct2hex_nempty[target_depth]]
+        return data
