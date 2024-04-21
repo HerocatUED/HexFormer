@@ -17,15 +17,14 @@ def align_z(points: Points):
 
 
 def rand_crop(points: Points, max_npt: int):
-    r''' Keeps `max_npt` pts at most centered by a radomly chosen pts. 
-    '''
+    r"""Keeps `max_npt` pts at most centered by a radomly chosen pts."""
 
     pts = points.points
     npt = points.npt
     crop_mask = torch.ones(npt, dtype=torch.bool)
     if npt > max_npt:
         rand_idx = torch.randint(low=0, high=npt, size=(1,))
-        sort_idx = torch.argsort(torch.sum((pts - pts[rand_idx])**2, 1))
+        sort_idx = torch.argsort(torch.sum((pts - pts[rand_idx]) ** 2, 1))
         crop_idx = sort_idx[max_npt:]
         crop_mask[crop_idx] = False
         points = points[crop_mask]
@@ -46,13 +45,15 @@ class HOI4DTransform(Transform):
 
     def __call__(self, sample, idx=None):
         # construct and normalize points
-        pcds = Points(points=torch.from_numpy(sample['points']),
-                      labels=torch.from_numpy(sample['labels']))
+        pcds = Points(
+            points=torch.from_numpy(sample["points"]),
+            labels=torch.from_numpy(sample["labels"]),
+        )
         pcds.normalize_xyz(keep_shape=True)
 
         # transform including rotatation, translation, scaling, and flipping
-        output = self.transform(pcds, idx)   # points and inbox_mask
-        points = output['points']
+        output = self.transform(pcds, idx)  # points and inbox_mask
+        points = output["points"]
 
         # random crop
         if self.distort:
@@ -63,7 +64,7 @@ class HOI4DTransform(Transform):
 
         # align z
         points = align_z(points)
-        return {'points': points}
+        return {"points": points}
 
 
 # def apply_cutmix(points: List[Points], cutmix: float):
@@ -112,11 +113,11 @@ class CollateBatch:
         outputs = {key: [b[key] for b in batch] for key in batch[0].keys()}
 
         # apply cutmix
-        points = outputs['points']
+        points = outputs["points"]
         if self.cutmix > 0:  # and torch.rand(1) > 0.3:
             raise NotImplementedError
             points = apply_cutmix(points, self.cutmix)
-        outputs['points'] = points
+        outputs["points"] = points
         return outputs
 
 
@@ -125,6 +126,5 @@ def get_hoi4d_seg_dataset(flags):
     read_file = ReadFile(has_normal=False, has_color=False, has_label=flags.has_label)
     collate_batch = CollateBatch(flags.cutmix)
 
-    dataset = Dataset(flags.location, flags.filelist,
-                      transform, read_file=read_file)
+    dataset = Dataset(flags.location, flags.filelist, transform, read_file=read_file)
     return dataset, collate_batch

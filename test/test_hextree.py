@@ -6,6 +6,8 @@ sys.path.append('..')
 import hextree
 import ocnn.octree as octree
 
+# NOTE: special test, we test hextree with octree.
+# accuracy is garenteed by octree.
 
 class TestHextree(unittest.TestCase):
 
@@ -28,91 +30,42 @@ class TestHextree(unittest.TestCase):
         htree.build_hextree(point_cloud)
         htree = htree.to('cpu')
         
-        # test node number
-        nnum = torch.Tensor([1, 16, 32, 48, 48, 48])
-        nnum_nempty = torch.Tensor([1, 2, 3, 3, 3, 3])
-        self.assertTrue((htree.nnum == nnum).all())
-        self.assertTrue((htree.nnum_nempty == nnum_nempty).all())
+        for d in range(htree.depth, htree.full_depth, -1):
+            # test node number
+            self.assertTrue(htree.nnum[d] == htree.octrees.nnum[d])
+            self.assertTrue(htree.nnum_nempty[d] == htree.octrees.nnum_nempty[d])
+            self.assertTrue(htree.nnum[d] == htree.children[d].size()[0])
 
-        # test the key
-        keys = [
-            torch.Tensor([0]),
-            torch.Tensor([0, 1, 2, 3, 4, 5, 6, 7, 8, 
-                          9, 10, 11, 12, 13, 14, 15]),
-            torch.Tensor([0, 1, 2, 3, 4, 5, 6, 7, 8, 
-                          9, 10, 11, 12, 13, 14, 15,
-                          96, 97, 98, 99, 100, 101, 102, 103, 
-                          104, 105, 106, 107, 108, 109, 110, 111]),
-            torch.Tensor([0, 1, 2, 3, 4, 5, 6, 7, 8, 
-                          9, 10, 11, 12, 13, 14, 15,
-                          1536, 1537, 1538, 1539, 1540, 1541, 1542, 1543, 
-                          1544, 1545, 1546, 1547, 1548, 1549, 1550, 1551,
-                          1664, 1665, 1666, 1667, 1668, 1669, 1670, 1671, 
-                          1672, 1673, 1674, 1675, 1676, 1677, 1678, 1679]),
-            torch.Tensor([0, 1, 2, 3, 4, 5, 6, 7, 8, 
-                          9, 10, 11, 12, 13, 14, 15,
-                          24576, 24577, 24578, 24579, 24580, 24581, 24582, 24583,
-                          24584, 24585, 24586, 24587, 24588, 24589, 24590, 24591,
-                          26624, 26625, 26626, 26627, 26628, 26629, 26630, 26631, 
-                          26632, 26633, 26634, 26635, 26636, 26637, 26638, 26639]),
-            torch.Tensor([0, 1, 2, 3, 4, 5, 6, 7, 8, 
-                          9, 10, 11, 12, 13, 14, 15,
-                          393216, 393217, 393218, 393219, 393220, 393221, 393222, 393223, 
-                          393224, 393225, 393226, 393227, 393228, 393229, 393230, 393231,
-                          425984, 425985, 425986, 425987, 425988, 425989, 425990, 425991, 
-                          425992, 425993, 425994, 425995, 425996, 425997, 425998, 425999])
-        ]
-        for d in range(6):
-            self.assertTrue((htree.keys[d] == keys[d]).all())
-
-        # test masked_counts
-        masked_counts = [
-            torch.Tensor([1, 1]),
-            torch.Tensor([2, 1]),
-            torch.Tensor([1, 1, 1]),
-            torch.Tensor([1, 1, 1]),
-            torch.Tensor([1, 1, 1]),
-            torch.Tensor([1, 1, 1]),
-        ]
-        for d in range(6):
-            self.assertTrue((htree.masked_counts[d] == masked_counts[d]).all())
-
-        # test scatter_idx
-        scatter_idx = [
-            torch.Tensor([0, 1]),
-            torch.Tensor([0, 0, 1]),
-            torch.Tensor([0, 1, 2]),
-            torch.Tensor([0, 1, 2]),
-            torch.Tensor([0, 1, 2]),
-            torch.Tensor([0, 1, 2]),
-        ]
-        for d in range(6):
-            self.assertTrue((htree.scatter_idx[d] == scatter_idx[d]).all())
-        
-        # test the children 
-        children = [
-            torch.Tensor([0]),
-            torch.Tensor([0, -1, -1, -1, -1, -1, 1, -1, -1, -1, -1, -1, -1, -1, -1, -1]),
-            torch.Tensor([0, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-                          1, -1, -1, -1, -1, -1, -1, -1, 2, -1, -1, -1, -1, -1, -1, -1]),
-            torch.Tensor([0, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-                          1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-                          2, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1]),
-            torch.Tensor([0, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-                          1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-                          2, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1]),
-            torch.Tensor([0, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-                          1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-                          -1, -1, -1, -1, -1, -1, 2, -1, -1, -1, -1, -1, -1, -1, -1, -1]),
-        ]
-        for d in range(6):
-            self.assertTrue((htree.children[d] == children[d]).all())
-        
+            # test the key and mapping (accually testing children at the same time)
+            # key(depth, nempty) used attr: children to get nempty mask
+            hkey_all = htree.keys[d]
+            okey_all = htree.octrees.keys[d]
+            hokey_all = self.key_trans(hkey_all, htree.hex2oct[d])
+            self.assertTrue((okey_all == hokey_all).all())
+            hkey = htree.key(d, True)
+            okey = htree.octrees.key(d, True)
+            hokey = self.key_trans(hkey, htree.hex2oct_nempty[d])
+            self.assertTrue((okey == hokey).all())
+            
         # test the signal
         normals = torch.Tensor([[1., 0., 0.], [-1., 0., 0.], [0., 1., 0.]])
         features = torch.Tensor([[1, -1], [2, -2], [3, -3]])
         self.assertTrue((htree.normals[5] == normals).all())
         self.assertTrue((htree.features[5] == features).all())
+    
+    def key_trans(self, hkey, mapping):
+        b = hkey >> 56
+        t = hkey & (2 ** 8 - 1)
+        okey = hkey >> 8
+        okey = okey & (2 ** 48 - 1)
+        cnt = 0
+        for i in torch.unique(b):
+            mask = b == i
+            for j in torch.unique(t):
+                mask1 = (t == j) & mask
+                okey[mask1] = (okey[mask1]) | (cnt << 48)
+                cnt += 1
+        return okey[mapping]
     
     def test_build_hextree(self):
         self.build_hextree('cpu')
@@ -131,101 +84,29 @@ class TestHextree(unittest.TestCase):
         htree = hextree.merge_hextrees([htree1, htree2])
         htree = htree.to('cpu')
 
-        nnum = torch.Tensor([1, 16, 32, 48, 48, 48]) * 2
-        nnum_nempty = torch.Tensor([1, 2, 3, 3, 3, 3]) * 2
-        self.assertTrue((htree.nnum == nnum).all())
-        self.assertTrue((htree.nnum_nempty == nnum_nempty).all())
+        for d in range(htree.depth, htree.full_depth, -1):
+            # test node number
+            self.assertTrue(htree.nnum[d] == htree.octrees.nnum[d])
+            self.assertTrue(htree.nnum_nempty[d] == htree.octrees.nnum_nempty[d])
+            self.assertTrue(htree.nnum[d] == htree.children[d].size()[0])
 
-        keys = [
-            torch.Tensor([0]),
-            torch.Tensor([0, 1, 2, 3, 4, 5, 6, 7, 8, 
-                          9, 10, 11, 12, 13, 14, 15]),
-            torch.Tensor([0, 1, 2, 3, 4, 5, 6, 7, 8, 
-                          9, 10, 11, 12, 13, 14, 15,
-                          96, 97, 98, 99, 100, 101, 102, 103, 
-                          104, 105, 106, 107, 108, 109, 110, 111]),
-            torch.Tensor([0, 1, 2, 3, 4, 5, 6, 7, 8, 
-                          9, 10, 11, 12, 13, 14, 15,
-                          1536, 1537, 1538, 1539, 1540, 1541, 1542, 1543, 
-                          1544, 1545, 1546, 1547, 1548, 1549, 1550, 1551,
-                          1664, 1665, 1666, 1667, 1668, 1669, 1670, 1671, 
-                          1672, 1673, 1674, 1675, 1676, 1677, 1678, 1679]),
-            torch.Tensor([0, 1, 2, 3, 4, 5, 6, 7, 8, 
-                          9, 10, 11, 12, 13, 14, 15,
-                          24576, 24577, 24578, 24579, 24580, 24581, 24582, 24583,
-                          24584, 24585, 24586, 24587, 24588, 24589, 24590, 24591,
-                          26624, 26625, 26626, 26627, 26628, 26629, 26630, 26631, 
-                          26632, 26633, 26634, 26635, 26636, 26637, 26638, 26639]),
-            torch.Tensor([0, 1, 2, 3, 4, 5, 6, 7, 8, 
-                          9, 10, 11, 12, 13, 14, 15,
-                          393216, 393217, 393218, 393219, 393220, 393221, 393222, 393223, 
-                          393224, 393225, 393226, 393227, 393228, 393229, 393230, 393231,
-                          425984, 425985, 425986, 425987, 425988, 425989, 425990, 425991, 
-                          425992, 425993, 425994, 425995, 425996, 425997, 425998, 425999])
-        ]
-        keys2 = [key.long() | 1 << 56 for key in keys]
-        keys = [torch.cat([key.long(), key2]) for key, key2 in zip(keys, keys2)]
-
-        for d in range(6):
-            self.assertTrue((htree.keys[d] == keys[d]).all())
-        
-        masked_counts = [
-            torch.Tensor([1, 1, 1, 1]),
-            torch.Tensor([2, 1, 2, 1]),
-            torch.Tensor([1, 1, 1, 1, 1, 1]),
-            torch.Tensor([1, 1, 1, 1, 1, 1]),
-            torch.Tensor([1, 1, 1, 1, 1, 1]),
-            torch.Tensor([1, 1, 1, 1, 1, 1]),
-        ]
-        for d in range(6):
-            self.assertTrue((htree.masked_counts[d] == masked_counts[d]).all())
-
-        scatter_idx = [
-            torch.Tensor([0, 1, 2, 3]),
-            torch.Tensor([0, 0, 1, 2, 2, 3]),
-            torch.Tensor([0, 1, 2, 3, 4, 5]),
-            torch.Tensor([0, 1, 2, 3, 4, 5]),
-            torch.Tensor([0, 1, 2, 3, 4, 5]),
-            torch.Tensor([0, 1, 2, 3, 4, 5]),
-        ]
-        for d in range(6):
-            self.assertTrue((htree.scatter_idx[d] == scatter_idx[d]).all())
-
-        children = [
-            torch.Tensor([0, 1]),
-            torch.Tensor([0, -1, -1, -1, -1, -1, 1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-                          2, -1, -1, -1, -1, -1, 3, -1, -1, -1, -1, -1, -1, -1, -1, -1]),
-            torch.Tensor([0, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-                          1, -1, -1, -1, -1, -1, -1, -1, 2, -1, -1, -1, -1, -1, -1, -1,
-                          3, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-                          4, -1, -1, -1, -1, -1, -1, -1, 5, -1, -1, -1, -1, -1, -1, -1]),
-            torch.Tensor([0, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-                          1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-                          2, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-                          3, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-                          4, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-                          5, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1]),
-            torch.Tensor([0, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-                          1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-                          2, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-                          3, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-                          4, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-                          5, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1]),
-            torch.Tensor([0, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-                          1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-                          -1, -1, -1, -1, -1, -1, 2, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-                          3, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-                          4, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-                          -1, -1, -1, -1, -1, -1, 5, -1, -1, -1, -1, -1, -1, -1, -1, -1]),
-        ]
-        for d in range(6):
-            self.assertTrue((htree.children[d] == children[d].long()).all())
-
+            # test the key and mapping (accually testing children at the same time)
+            # key(depth, nempty) used attr: children to get nempty mask
+            hkey_all = htree.keys[d]
+            okey_all = htree.octrees.keys[d]
+            hokey_all = self.key_trans(hkey_all, htree.hex2oct[d])
+            self.assertTrue((okey_all == hokey_all).all())
+            hkey = htree.key(d, True)
+            okey = htree.octrees.key(d, True)
+            hokey = self.key_trans(hkey, htree.hex2oct_nempty[d])
+            self.assertTrue((okey == hokey).all())
+            
+        # test the signal
         normals = torch.Tensor([[1., 0., 0.], [-1., 0., 0.], [0., 1., 0.]]).repeat(2, 1)
         features = torch.Tensor([[1, -1], [2, -2], [3, -3]]).repeat(2, 1)
         self.assertTrue((htree.normals[5] == normals).all())
         self.assertTrue((htree.features[5] == features).all())
-        
+        # test octrees
         otrees = []
         for pcds in [pcds1, pcds2]:
             for pcd in pcds:
@@ -235,15 +116,8 @@ class TestHextree(unittest.TestCase):
                 otree = otree.to('cpu')
                 otrees.append(otree)
         otrees = octree.merge_octrees(otrees)
-            
-        # test mapping index
-        octree_feat = otrees.features[5]
-        hextree_feat = htree.features[5]
-        o2h = octree_feat[htree.octree2hextree[5]]
-        h20 = hextree_feat[htree.hextree2octree[5]]
-        self.assertTrue((o2h == hextree_feat).all())
-        self.assertTrue((h20 == octree_feat).all())
-        self.assertTrue((otrees.key(5, True) == htree.otrees.key(5, True)).all())
+        for i in range(1, 6):
+            self.assertTrue((otrees.key(i, True) == htree.octrees.key(i, True)).all())
 
     def test_merge_hextree(self):
         self.merge_hextree('cpu')
@@ -251,5 +125,5 @@ class TestHextree(unittest.TestCase):
             self.merge_hextree('cuda')
 
 if __name__ == "__main__":
-    os.environ['CUDA_VISIBLE_DEVICES'] = '7'
+    os.environ['CUDA_VISIBLE_DEVICES'] = '0'
     unittest.main()

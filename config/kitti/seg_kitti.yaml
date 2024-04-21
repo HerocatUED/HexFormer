@@ -1,11 +1,11 @@
 SOLVER:
   gpu: 0,1,2,3
   run: train
-  logdir: logs/log_MultiScan_big_conv_1 # NOTE: MultiScan has 26 classes
+  logdir: logs/log_MultiScan_new_kitti # NOTE: MultiScan has 26 classes
   best_val: max:mIoU_part
 
   ckpt_num: 20
-  max_epoch: 30
+  max_epoch: 50
   test_every_epoch: 1
   log_per_iter: 100
 
@@ -15,7 +15,6 @@ SOLVER:
   lr_min: 1e-6
   lr_type: cos
   # warmup_epoch: 5
-  # milestones: (70, 140)
   rand_seed: 13
   dist_url: tcp://localhost:10002 # for distributed training
 
@@ -42,7 +41,7 @@ DATA:
     history: 2
     location: /mnt/sdc/wangrh/data/SemanticKITTI
     filelist: config/kitti/train_data.txt
-    batch_size: 1 # for a single GPU, real batch size = GPU_num * batch_size
+    batch_size: 2 # for a single GPU, real batch size = GPU_num * batch_size
     shuffle: True
     num_workers: 1
 
@@ -84,7 +83,7 @@ MODEL:
   depth: 12
   sync_bn: True
   find_unused_parameters: False
-  # use_compile: True
+  use_compile: False
 
 LOSS:
   mask: 0

@@ -4,18 +4,19 @@ import unittest
 import sys
 
 from utils import get_hextree
-sys.path.append('..')
+
+sys.path.append("..")
 from modules import HextreeDropPath
 
 
 class HextreeDropTest(unittest.TestCase):
 
     def test_hextree_drop_path(self):
-        r'''Just execute the `OctreeDropPath`, and there are no comparisons with 
+        r"""Just execute the `OctreeDropPath`, and there are no comparisons with
         ground-truth results.
-        '''
+        """
 
-        hextrees = [get_hextree(i) for i in (0,1)]
+        hextrees = [get_hextree(i) for i in (0, 1)]
         # htree = hextree.merge_hextrees(hextrees)
         htree = hextrees[0]
 
@@ -34,5 +35,5 @@ class HextreeDropTest(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    os.environ['CUDA_VISIBLE_DEVICES'] = '0'
+    os.environ["CUDA_VISIBLE_DEVICES"] = "0"
     unittest.main()

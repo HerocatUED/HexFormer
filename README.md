@@ -29,9 +29,13 @@ python run_seg.py --gpu 0,1,2,3 --alias kitti --port 10008
 
 
 TODO： 
+- Inference Code
 - update to pytorch 2.0, speedup with torch.compile()
-- clean data_utils, config, dataset, clear cash
+- clean dataset, frequence of clearing cash in thsolver is modified
 - loss design
 - CPE: 3D DwConv + 1D Conv
+- scale factor: +-100m
 - reuse history prediction
 - Use corlor infomation as init feature
+- FPS
+- Cross Attention: query Current
