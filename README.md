@@ -21,7 +21,7 @@ python data_utils/kitti.py --kitti_dir $.../SemanticKITTI$
 ```
 5. Train with 4 GPUs
 ```
-python run_seg.py --gpu 0,1,2,3 --alias kitti --port 10008
+python run_seg.py --run train --gpu 0,1,2,3 --alias kitti --port 10008
 ```
 **Note** 
 - torch version: function next() used in thsolver.solver;
@@ -31,11 +31,10 @@ python run_seg.py --gpu 0,1,2,3 --alias kitti --port 10008
 TODO： 
 - Inference Code
 - update to pytorch 2.0, speedup with torch.compile()
-- clean dataset, frequence of clearing cash in thsolver is modified
 - loss design
 - CPE: 3D DwConv + 1D Conv
-- scale factor: +-100m
 - reuse history prediction
 - Use corlor infomation as init feature
-- FPS
+- FPS: current 1~2 frame/GPU
 - Cross Attention: query Current
+- inference: Vote

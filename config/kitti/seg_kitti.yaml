@@ -1,7 +1,7 @@
 SOLVER:
   gpu: 0,1,2,3
   run: train
-  logdir: logs/log_MultiScan_new_kitti # NOTE: MultiScan has 26 classes
+  logdir: logs/log_MultiScan_scale # NOTE: MultiScan has 26 classes
   best_val: max:mIoU_part
 
   ckpt_num: 20

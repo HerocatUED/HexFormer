@@ -177,20 +177,22 @@ class Points:
         self.points[:, 0] = self.points[:, 0] + dis[0]
         self.translate_xyz(dis[1:])
 
-    def normalize_xyz(self, keep_shape: bool = True):
+    def normalize_xyz(self, keep_shape: bool = True, box_size: Union[torch.Tensor, float, int] = None):
         r"""Normalizes the pointcloud to :obj:`[-1, 1]`.
 
         Args:
             `keep_shape` (`bool`): if set to `False`, do scaling on each axis seperately;
             otherwise xyz will be scaled by the same factor. Default `True`.
+            `box_size`: scale with 2/box_size 
         """
 
         bbmin, bbmax = self.bbox_xyz()
         center = (bbmax + bbmin) * 0.5
         self.translate_xyz(-center)
-        box_size = bbmax - bbmin + 1.0e-6
-        if keep_shape:
-            box_size = box_size.max(0, keepdim=True)[0]
+        if box_size is None:
+            box_size = bbmax - bbmin + 1.0e-10
+            if keep_shape:
+                box_size = box_size.max(0, keepdim=True)[0]
         self.scale_xyz(2.0 / box_size)
 
     def clip_xyz(

@@ -35,21 +35,23 @@ class KITTITransform(Transform):
         super().__init__(**flags)
 
         self.flags = flags
+        self.scale_factor = 100
 
     def __call__(self, sample, idx=None):
-        # construct and normalize points
+        # get input sample
         pcds = Points(
             points=torch.from_numpy(sample["points"][:, :4]),
             labels=torch.from_numpy(sample["labels"]),
             features=torch.from_numpy(sample["points"][:, 4:]),
         )
         
+        # normalize points
+        pcds.normalize_xyz(keep_shape=True, box_size=2*self.scale_factor)
+        
         # transform including rotatation, translation, scaling, and flipping
-        output = self.transform(pcds, idx)  # points and inbox_mask
-        points = output["points"]
-        points.normalize_xyz(keep_shape=True)
+        output = self.transform(pcds, idx)
 
-        return {"points": points}
+        return output
 
 
 class ReadKITTI:
