@@ -1,34 +1,12 @@
 # build HOI4D dataset for Solver
 
-
 import torch
+import h5py
 import numpy as np
-
-from hextree import Points, merge_points
 from thsolver import Dataset
-from typing import List
 
-from .utils import ReadFile, Transform
-
-
-def align_z(points: Points):
-    points.points[:, 3] -= points.points[:, 3].min()
-    return points
-
-
-def rand_crop(points: Points, max_npt: int):
-    r"""Keeps `max_npt` pts at most centered by a radomly chosen pts."""
-
-    pts = points.points
-    npt = points.npt
-    crop_mask = torch.ones(npt, dtype=torch.bool)
-    if npt > max_npt:
-        rand_idx = torch.randint(low=0, high=npt, size=(1,))
-        sort_idx = torch.argsort(torch.sum((pts - pts[rand_idx]) ** 2, 1))
-        crop_idx = sort_idx[max_npt:]
-        crop_mask[crop_idx] = False
-        points = points[crop_mask]
-    return points, crop_mask
+from hextree import Points
+from .utils import Transform
 
 
 class HOI4DTransform(Transform):
@@ -36,68 +14,75 @@ class HOI4DTransform(Transform):
     def __init__(self, flags):
         super().__init__(**flags)
 
-        # The `self.scale_factor` is used to normalize the input point cloud to the
-        # range of [-1, 1]. If this parameter is modified, the `self.elastic_params`
-        # and the `jittor` in the data augmentation should be scaled accordingly.
-        # self.scale_factor = 5.12
-        # self.scale_factor = 10.24
         self.flags = flags
+        self.scale_factor = 5.12 # TODO
 
     def __call__(self, sample, idx=None):
-        # construct and normalize points
+        # get input sample
         pcds = Points(
-            points=torch.from_numpy(sample["points"]),
+            points=torch.from_numpy(sample["points"][:, :4]),
             labels=torch.from_numpy(sample["labels"]),
         )
-        pcds.normalize_xyz(keep_shape=True)
-
+        
+        # normalize points
+        pcds.normalize_xyz(keep_shape=True, box_size=2*self.scale_factor)
+        
         # transform including rotatation, translation, scaling, and flipping
-        output = self.transform(pcds, idx)  # points and inbox_mask
-        points = output["points"]
+        output = self.transform(pcds, idx)
 
-        # random crop
-        if self.distort:
-            max_npt = self.flags.max_npt if self.flags.max_npt > 0 else points.npt
-            max_npt = min(max_npt, int(points.npt * self.flags.crop_ratio))
-            points, crop_mask = rand_crop(points, max_npt)
-            # inbox_mask[inbox_mask.clone()] = crop_mask   # update inbox_mask
-
-        # align z
-        points = align_z(points)
-        return {"points": points}
+        return output
 
 
-# def apply_cutmix(points: List[Points], cutmix: float):
-#     if cutmix <= 0:
-#         return points
+class ReadHOI4D:
+    def __init__(self, root_dir: str, has_label: bool = False, history: int = 3):
+        self.has_label = has_label
+        self.history = history
+        self.datas = []
+        if self.has_label:
+            for filename in ['train1_float32.h5', 'train2_float32.h5', 'train3_float32.h5', 'train4_float32.h5']:
+                self.datas.append(h5py.File(root_dir + '/' + filename, 'r'))
+        else:
+            for filename in ['test.h5']:
+                self.datas.append(h5py.File(root_dir + '/' + filename, 'r'))
+        
+        # for a single .h5 file (except the last one, only 721)
+        # pcd      (750, 300, 8192, 3)
+        # center   (750, 300, 3)
+        # semantic (750, 300, 8192)
+        
+    def __call__(self, filename: str):
+        
+        # index conversion
+        frame_cnt = int(filename.split('/')[-1]) # frame id in all data
+        frame_id = int(frame_cnt % 300) # frame id in a single video
+        past_frame = max(frame_id - self.history, 0)
+        
+        if self.has_label:
+            idx = int(frame_cnt / 300) # video id in all data
+            block_id = int(idx / 750) # block idx
+            video_id = idx % 750 # video id in a single block
+        else:
+            idx = int(frame_cnt / 300)
+            block_id = int(idx / 500)
+            video_id = idx % 500
+            
+        # extract data
+        data = self.datas[block_id]
+        xyz = data['pcd'][video_id][past_frame: frame_id+1]
+        label = data['semantic'][video_id][frame_id]
 
-#     batch_size = len(points)
-#     outputs = [None] * batch_size
-#     for i in range(batch_size):
-#         j = (i + 1) % batch_size
-#         points_a = points[i]
-#         points_b = points[j]
+        # convert xyz to txyz
+        points_txyz = np.concatenate([np.zeros([self.history + 1, 8192, 1]), xyz], axis=-1)
+        points_txyz[:, :, 0] += np.arange(self.history + 1)[:, None]
+        points_txyz = points_txyz.reshape((-1, 4))  # (t_video * n_point, 4)
+        label = label.reshape((-1,))
+    
+        # construct output
+        output = dict()
+        output["points"] = points_txyz.astype(np.float32)
+        output["labels"] = label.astype(np.int32)
 
-#         npt_a = points_a.points.shape[0]
-#         npt_b = points_b.points.shape[0]
-#         na = int(cutmix * npt_a)
-#         nb = int((1 - cutmix) * npt_b)
-
-#         rand_idx = torch.randint(0, npt_a, size=(1,))
-#         rand_pts = points_a.points[rand_idx]
-#         dist_a, idx_a = torch.sort(
-#             torch.sum((points_a.points - rand_pts)**2, 1))
-#         cut_a = idx_a[:na]
-
-#         dist_b = torch.sum((points_b.points - rand_pts)**2, 1) - dist_a[na]
-#         mask_b = dist_b < 0
-#         dist_b[mask_b] += 1.0e3
-#         dist_b, idx_b = torch.sort(dist_b)
-#         cut_b = idx_b[:nb]
-
-#         outputs[i] = merge_points(
-#             [points_a[cut_a], points_b[cut_b]], update_batch_info=False)
-#     return outputs
+        return output
 
 
 class CollateBatch:
@@ -112,18 +97,14 @@ class CollateBatch:
         # a list of dicts -> a dict of lists
         outputs = {key: [b[key] for b in batch] for key in batch[0].keys()}
 
-        # apply cutmix
-        points = outputs["points"]
-        if self.cutmix > 0:  # and torch.rand(1) > 0.3:
-            raise NotImplementedError
-            points = apply_cutmix(points, self.cutmix)
-        outputs["points"] = points
         return outputs
 
 
 def get_hoi4d_seg_dataset(flags):
     transform = HOI4DTransform(flags)
-    read_file = ReadFile(has_normal=False, has_color=False, has_label=flags.has_label)
+    read_file = ReadHOI4D(
+        has_label=flags.has_label, root_dir=flags.location, history=flags.history
+    )
     collate_batch = CollateBatch(flags.cutmix)
 
     dataset = Dataset(flags.location, flags.filelist, transform, read_file=read_file)

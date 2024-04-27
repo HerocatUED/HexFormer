@@ -17,7 +17,8 @@ pip install -r requirements.txt
 - [HOI4D]()**TODO**
 4. Generate filelist and Modify config file(Take kitti for example)
 ```
-python data_utils/kitti.py --kitti_dir $.../SemanticKITTI$
+python data_utils/tools.py --dataset kitti --root_dir $.../SemanticKITTI$
+python data_utils/tools.py --dataset hoi4d
 ```
 5. Train with 4 GPUs
 ```
@@ -38,3 +39,6 @@ TODO：
 - FPS: current 1~2 frame/GPU
 - Cross Attention: query Current
 - inference: Vote
+- locations: 
+    - HOI4D: float32 in hoi4d.py
+    - KITTI and HOI4D: location in config file

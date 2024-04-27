@@ -9,26 +9,6 @@ from thsolver import Dataset
 from .utils import Transform
 
 
-# def align_z(points: Points):
-#     points.points[:, 3] -= points.points[:, 3].min()
-#     return points
-
-
-def rand_crop(points: Points, max_npt: int):
-    r"""Keeps `max_npt` pts at most centered by a radomly chosen pts."""
-
-    pts = points.points
-    npt = points.npt
-    crop_mask = torch.ones(npt, dtype=torch.bool)
-    if npt > max_npt:
-        rand_idx = torch.randint(low=0, high=npt, size=(1,))
-        sort_idx = torch.argsort(torch.sum(((pts - pts[rand_idx])[1:]) ** 2, 1))
-        crop_idx = sort_idx[max_npt:]
-        crop_mask[crop_idx] = False
-        points = points[crop_mask]
-    return points, crop_mask
-
-
 class KITTITransform(Transform):
 
     def __init__(self, flags):
@@ -55,14 +35,14 @@ class KITTITransform(Transform):
 
 
 class ReadKITTI:
-    def __init__(self, kitti_dir: str, has_label: bool = False, history: int = 3):
+    def __init__(self, root_dir: str, has_label: bool = False, history: int = 3):
         self.has_label = has_label
         self.history = history
         self.config_path = "config/kitti/semantic-kitti-all.yaml"
         self.cfg = yaml.safe_load(open(self.config_path, "r"))
         self.poses = []
         for i in range(22):
-            filename = kitti_dir + "/dataset/sequences/{:0>2d}/poses.txt".format(i)
+            filename = root_dir + "/dataset/sequences/{:0>2d}/poses.txt".format(i)
             pose = np.loadtxt(filename).reshape(-1, 3, 4)
             self.poses.append(pose)
         self.cam2vel = np.array(
@@ -176,63 +156,9 @@ class CollateBatch:
 def get_kitti_seg_dataset(flags):
     transform = KITTITransform(flags)
     read_file = ReadKITTI(
-        has_label=flags.has_label, kitti_dir=flags.location, history=flags.history
+        has_label=flags.has_label, root_dir=flags.location, history=flags.history
     )
     collate_batch = CollateBatch(flags.cutmix)
 
     dataset = Dataset(flags.location, flags.filelist, transform, read_file=read_file)
     return dataset, collate_batch
-
-
-def construct_filelist(kitti_dir: str, dataset_dir: str):
-    """
-    Construct filelist.
-    mode: 'train' use 00-10; 'test' use 11-21.
-
-    Args:
-    kitti_dir: path to KITTI.
-    dataset_dir: path to save filelist.
-    """
-    import os
-
-    train_list = ""
-    val_list = ""
-    test_list = ""
-
-    path = kitti_dir + "/dataset/sequences/"
-    videos = os.listdir(path)
-    videos.sort()
-    for video in videos:
-        pcd_dir = path + video + "/velodyne/"
-        pcd_files = os.listdir(pcd_dir)
-        pcd_files.sort()
-        if int(video) >= 11:
-            for pcd in pcd_files:
-                test_list += pcd_dir + pcd + "\n"
-        elif int(video) == 8:
-            for pcd in pcd_files:
-                val_list += pcd_dir + pcd + "\n"
-        else:
-            for pcd in pcd_files:
-                train_list += pcd_dir + pcd + "\n"
-
-    f_train = open(f"{dataset_dir}/train_data.txt", "w")
-    f_train.write(train_list)
-    f_train.close()
-    f_val = open(f"{dataset_dir}/val_data.txt", "w")
-    f_val.write(val_list)
-    f_val.close()
-    f_test = open(f"{dataset_dir}/test_data.txt", "w")
-    f_test.write(test_list)
-    f_test.close()
-
-
-if __name__ == "__main__":
-    import argparse
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--kitti_dir", type=str, required=True)
-    parser.add_argument("--save_dir", type=str, required=False, default="config/kitti")
-    args = parser.parse_args()
-
-    construct_filelist(args.kitti_dir, args.save_dir)
