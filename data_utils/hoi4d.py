@@ -15,7 +15,7 @@ class HOI4DTransform(Transform):
         super().__init__(**flags)
 
         self.flags = flags
-        self.scale_factor = 5.12 # TODO
+        self.scale_factor = 70
 
     def __call__(self, sample, idx=None):
         # get input sample
@@ -72,8 +72,8 @@ class ReadHOI4D:
         label = data['semantic'][video_id][frame_id]
 
         # convert xyz to txyz
-        points_txyz = np.concatenate([np.zeros([self.history + 1, 8192, 1]), xyz], axis=-1)
-        points_txyz[:, :, 0] += np.arange(self.history + 1)[:, None]
+        points_txyz = np.concatenate([np.zeros((frame_id - past_frame + 1, 8192, 1)), xyz], axis=-1)
+        points_txyz[:, :, 0] += np.arange(frame_id - past_frame + 1)[:, None]
         points_txyz = points_txyz.reshape((-1, 4))  # (t_video * n_point, 4)
         label = label.reshape((-1,))
     

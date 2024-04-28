@@ -45,7 +45,7 @@ DATA:
     filelist: config/hoi4d/train_data.txt
     batch_size: 32 # for a single GPU, real batch size = GPU_num * batch_size
     shuffle: True
-    num_workers: 2
+    num_workers: 0
 
   test:
     name: hoi4d
@@ -71,7 +71,7 @@ DATA:
     filelist: config/hoi4d/val_data.txt
     batch_size: 8
     shuffle: False
-    num_workers: 2
+    num_workers: 0
 
 MODEL:
   name: hexsegformer_toy
