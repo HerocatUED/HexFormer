@@ -106,7 +106,7 @@ class ReadKITTI:
         # label
         if self.has_label:
             label_name = root_dir + "/labels/{:0>6d}.label".format(frame_num)
-            label = np.fromfile(label_name, dtype=np.uint32)
+            label = np.fromfile(label_name, dtype=np.int32)
             label = label.reshape((-1))
             sem_label = label & 0xFFFF  # semantic label in lower half
             inst_label = label >> 16  # instance id in upper half

@@ -130,8 +130,8 @@ class SegSolver(Solver):
         if not os.path.exists(curr_folder):
             os.makedirs(curr_folder)
         with torch.no_grad():
-            logit, label = self.model_forward(batch)
-        pred = logit.argmax(dim=1).cpu().numpy().astype(np.uint32)
+            logit, _ = self.model_forward(batch)
+        pred = logit.argmax(dim=1).cpu().numpy().astype(np.int32)
         pred = self.remap(pred, True)
         pred.tofile(filename)
         

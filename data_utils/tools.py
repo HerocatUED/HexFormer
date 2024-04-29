@@ -25,7 +25,7 @@ def construct_hoi4d_part(root_dir: str, dataset_dir: str, config_dir: str):
     for h5file in ["train1"]:
         with h5py.File(f"{root_dir}/{h5file}.h5", "r") as f:
             for data, folder, suffix, data_type in zip(
-                ["semantic", "pcd"], ["labels", "velodyne"], ["label", "bin"], [np.uint32, np.float32]
+                ["semantic", "pcd"], ["labels", "velodyne"], ["label", "bin"], [np.int32, np.float32]
             ):
                 print(h5file, data)
                 original_data = f[data]
@@ -75,7 +75,7 @@ def construct_hoi4d(root_dir: str, dataset_dir: str, config_dir: str):
     for h5file in ["train1", "train2", "train3", "train4", "test"]:
         with h5py.File(f"{root_dir}/{h5file}.h5", "r") as f:
             for data, folder, suffix, data_type in zip(
-                ["semantic", "pcd"], ["labels", "velodyne"], ["label", "bin"], [np.uint32, np.float32]
+                ["semantic", "pcd"], ["labels", "velodyne"], ["label", "bin"], [np.int32, np.float32]
             ):
                 print(h5file, data)
                 original_data = f[data]

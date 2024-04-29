@@ -1,7 +1,7 @@
 SOLVER:
   gpu: 0,1,2,3
   run: train
-  logdir: logs/log_new
+  logdir: logs/log_base
   best_val: max:mIoU_part
 
   ckpt_num: 20
@@ -45,7 +45,7 @@ DATA:
     filelist: config/hoi4d/train_data.txt
     batch_size: 32 # for a single GPU, real batch size = GPU_num * batch_size
     shuffle: True
-    num_workers: 0
+    num_workers: 2
 
   test:
     name: hoi4d
@@ -69,9 +69,9 @@ DATA:
     history: 2
     location: /mnt/sdc/wangx/HOI4D/HOI4D_dataset/seg_data_h5
     filelist: config/hoi4d/val_data.txt
-    batch_size: 8
+    batch_size: 16
     shuffle: False
-    num_workers: 0
+    num_workers: 2
 
 MODEL:
   name: hexsegformer

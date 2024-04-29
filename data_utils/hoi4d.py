@@ -7,7 +7,7 @@ from thsolver import Dataset
 from hextree import Points
 from .utils import Transform
 
-def remap(semantic, inverse):
+def remap(semantic: np.array, inverse: bool = False):
     """
         Remap semantic classes.
 
@@ -59,7 +59,7 @@ class ReadHOI4D:
         for j, i in enumerate(range(past_frame, frame_num + 1)):
             scan_name = root_dir + "/velodyne/{:0>6d}.bin".format(i)
             scan = np.fromfile(scan_name, dtype=np.float32)
-            scan = scan.reshape((-1, 4))
+            scan = scan.reshape((-1, 3))
             N = np.shape(scan)[0]
             points = np.ones((N, 4), dtype=np.float32)
             # put in attribute
@@ -71,7 +71,7 @@ class ReadHOI4D:
         # label
         if self.has_label:
             label_name = root_dir + "/labels/{:0>6d}.label".format(frame_num)
-            label = np.fromfile(label_name, dtype=np.uint32)
+            label = np.fromfile(label_name, dtype=np.int32)
             sem_label = label.reshape((-1))
             output["labels"] = remap(sem_label)
 
