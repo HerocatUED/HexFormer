@@ -1,7 +1,7 @@
 SOLVER:
   gpu: 0,1,2,3
   run: train
-  logdir: logs/log_MultiScan_big # NOTE: MultiScan has 26 classes
+  logdir: logs/log_new
   best_val: max:mIoU_part
 
   ckpt_num: 20
@@ -11,73 +11,73 @@ SOLVER:
 
   weight_decay: 1e-4
   type: adamw_attn
-  lr: 2.5e-3
+  lr: 5e-3
   # lr_min: 1e-6
   lr_type: cos
   # warmup_epoch: 5
   rand_seed: 13
   dist_url: tcp://localhost:10002 # for distributed training
 
+
 DATA:
   train:
-    name: kitti
+    name: hoi4d
 
     # hextree building
-    depth: 12
+    depth: 9
     full_depth: 3
 
     # data augmentations
     distort: True
-    angle: (0, 0, 180)
-    scale: 0.05
+    # angle: (5, 5, 180)
+    angle: (0, 9, 0) # HOI4D
+    scale: 0.1
     flip: (0.5, 0.5, 0.0)
     uniform: True
-    cutmix: 0.0 # no cutmix
-    # no crop for kitti
-    crop_ratio: 0.8 # random ratio of random cropping
-    max_npt: -1 # max point number of random cropping
+    cutmix: 0.0        # no cutmix
+    # no crop for hoi4d
+    crop_ratio: 1    # random ratio of random cropping
+    max_npt: -1    # max point number of random cropping
     # data loading
     has_label: True
     history: 2
-    location: /mnt/sdc/wangrh/data/SemanticKITTI
-    filelist: config/kitti/train_data.txt
-    batch_size: 2 # for a single GPU, real batch size = GPU_num * batch_size
+    location: /mnt/sdc/wangx/HOI4D/HOI4D_dataset/seg_data_h5
+    filelist: config/hoi4d/train_data.txt
+    batch_size: 32 # for a single GPU, real batch size = GPU_num * batch_size
     shuffle: True
-    num_workers: 1
+    num_workers: 0
 
   test:
-    name: kitti
+    name: hoi4d
 
     # hextree building
-    depth: 12
+    depth: 9
     full_depth: 3
 
     # data augmentations
-    distort: False # no data augmentation by default
+    distort: False  # no data augmentation by default
     angle: (5, 5, 180)
     scale: 0.2
     flip: (0.5, 0.5, 0.0)
     uniform: False
     crop_ratio: 0.8
-    max_npt: -1
-    cutmix: 0.0 # no cutmix
+    max_npt:  -1
+    cutmix: 0.0   # no cutmix
 
     # data loading
     has_label: True
     history: 2
-    location: /mnt/sdc/wangrh/data/SemanticKITTI
-    filelist: config/kitti/val_data.txt
-    batch_size: 1
+    location: /mnt/sdc/wangx/HOI4D/HOI4D_dataset/seg_data_h5
+    filelist: config/hoi4d/val_data.txt
+    batch_size: 8
     shuffle: False
-    num_workers: 1
+    num_workers: 0
 
 MODEL:
   name: hexsegformer
-  feature:
-    GF # G -> Position txyz (4 channels);
-    # F -> Lidar Density (1 channel)
-  channel: 5
-  nout: 26
+  feature: G
+  channel: 4
+  nout: 49
   nempty: True
   interp: nearest
   sync_bn: True
@@ -85,6 +85,6 @@ MODEL:
   use_compile: False
 
 LOSS:
-  mask: 0
-  num_class: 26
+  mask: -1
+  num_class: 49
   weighted: False

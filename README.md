@@ -34,16 +34,13 @@ python run_seg.py --run test --gpu 0 --alias kitti --port 10008 --ckpt $path_to_
 
 
 TODO： 
-- Inference Code
 - update to pytorch 2.0, speedup with torch.compile()
 - loss design
 - CPE: 3D DwConv + 1D Conv
 - reuse history prediction
-- Use corlor infomation as init feature
-- FPS: current 1~2 frame/GPU
+- FPS: current 4~6 frame/s with single 3090GPU
 - Cross Attention/ mask attention: query Current
-- encoder num
-- inference: Vote
-- locations: 
+- inference code: Vote=1, GPUnum=1
+- locations and paths: 
     - HOI4D: float32 in hoi4d.py
     - KITTI and HOI4D: location in config file

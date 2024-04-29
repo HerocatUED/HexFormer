@@ -123,7 +123,7 @@ class SegSolver(Solver):
         filename = self.logdir + "/predicts/{:0>6d}.label".format(batch["iter_num"])
         curr_folder = os.path.dirname(filename)
         if not os.path.exists(curr_folder):
-            os.makedirs(curr_folder, exist_ok=True)
+            os.makedirs(curr_folder)
         with torch.no_grad():
             logit, _ = self.model_forward(batch)
         prob = torch.nn.functional.softmax(logit, dim=1)
