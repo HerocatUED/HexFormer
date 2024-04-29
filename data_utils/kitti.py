@@ -9,6 +9,35 @@ from thsolver import Dataset
 from .utils import Transform
 
 
+config_path = "config/kitti/semantic-kitti-all.yaml"
+cfg = yaml.safe_load(open(config_path, "r"))
+
+
+def remap(semantic: np.array, inverse: bool = False):
+        """
+        Remap semantic classes.
+
+        Args:
+        semantic: semantic classes to remap.
+        inverse: class2num if True, num2class if False. NOTE: See KITTI config for more.
+        """
+        
+        # get number of interest classes, and the label mappings
+        if inverse:
+            # print("Mapping xentropy to original labels")
+            remapdict = cfg["learning_map_inv"]
+        else:
+            remapdict = cfg["learning_map"]
+
+        # make lookup table for mapping
+        maxkey = max(remapdict.keys())
+
+        # +100 hack making lut bigger just in case there are unknown labels
+        remap_lut = np.zeros((maxkey + 100), dtype=np.int32)
+        remap_lut[list(remapdict.keys())] = list(remapdict.values())
+        return remap_lut[semantic]
+
+
 class KITTITransform(Transform):
 
     def __init__(self, flags):
@@ -38,8 +67,6 @@ class ReadKITTI:
     def __init__(self, root_dir: str, has_label: bool = False, history: int = 3):
         self.has_label = has_label
         self.history = history
-        self.config_path = "config/kitti/semantic-kitti-all.yaml"
-        self.cfg = yaml.safe_load(open(self.config_path, "r"))
         self.poses = []
         for i in range(22):
             filename = root_dir + "/dataset/sequences/{:0>2d}/poses.txt".format(i)
@@ -85,7 +112,7 @@ class ReadKITTI:
             inst_label = label >> 16  # instance id in upper half
             # sanity check
             assert (sem_label + (inst_label << 16) == label).all()
-            output["labels"] = self.remap(sem_label)
+            output["labels"] = remap(sem_label, False)
 
         return output
 
@@ -112,30 +139,6 @@ class ReadKITTI:
         global_xyz = (trans_matrix @ local_xyz).reshape((-1, 4))
 
         return global_xyz[:, :3]
-
-    def remap(self, semantic: np.array, inverse: bool = False):
-        """
-        Remap semantic classes.
-
-        Args:
-        semantic: semantic classes to remap.
-        inverse: class2num if True, num2class if False. NOTE: See KITTI config for more.
-        """
-
-        # get number of interest classes, and the label mappings
-        if inverse:
-            print("Mapping xentropy to original labels")
-            remapdict = self.cfg["learning_map_inv"]
-        else:
-            remapdict = self.cfg["learning_map"]
-
-        # make lookup table for mapping
-        maxkey = max(remapdict.keys())
-
-        # +100 hack making lut bigger just in case there are unknown labels
-        remap_lut = np.zeros((maxkey + 100), dtype=np.int32)
-        remap_lut[list(remapdict.keys())] = list(remapdict.values())
-        return remap_lut[semantic]
 
 
 class CollateBatch:

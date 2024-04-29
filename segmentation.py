@@ -22,6 +22,11 @@ class SegSolver(Solver):
     def __init__(self, FLAGS, is_master=True):
         super().__init__(FLAGS, is_master)
         self.weights = None
+        if "kitti" in FLAGS.SOLVER.alias:
+            from data_utils.kitti import remap
+        elif "hoi4d" in FLAGS.SOLVER.alias:
+            from data_utils.hoi4d import remap
+        self.remap = remap
 
     def get_model(self, flags):
         return builder.get_segmentation_model(flags)
@@ -120,15 +125,16 @@ class SegSolver(Solver):
 
     def eval_step(self, batch):
         batch = self.process_batch(batch, self.FLAGS.DATA.test)
-        filename = self.logdir + "/predicts/{:0>6d}.label".format(batch["iter_num"])
+        filename = self.logdir + "/predictions/{:0>6d}.label".format(batch["iter_num"])
         curr_folder = os.path.dirname(filename)
         if not os.path.exists(curr_folder):
             os.makedirs(curr_folder)
         with torch.no_grad():
-            logit, _ = self.model_forward(batch)
-        prob = torch.nn.functional.softmax(logit, dim=1)
-        prob = prob.cpu().numpy().astype(np.uint32)
-        prob.tofile(filename)
+            logit, label = self.model_forward(batch)
+        pred = logit.argmax(dim=1).cpu().numpy().astype(np.uint32)
+        pred = self.remap(pred, True)
+        pred.tofile(filename)
+        
         
     def result_callback(self, avg_tracker, epoch):
         r"""Calculate the part mIoU."""

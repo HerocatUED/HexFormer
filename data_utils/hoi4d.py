@@ -1,13 +1,21 @@
 # build HOI4D dataset for Solver
 
 import torch
-import h5py
 import numpy as np
 from thsolver import Dataset
 
 from hextree import Points
 from .utils import Transform
 
+def remap(semantic, inverse):
+    """
+        Remap semantic classes.
+
+        Args:
+        semantic: semantic classes to remap.
+        inverse: class2num if True, num2class if False. NOTE: See KITTI config for more.
+        """
+    return semantic
 
 class HOI4DTransform(Transform):
 
@@ -65,12 +73,9 @@ class ReadHOI4D:
             label_name = root_dir + "/labels/{:0>6d}.label".format(frame_num)
             label = np.fromfile(label_name, dtype=np.uint32)
             sem_label = label.reshape((-1))
-            output["labels"] = self.remap(sem_label)
+            output["labels"] = remap(sem_label)
 
         return output
-
-    def remap(self, sem_label):
-        return sem_label
 
 
 class CollateBatch:

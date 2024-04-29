@@ -205,7 +205,7 @@ def hoi4d_range(path: str, chunk_size: int = 20):
 if __name__ == "__main__":
 
     root_dir = "/mnt/sdc/wangx/HOI4D/HOI4D_dataset/seg_data_h5"
-    dataset_dir = "/mnt/sdc/wangx/HexFormer/dataset/HOI4D"
+    dataset_dir = "/mnt/sdc/wangx/dataset/HOI4D"
     config_dir = "/mnt/sdc/wangx/HexFormer/config/HOI4D"
     # hoi4d_range(root_dir)
     construct_hoi4d(root_dir, dataset_dir, config_dir)
