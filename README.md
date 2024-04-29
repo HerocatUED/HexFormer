@@ -20,9 +20,13 @@ pip install -r requirements.txt
 python data_utils/tools.py --dataset kitti --root_dir $.../SemanticKITTI$
 python data_utils/tools.py --dataset hoi4d
 ```
-5. Train with 4 GPUs
+5. Train
 ```
 python run_seg.py --run train --gpu 0,1,2,3 --alias kitti --port 10008
+```
+6. Inference(must with only one GPU)
+```
+python run_seg.py --run test --gpu 0 --alias kitti --port 10008 --ckpt $path_to_your_model$
 ```
 **Note** 
 - torch version: function next() used in thsolver.solver;
@@ -37,7 +41,8 @@ TODO：
 - reuse history prediction
 - Use corlor infomation as init feature
 - FPS: current 1~2 frame/GPU
-- Cross Attention: query Current
+- Cross Attention/ mask attention: query Current
+- encoder num
 - inference: Vote
 - locations: 
     - HOI4D: float32 in hoi4d.py

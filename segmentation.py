@@ -17,18 +17,6 @@ from modules import InputFeature
 torch.multiprocessing.set_sharing_strategy("file_system")
 
 
-# def save_pcd(batch, logit, dir_path, rand_id: float):
-#     pred = logit.argmax(dim=1)
-#     # print(f"saving to {path}")
-#     if not os.path.exists(dir_path):
-#         os.makedirs(dir_path, exist_ok=True)
-#     np.savez(dir_path+'/points_{:.4f}.npz'.format(rand_id),
-#              batch['points'].points.cpu().numpy())
-#     np.savez(dir_path+'/label_{:.4f}.npz'.format(rand_id),
-#              batch['points'].labels.cpu().numpy())
-#     np.savez(dir_path+'/pred_{:.4f}.npz'.format(rand_id), pred.cpu().numpy())
-
-
 class SegSolver(Solver):
 
     def __init__(self, FLAGS, is_master=True):
@@ -122,12 +110,6 @@ class SegSolver(Solver):
         accu = self.accuracy(logit, label)
         num_class = self.FLAGS.LOSS.num_class
         mIoU, insc, union = self.IoU_per_class(logit, label, num_class)
-
-        # randomly save 1/100 data for visualization
-        # rand_id = np.random.uniform()
-        # if batch['epoch'] % 10 == 0 and batch['epoch'] != 0 and rand_id < 0.01:
-        #     save_pcd(batch, logit, self.logdir+'/result_sample', batch['epoch'])
-
         names = (
             ["test/loss", "test/accu", "test/mIoU"]
             + ["test/intsc_%d" % i for i in range(num_class)]
@@ -138,29 +120,16 @@ class SegSolver(Solver):
 
     def eval_step(self, batch):
         batch = self.process_batch(batch, self.FLAGS.DATA.test)
+        filename = self.logdir + "/predicts/{:0>6d}.label".format(batch["iter_num"])
+        curr_folder = os.path.dirname(filename)
+        if not os.path.exists(curr_folder):
+            os.makedirs(curr_folder, exist_ok=True)
         with torch.no_grad():
             logit, _ = self.model_forward(batch)
         prob = torch.nn.functional.softmax(logit, dim=1)
-
-        # split predictions
-        npts = batch["points"].batch_npt.tolist()
-        probs = torch.split(prob, npts)
-
-        # merge predictions
-        for i in range(len(probs)):
-            prob = probs[i].cpu()
-            # Aggregate predictions across different epochs
-            filename = "data" + str(batch["iter_num"]) + str(i)
-            # self.eval_rst[filename] = self.eval_rst.get(filename, 0) + prob
-
-            # Save the prediction results in the last epoch
-            if self.FLAGS.SOLVER.eval_epoch - 1 == batch["epoch"]:
-                full_filename = os.path.join(self.logdir, filename[:-4] + "-eval.npz")
-                curr_folder = os.path.dirname(full_filename)
-                if not os.path.exists(curr_folder):
-                    os.makedirs(curr_folder)
-                np.savez(full_filename, prob=self.eval_rst[filename].cpu().numpy())
-
+        prob = prob.cpu().numpy().astype(np.uint32)
+        prob.tofile(filename)
+        
     def result_callback(self, avg_tracker, epoch):
         r"""Calculate the part mIoU."""
 

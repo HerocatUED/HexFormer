@@ -74,13 +74,12 @@ DATA:
     num_workers: 0
 
 MODEL:
-  name: hexsegformer_toy
+  name: hexsegformer
   feature: G
   channel: 4
   nout: 49
   nempty: True
   interp: nearest
-  depth: 9
   sync_bn: True
   find_unused_parameters: False
   use_compile: False

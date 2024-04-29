@@ -5,13 +5,24 @@ import numpy as np
 from tqdm import tqdm
 
 
-def construct_hoi4d(dataset_dir: str):
+def construct_hoi4d(root_dir: str, dataset_dir: str):
     """
     Construct filelist for HOI4D.
 
     Args:
+    root_dir: path to HOI4D seg data.
     dataset_dir: path to save filelist.
     """
+    # os.makedirs(a)
+    
+    train_list = ""
+    val_list = ""
+    test_list = ""
+    
+    for filename in ["train1", "train2", "train3", "train4"]:
+        with h5py.File(f"{root_dir}/{filename}.h5", "r") as f:
+            pass
+            
     def data_list(video_id):
         file_list = ""
         for i in range(video_id * 300, video_id * 300 + 300):
@@ -144,6 +155,7 @@ def hoi4d_range(path: str, chunk_size: int = 20):
     """
     max_range = np.ones((3, 1)) * (-1e8)
     min_range = np.ones((3, 1)) * 1e8
+    record = dict()
     
     def find_range(datas, func):
         rg = np.zeros((len(datas), 1))
@@ -170,12 +182,12 @@ def hoi4d_range(path: str, chunk_size: int = 20):
                 max_tmp = find_range(datas, np.max)
                 min_tmp = find_range(datas, np.min)
                 max_range = np.max(np.concatenate([max_range, max_tmp], axis=-1), axis=-1).reshape((3, 1))
-                min_range = np.max(np.concatenate([min_range, min_tmp], axis=-1), axis=-1).reshape((3, 1))
-                print(max_range)
-                print(min_range)
-    
+                min_range = np.min(np.concatenate([min_range, min_tmp], axis=-1), axis=-1).reshape((3, 1))
+                record[filename] = [max_range, min_range]
+                
     print(f"max: {max_range}")
-    print(f"min: {min_range}")     
+    print(f"min: {min_range}")
+    print(record)     
 
 if __name__ == "__main__":
     

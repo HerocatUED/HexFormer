@@ -1,4 +1,4 @@
-# python 3.8, CUDA11.8
+# python 3.10, CUDA11.8
 # torch
 # torchvision
 # torchaudio
@@ -6,7 +6,7 @@
 tensorboard
 torch_tb_profiler
 ocnn
-thsolver # new
+thsolver
 tqdm
 packaging
 plyfile
