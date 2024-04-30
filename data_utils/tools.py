@@ -71,8 +71,10 @@ def construct_hoi4d(root_dir: str, dataset_dir: str, config_dir: str):
     train_list = ""
     val_list = ""
     test_list = ""
-
-    for h5file in ["train1", "train2", "train3", "train4", "test"]:
+    video_cnt = -1
+    
+    # train and validation data
+    for h5file in ["train1", "train2", "train3", "train4"]:
         with h5py.File(f"{root_dir}/{h5file}.h5", "r") as f:
             for data, folder, suffix, data_type in zip(
                 ["semantic", "pcd"], ["labels", "velodyne"], ["label", "bin"], [np.int32, np.float32]
@@ -80,20 +82,33 @@ def construct_hoi4d(root_dir: str, dataset_dir: str, config_dir: str):
                 print(h5file, data)
                 original_data = f[data]
                 shape = original_data.shape
-                assert shape[1] == 300
                 for video in tqdm(range(shape[0])):
-                    video_folder = dir_path + "/{:0>3d}/{}".format(video, folder)
+                    video_cnt += 1
+                    video_folder = dir_path + "/{:0>4d}/{}".format(video_cnt, folder)
                     os.makedirs(video_folder)
                     for frame in range(shape[1]):
                         filename = video_folder + "/{:0>6d}.{}".format(frame, suffix)
                         frame_data = original_data[video][frame].astype(data_type)
                         frame_data.tofile(filename)
                         if data == "pcd":
-                            if filename == "test": test_list += filename + "\n"
-                            else:
-                                if video % 5 == 0: val_list += filename + "\n"
-                                else: train_list += filename + "\n"
-                        
+                            if video % 5 == 0: val_list += filename + "\n"
+                            else: train_list += filename + "\n"
+    
+    # test data 
+    with h5py.File(f"{root_dir}/test.h5", "r") as f:
+        data, folder, suffix, data_type = "pcd", "velodyne", "bin", np.float32
+        original_data = f[data]
+        shape = original_data.shape
+        for video in tqdm(range(shape[0])):
+            video_cnt += 1
+            video_folder = dir_path + "/{:0>4d}/{}".format(video_cnt, folder)
+            os.makedirs(video_folder)
+            for frame in range(shape[1]):
+                filename = video_folder + "/{:0>6d}.{}".format(frame, suffix)
+                frame_data = original_data[video][frame].astype(data_type)
+                frame_data.tofile(filename)
+                test_list += filename + "\n"
+
     f_train = open(f"{config_dir}/train_data.txt", "w")
     f_train.write(train_list)
     f_train.close()
@@ -203,20 +218,17 @@ def hoi4d_range(path: str, chunk_size: int = 20):
 
 
 if __name__ == "__main__":
-
-    root_dir = "/mnt/sdc/wangx/HOI4D/HOI4D_dataset/seg_data_h5"
-    dataset_dir = "/mnt/sdc/wangx/dataset/HOI4D"
-    config_dir = "/mnt/sdc/wangx/HexFormer/config/HOI4D"
-    # hoi4d_range(root_dir)
-    construct_hoi4d(root_dir, dataset_dir, config_dir)
-
+    
     # parser = argparse.ArgumentParser()
     # parser.add_argument("--root_dir", type=str, required=False, default="../dataset/SemanticKITTI")
     # parser.add_argument("--dataset", type=str, required=True)
     # args = parser.parse_args()
-
-    # save_dir = f"config/{args.dataset}"
-    # if args.dataset == "kitti":
-    #     construct_kitti(args.root_dir, save_dir)
-    # elif args.dataset == "hoi4d":
-    #     construct_hoi4d(save_dir)
+    
+    root_dir = "/mnt/sdc/wangx/HOI4D/HOI4D_dataset/seg_data_h5"
+    dataset_dir = "/mnt/sdc/wangx/dataset/HOI4D"
+    config_dir = "/mnt/sdc/wangx/HexFormer/config/HOI4D"
+    
+    # hoi4d_range(root_dir)
+    construct_hoi4d(root_dir, dataset_dir, config_dir)
+    
+    # construct_kitti(root_dir, config_dir)

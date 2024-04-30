@@ -11,7 +11,7 @@ SOLVER:
 
   weight_decay: 1e-4
   type: adamw_attn
-  lr: 5e-3
+  lr: 1.5e-3
   # lr_min: 1e-6
   lr_type: cos
   # warmup_epoch: 5
@@ -74,7 +74,7 @@ DATA:
     num_workers: 2
 
 MODEL:
-  name: hexsegformer
+  name: hexsegformer_large
   feature: G
   channel: 4
   nout: 49
