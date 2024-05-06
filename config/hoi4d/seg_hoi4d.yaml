@@ -1,23 +1,23 @@
 SOLVER:
   gpu: 0,1,2,3
   run: train
-  logdir: logs/log_all
-  best_val: max:mIoU
+  logdir: logs/log_base
+  best_val: max:mIoU_part
 
-  ckpt_num: 200
-  max_epoch: 300
-  test_every_epoch: 5
-  log_per_iter: 10
+  ckpt_num: 20
+  max_epoch: 50
+  test_every_epoch: 1
+  log_per_iter: 100
 
-  weight_decay: 0.005
+  weight_decay: 1e-4
   type: adamw_attn
+  lr: 1.5e-3
+  # lr_min: 1e-6
+  lr_type: cos
+  # warmup_epoch: 5
+  rand_seed: 13
+  dist_url: tcp://localhost:10002 # for distributed training
 
-  lr: 0.0015
-  lr_type: step_warmup
-  gamma: 0.2
-  warmup_epoch: 5
-  milestones: (80, 160, 220, 260)
-  dist_url: tcp://localhost:10002  # for distributed training
 
 DATA:
   train:
@@ -31,18 +31,19 @@ DATA:
     distort: True
     # angle: (5, 5, 180)
     angle: (0, 9, 0) # HOI4D
-    scale: 0.2
+    scale: 0.1
     flip: (0.5, 0.5, 0.0)
     uniform: True
     cutmix: 0.0        # no cutmix
+    # no crop for hoi4d
     crop_ratio: 1    # random ratio of random cropping
-    max_npt: 120000    # max point number of random cropping
+    max_npt: -1    # max point number of random cropping
     # data loading
     has_label: True
-    location: dataset/hoi4d
-    filelist: dataset/hoi4d/frame8_full/train_data.txt
-    # filelist: dataset/hoi4d/frame8/train_data1.txt
-    batch_size: 10 # for a single GPU, real batch size = GPU_num * batch_size
+    history: 2
+    location: /mnt/sdc/wangx/HOI4D/HOI4D_dataset/seg_data_h5
+    filelist: config/hoi4d/train_data.txt
+    batch_size: 32 # for a single GPU, real batch size = GPU_num * batch_size
     shuffle: True
     num_workers: 2
 
@@ -65,26 +66,25 @@ DATA:
 
     # data loading
     has_label: True
-    location: dataset/hoi4d
-    # filelist: dataset/hoi4d/frame8/val_data1.txt
-    filelist: dataset/hoi4d/frame8_full/val_data.txt
-    # filelist: dataset/hoi4d/frame8_test/test_data.txt
-    batch_size: 8
+    history: 2
+    location: /mnt/sdc/wangx/HOI4D/HOI4D_dataset/seg_data_h5
+    filelist: config/hoi4d/val_data.txt
+    batch_size: 16
     shuffle: False
     num_workers: 2
 
 MODEL:
-  name: hexsegformer_toy
-  feature: R
+  name: hexsegformer_large
+  feature: G
   channel: 4
   nout: 49
   nempty: True
   interp: nearest
-  depth: 9
   sync_bn: True
   find_unused_parameters: False
-  # use_compile: True
+  use_compile: False
 
 LOSS:
   mask: -1
   num_class: 49
+  weighted: False

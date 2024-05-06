@@ -1,10 +1,10 @@
 SOLVER:
   gpu: 0,1,2,3
   run: train
-  logdir: logs/log_MultiScan_new_kitti # NOTE: MultiScan has 26 classes
+  logdir: logs/log_MultiScan_3Dconv_4Dattention # NOTE: MultiScan has 26 classes
   best_val: max:mIoU_part
 
-  ckpt_num: 20
+  ckpt_num: 10
   max_epoch: 50
   test_every_epoch: 1
   log_per_iter: 100
@@ -12,7 +12,7 @@ SOLVER:
   weight_decay: 1e-4
   type: adamw_attn
   lr: 2.5e-3
-  lr_min: 1e-6
+  # lr_min: 1e-6
   lr_type: cos
   # warmup_epoch: 5
   rand_seed: 13
@@ -80,7 +80,6 @@ MODEL:
   nout: 26
   nempty: True
   interp: nearest
-  depth: 12
   sync_bn: True
   find_unused_parameters: False
   use_compile: False

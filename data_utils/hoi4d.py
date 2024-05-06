@@ -1,103 +1,81 @@
 # build HOI4D dataset for Solver
 
-
 import torch
 import numpy as np
-
-from hextree import Points, merge_points
 from thsolver import Dataset
-from typing import List
 
-from .utils import ReadFile, Transform
+from hextree import Points
+from .utils import Transform
 
+def remap(semantic: np.array, inverse: bool = False):
+    """
+        Remap semantic classes.
 
-def align_z(points: Points):
-    points.points[:, 3] -= points.points[:, 3].min()
-    return points
-
-
-def rand_crop(points: Points, max_npt: int):
-    r"""Keeps `max_npt` pts at most centered by a radomly chosen pts."""
-
-    pts = points.points
-    npt = points.npt
-    crop_mask = torch.ones(npt, dtype=torch.bool)
-    if npt > max_npt:
-        rand_idx = torch.randint(low=0, high=npt, size=(1,))
-        sort_idx = torch.argsort(torch.sum((pts - pts[rand_idx]) ** 2, 1))
-        crop_idx = sort_idx[max_npt:]
-        crop_mask[crop_idx] = False
-        points = points[crop_mask]
-    return points, crop_mask
-
+        Args:
+        semantic: semantic classes to remap.
+        inverse: class2num if True, num2class if False. NOTE: See KITTI config for more.
+        """
+    return semantic
 
 class HOI4DTransform(Transform):
 
     def __init__(self, flags):
         super().__init__(**flags)
 
-        # The `self.scale_factor` is used to normalize the input point cloud to the
-        # range of [-1, 1]. If this parameter is modified, the `self.elastic_params`
-        # and the `jittor` in the data augmentation should be scaled accordingly.
-        # self.scale_factor = 5.12
-        # self.scale_factor = 10.24
         self.flags = flags
+        self.scale_factor = 70
 
     def __call__(self, sample, idx=None):
-        # construct and normalize points
+        # get input sample
         pcds = Points(
-            points=torch.from_numpy(sample["points"]),
+            points=torch.from_numpy(sample["points"][:, :4]),
             labels=torch.from_numpy(sample["labels"]),
         )
-        pcds.normalize_xyz(keep_shape=True)
-
+        
+        # normalize points
+        pcds.normalize_xyz(keep_shape=True, box_size=2*self.scale_factor)
+        
         # transform including rotatation, translation, scaling, and flipping
-        output = self.transform(pcds, idx)  # points and inbox_mask
-        points = output["points"]
+        output = self.transform(pcds, idx)
 
-        # random crop
-        if self.distort:
-            max_npt = self.flags.max_npt if self.flags.max_npt > 0 else points.npt
-            max_npt = min(max_npt, int(points.npt * self.flags.crop_ratio))
-            points, crop_mask = rand_crop(points, max_npt)
-            # inbox_mask[inbox_mask.clone()] = crop_mask   # update inbox_mask
-
-        # align z
-        points = align_z(points)
-        return {"points": points}
+        return output
 
 
-# def apply_cutmix(points: List[Points], cutmix: float):
-#     if cutmix <= 0:
-#         return points
+class ReadHOI4D:
+    def __init__(self, root_dir: str, has_label: bool = False, history: int = 3):
+        self.has_label = has_label
+        self.history = history
 
-#     batch_size = len(points)
-#     outputs = [None] * batch_size
-#     for i in range(batch_size):
-#         j = (i + 1) % batch_size
-#         points_a = points[i]
-#         points_b = points[j]
+    def __call__(self, filename: str):
+        output = dict()
+        root_pos = filename.find("/velodyne")
+        assert root_pos > 0  # not found will be -1
+        root_dir = filename[:root_pos]
+        frame_num = int(filename[root_pos + 10 : filename.find(".bin")])
 
-#         npt_a = points_a.points.shape[0]
-#         npt_b = points_b.points.shape[0]
-#         na = int(cutmix * npt_a)
-#         nb = int((1 - cutmix) * npt_b)
+        # point clouds
+        pcds = []
+        past_frame = max(frame_num - self.history, 0)
+        for j, i in enumerate(range(past_frame, frame_num + 1)):
+            scan_name = root_dir + "/velodyne/{:0>6d}.bin".format(i)
+            scan = np.fromfile(scan_name, dtype=np.float32)
+            scan = scan.reshape((-1, 3))
+            N = np.shape(scan)[0]
+            points = np.ones((N, 4), dtype=np.float32)
+            # put in attribute
+            points[:, 1:] = scan  # get xyz
+            points[:, 0] *= j
+            pcds.append(points)
+        output["points"] = np.vstack(pcds)
 
-#         rand_idx = torch.randint(0, npt_a, size=(1,))
-#         rand_pts = points_a.points[rand_idx]
-#         dist_a, idx_a = torch.sort(
-#             torch.sum((points_a.points - rand_pts)**2, 1))
-#         cut_a = idx_a[:na]
+        # label
+        if self.has_label:
+            label_name = root_dir + "/labels/{:0>6d}.label".format(frame_num)
+            label = np.fromfile(label_name, dtype=np.int32)
+            sem_label = label.reshape((-1))
+            output["labels"] = remap(sem_label)
 
-#         dist_b = torch.sum((points_b.points - rand_pts)**2, 1) - dist_a[na]
-#         mask_b = dist_b < 0
-#         dist_b[mask_b] += 1.0e3
-#         dist_b, idx_b = torch.sort(dist_b)
-#         cut_b = idx_b[:nb]
-
-#         outputs[i] = merge_points(
-#             [points_a[cut_a], points_b[cut_b]], update_batch_info=False)
-#     return outputs
+        return output
 
 
 class CollateBatch:
@@ -112,18 +90,14 @@ class CollateBatch:
         # a list of dicts -> a dict of lists
         outputs = {key: [b[key] for b in batch] for key in batch[0].keys()}
 
-        # apply cutmix
-        points = outputs["points"]
-        if self.cutmix > 0:  # and torch.rand(1) > 0.3:
-            raise NotImplementedError
-            points = apply_cutmix(points, self.cutmix)
-        outputs["points"] = points
         return outputs
 
 
 def get_hoi4d_seg_dataset(flags):
     transform = HOI4DTransform(flags)
-    read_file = ReadFile(has_normal=False, has_color=False, has_label=flags.has_label)
+    read_file = ReadHOI4D(
+        has_label=flags.has_label, root_dir=flags.location, history=flags.history
+    )
     collate_batch = CollateBatch(flags.cutmix)
 
     dataset = Dataset(flags.location, flags.filelist, transform, read_file=read_file)
