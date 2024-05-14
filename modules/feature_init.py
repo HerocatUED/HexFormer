@@ -4,7 +4,7 @@ from .hextree_pad import hextree_pad
 
 
 def cartesian_to_polar(xyz):
-    """
+    r"""
     trans cartesian coordinates to polar coordinates
     """
     x, y, z = xyz[:, 0], xyz[:, 1], xyz[:, 2]

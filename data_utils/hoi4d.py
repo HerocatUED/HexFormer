@@ -8,7 +8,7 @@ from hextree import Points
 from .utils import Transform
 
 def remap(semantic: np.array, inverse: bool = False):
-    """
+    r"""
         Remap semantic classes.
 
         Args:

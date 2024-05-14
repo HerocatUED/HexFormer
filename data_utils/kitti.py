@@ -14,7 +14,7 @@ cfg = yaml.safe_load(open(config_path, "r"))
 
 
 def remap(semantic: np.array, inverse: bool = False):
-        """
+        r"""
         Remap semantic classes.
 
         Args:
@@ -117,7 +117,7 @@ class ReadKITTI:
         return output
 
     def local2global(self, pcd: np.array, frame_id: int, sequence_id: int):
-        """
+        r"""
         Trans local coordinates to global coordinates.
 
         Args:

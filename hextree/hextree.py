@@ -157,6 +157,7 @@ class Hextree:
         
         self.octrees = None
         self.octree_list = []
+        self.octree_num = []
         # mapping index between hextree and octree
         self.hex2oct = [None] * num
         self.oct2hex = [None] * num
@@ -210,6 +211,7 @@ class Hextree:
             self.octree_list.append(otree)
         self.octrees = ocnn.octree.merge_octrees(self.octree_list)
         self.octrees.construct_all_neigh()
+        self.octree_num.append(len(self.octree_list))
         
         # build hextree:
         for d in range(self.depth, -1, -1):
@@ -363,6 +365,7 @@ class Hextree:
         hextree.batch_nnum_nempty = self.batch_nnum_nempty.clone()
         hextree.octrees = self.octrees.to(device)
         hextree.octree_list = list_to_device(self.octree_list)
+        hextree.octree_num = list_to_device(self.octree_num)
         return hextree
 
     def cuda(self, non_blocking: bool = False):
@@ -471,8 +474,10 @@ def merge_hextrees(hextrees: List["Hextree"]):
         hextree.points[d] = torch.cat(points, dim=0)
     
     # octrees
+    hextree.octree_num = []
     for i in range(hextree.batch_size):
         hextree.octree_list += hextrees[i].octree_list
+        hextree.octree_num.append(len(hextrees[i].octree_list))
     hextree.octrees = ocnn.octree.merge_octrees(hextree.octree_list)
     hextree.octrees.construct_all_neigh()
     
