@@ -9,10 +9,11 @@ from .hextree_conv import (
     HextreeDeconv,
     HextreeDeconvBn,
     HextreeDeconvBnRelu,
+    HextreeGroupConv,
 )
 from .hextree_pad import hextree_pad, hextree_depad
 from .hextreeT import HextreeT
-from .hextree_positinal_encoding import RPE, RPE2, CPE
+
 
 __all__ = [
     "InputFeature",
@@ -27,12 +28,11 @@ __all__ = [
     "HextreeConvBnRelu",
     "HextreeDeconv",
     "HextreeDeconvBn",
-    "HextreeDeconvBnRelu" "hextree_pad",
+    "HextreeDeconvBnRelu",
+    "HextreeGroupConv",
+    "hextree_pad",
     "hextree_depad",
     "HextreeT",
-    "RPE", 
-    "RPE2", 
-    "CPE"
 ]
 
 classes = __all__

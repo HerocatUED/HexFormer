@@ -8,30 +8,32 @@ from ocnn.nn import OctreeConv, OctreeDeconv
 
     
 class TConv(torch.nn.Module):
-    r"""Convolution on t-dimension"""
+    r"""Hextree based Convolution on t-dimension"""
     def __init__(
         self, 
         in_channels: int,
         out_channels: int, 
         kernel_size: int = 3,
+        stride: int = 1,
         nempty: bool = False):
+        super().__init__()
         
         assert nempty == True, "nempty hardcode"
         assert kernel_size > 1, "TConv with only one frame is meaningless."
         
         self.kernel_size = kernel_size
         self.nempty = nempty
-        self.conv = nn.Conv1d(in_channels, out_channels, kernel_size)
+        self.conv = nn.Conv1d(in_channels, out_channels, kernel_size, stride)
             
     def forward(self, data: torch.Tensor, hextree: Hextree, depth: int):
-        datas = [data.unsqueeze(2)]
+        datas = [data]
         key = hextree.key(depth, self.nempty)
         t, x, y, z, b = key2txyz(key, depth)
         for i in range(1, self.kernel_size):
             ti = t - i
             ti[ti < 0] = 0 # ti not exist, padding with t0
             key_ti = txyz2key(ti, x, y, z, b) 
-            datas.append(self.search_value(data, key, key_ti).unsqueeze(2))
+            datas.append(self.search_value(data, key, key_ti))
         data = torch.stack(datas, dim=2)
         data = self.conv(data).squeeze(2)
         return data
@@ -61,9 +63,8 @@ class TConv(torch.nn.Module):
         return out
                 
 
-
 class HextreeConv(torch.nn.Module):
-    r"""Convolution, frame by frame with OctreeConv."""
+    r"""Hextree based Convolution"""
 
     def __init__(
         self,
@@ -75,13 +76,13 @@ class HextreeConv(torch.nn.Module):
         direct_method: bool = False,
         use_bias: bool = True,
         max_buffer: int = 200000000,
-        # t_kernel_size: int = 3,
+        t_kernel_size: int = 3,
     ):
         super().__init__()
         assert nempty == True, "nempty hardcode"
         self.conv = OctreeConv(in_channels, out_channels, kernel_size, 
             stride, nempty, use_bias, direct_method, max_buffer)
-        # self.tconv = TConv(in_channels, out_channels, t_kernel_size, nempty)
+        self.tconv = TConv(out_channels, out_channels, t_kernel_size, 1, nempty)
         self.down = stride == 2
 
     def forward(self, data: torch.Tensor, hextree: Hextree, depth: int):
@@ -89,14 +90,15 @@ class HextreeConv(torch.nn.Module):
         data = self.conv(data, hextree.octrees, depth)
         if self.down:
             data = data[hextree.oct2hex_nempty[depth - 1]]
+            data = self.tconv(data, hextree, depth - 1)
         else:
             data = data[hextree.oct2hex_nempty[depth]]
-        # data = self.tconv(data)
+            data = self.tconv(data, hextree, depth)
         return data
 
 
 class HextreeDeconv(torch.nn.Module):
-    r"""Convolution, frame by frame with OctreeConv."""
+    r"""Hextree based DeConvolution"""
 
     def __init__(
         self,
@@ -107,17 +109,20 @@ class HextreeDeconv(torch.nn.Module):
         nempty: bool = False,
         direct_method: bool = False,
         use_bias: bool = True,
-        max_buffer: int = 200000000
+        max_buffer: int = 200000000,
+        t_kernel_size: int = 3,
     ):
         super().__init__()
         assert nempty == True, "nempty hardcode"
         self.deconv = OctreeDeconv(in_channels, out_channels, kernel_size, 
             stride, nempty, use_bias, direct_method, max_buffer)
+        self.tconv = TConv(out_channels, out_channels, t_kernel_size, 1, nempty)
 
     def forward(self, data: torch.Tensor, hextree: Hextree, depth: int):
         data = data[hextree.hex2oct_nempty[depth]]
         data = self.deconv(data, hextree.octrees, depth)
         data = data[hextree.oct2hex_nempty[depth + 1]]
+        data = self.tconv(data, hextree, depth + 1)
         return data
 
 
@@ -223,3 +228,41 @@ class HextreeDeconvBnRelu(torch.nn.Module):
         out = self.bn(out)
         out = self.relu(out)
         return out
+
+
+class HextreeGroupConv(torch.nn.Module):
+    r"""Hextree based GroupConvolution. NOTE:in_channel==out_channel"""
+    def __init__(
+        self,
+        channels: int,
+        group_size: int = 32,
+        kernel_size: List[int] = [3],
+        stride: int = 1,
+        nempty: bool = False,
+        direct_method: bool = False,
+        use_bias: bool = True,
+        max_buffer: int = 200000000,
+        t_kernel_size: int = 3,
+        ):
+        super().__init__()
+        
+        assert channels % group_size == 0
+        
+        self.group_size = group_size
+        self.group_num = channels // group_size
+        self.convs = torch.nn.ModuleList(
+            OctreeConv(group_size, group_size, kernel_size, 
+            stride, nempty, use_bias, direct_method, max_buffer)
+            for _ in range(self.group_num))
+        self.tconv = TConv(channels, channels, t_kernel_size, 1, nempty)
+
+    def forward(self, data: torch.Tensor, hextree: Hextree, depth: int):
+        # data (N, C), C = k * group_size
+        assert data.size(dim = 1) % self.group_size == 0
+        data = data[hextree.hex2oct_nempty[depth]]
+        for i in range(self.group_num):
+            data[:, self.group_size*i:self.group_size*(i+1)] = \
+                self.convs[i](data[:, self.group_size*i:self.group_size*(i+1)], hextree.octrees, depth)
+        data = data[hextree.oct2hex_nempty[depth]]
+        data = self.tconv(data, hextree, depth)
+        return data
