@@ -4,71 +4,9 @@ import torch.utils.checkpoint
 from typing import List
 
 from hextree import Hextree, key2txyz, txyz2key
-from ocnn.octree import Octree
-from ocnn.nn import OctreeConv, OctreeDeconv, octree_align
+from ocnn.nn import OctreeConv, OctreeDeconv
 
-
-class TConv1(torch.nn.Module):
-    r"""Convolution on t-dimension"""
-    def __init__(
-        self, 
-        in_channels: int,
-        out_channels: int, 
-        kernel_size: int = 3,
-        nempty: bool = False,
-        max_buffer: int = 20000):
-        
-        assert nempty == True, "nempty hardcode"
-        assert kernel_size > 1, "TConv with only one frame is meaningless."
-        
-        self.kernel_size = kernel_size
-        self.nempty = nempty
-        weight = torch.randn((kernel_size, in_channels, out_channels))
-        self.weights = nn.Parameter(weight, requires_grad=True)
-            
-    def forward(self, data: torch.Tensor, hextree: Hextree, depth: int):
-        result = []
-        data_batch = self.split(data, hextree, depth)
-        for batch in data_batch:
-            result += self.perform_conv(batch, hextree)
-        result = torch.stack(result)
-        assert data.size(0) == result.size(0), "Shape can not be modified!"
-        return result
     
-    def split(self, data: torch.Tensor, hextree: Hextree, depth: int):
-        r"""
-        split data frame by frame
-        
-        return: data_batch in form [[batch_1], [batch_2], ...], 
-        with each [batch_i] = [data of frame_1, data of frame_2, ...]
-        """
-        if self.nempty:
-            npts = torch.stack([
-                hextree.octree_list[i].nnum_nempty[depth] 
-                 for i in range(len(hextree.octree_list))])
-        else:
-            npts = torch.stack([
-                hextree.octree_list[i].nnum[depth] 
-                 for i in range(len(hextree.octree_list))])
-        
-        nnum_cum_nempty = torch.cumsum(npts, dim=0)
-        data_batch = [data[nnum_cum_nempty[i-1] if i>0 else 0: nnum_cum_nempty[i]] 
-                 for i in range(len(nnum_cum_nempty))]
-        octree_cum = torch.cumsum(torch.stack(hextree.octree_num), dim=0)
-        data_batch = [data_batch[octree_cum[i-1] if i>0 else 0: octree_cum[i]] 
-                 for i in range(len(octree_cum))]        
-        return data_batch
-    
-    def perform_conv(self, batch: List[torch.Tensor], octrees: List[Octree]):
-        # TODO
-        for i in range(1, len(batch)):
-            src = torch.zeros((i+1, *batch[i].size))
-            for j in range(i):
-                src[j] = octree_align()
-            batch[i] = 1# conv
-        return torch.stack(batch)
-    
-
 class TConv(torch.nn.Module):
     r"""Convolution on t-dimension"""
     def __init__(
@@ -91,12 +29,12 @@ class TConv(torch.nn.Module):
         t, x, y, z, b = key2txyz(key, depth)
         for i in range(1, self.kernel_size):
             ti = t - i
-            ti[ti<0] = 255 # ti not exist, padding with 0
+            ti[ti < 0] = 0 # ti not exist, padding with t0
             key_ti = txyz2key(ti, x, y, z, b) 
             datas.append(self.search_value(data, key, key_ti).unsqueeze(2))
-        out = torch.stack(datas, dim=2)
-        out = self.conv(out).squeeze(2)
-        return out
+        data = torch.stack(datas, dim=2)
+        data = self.conv(data).squeeze(2)
+        return data
     
     def search_value(self, value: torch.Tensor, key: torch.Tensor, query: torch.Tensor):
         r''' Searches values according to sorted shuffled keys.
@@ -136,12 +74,14 @@ class HextreeConv(torch.nn.Module):
         nempty: bool = False,
         direct_method: bool = False,
         use_bias: bool = True,
-        max_buffer: int = 200000000
+        max_buffer: int = 200000000,
+        # t_kernel_size: int = 3,
     ):
         super().__init__()
         assert nempty == True, "nempty hardcode"
         self.conv = OctreeConv(in_channels, out_channels, kernel_size, 
             stride, nempty, use_bias, direct_method, max_buffer)
+        # self.tconv = TConv(in_channels, out_channels, t_kernel_size, nempty)
         self.down = stride == 2
 
     def forward(self, data: torch.Tensor, hextree: Hextree, depth: int):
@@ -151,6 +91,7 @@ class HextreeConv(torch.nn.Module):
             data = data[hextree.oct2hex_nempty[depth - 1]]
         else:
             data = data[hextree.oct2hex_nempty[depth]]
+        # data = self.tconv(data)
         return data
 
 

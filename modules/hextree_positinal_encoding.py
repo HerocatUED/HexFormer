@@ -86,18 +86,17 @@ class CPE(torch.nn.Module):
         assert in_channels % group_size == 0
         self.group_size = group_size
         self.group_num = in_channels // group_size
-        self.convs = [ocnn.nn.OctreeConv(
+        self.convs = torch.nn.ModuleList(ocnn.nn.OctreeConv(
             group_size, group_size, kernel_size, 
-            stride, nempty, use_bias=True) for i in range(self.group_num)]
+            stride, nempty, use_bias=True) for i in range(self.group_num))
         self.bn = torch.nn.BatchNorm1d(in_channels)
 
     def forward(self, data: torch.Tensor, hextree: Hextree, depth: int):
         # data (N, C), C = k * group_size
         assert data.size(dim = 1) % self.group_size == 0
         data = data[hextree.hex2oct_nempty[depth]]
-        out = torch.zeros_like(data)
         for i in range(self.group_num):
-            out[:, self.group_num*i:self.group_size*(i+1)] = self.convs[i](data[:, self.group_num*i:self.group_size*(i+1)], hextree.octrees, depth)
-        out = self.bn(out)
+            data[:, self.group_size*i:self.group_size*(i+1)] = self.convs[i](data[:, self.group_size*i:self.group_size*(i+1)], hextree.octrees, depth)
+        data = self.bn(data)
         data = data[hextree.oct2hex_nempty[depth]]
-        return out
+        return data
