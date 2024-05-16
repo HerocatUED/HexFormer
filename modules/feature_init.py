@@ -77,6 +77,6 @@ class InputFeature(torch.nn.Module):
             out = hextree_pad(out, hexree, depth)
         return out
 
-    def extra_repr(self) -> str:
-        r""""""
-        return "feature={}, nempty={}".format(self.feature, self.nempty)
+    # def extra_repr(self) -> str:
+    #     r""""""
+    #     return "feature={}, nempty={}".format(self.feature, self.nempty)

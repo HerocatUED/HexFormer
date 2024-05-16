@@ -64,9 +64,9 @@ class RPE(torch.nn.Module):
         out = out.permute(0, 3, 1, 2)  # (N, K, K, H) -> (N, H, K, K)
         return out
 
-    def extra_repr(self) -> str:
-        return 'num_heads={}, pos_bnd={}, dilation={}'.format(
-                self.num_heads, self.pos_bnd, self.dilation)  # noqa
+    # def extra_repr(self) -> str:
+    #     return 'num_heads={}, pos_bnd={}, dilation={}'.format(
+    #             self.num_heads, self.pos_bnd, self.dilation)  # noqa
         
 
 class RPE2(torch.nn.Module):
@@ -102,9 +102,9 @@ class RPE2(torch.nn.Module):
         b = b.permute(0, 3, 1, 2)  # (N, K, K, H) -> (N, H, K, K)
         return w, b
 
-    def extra_repr(self) -> str:
-        return 'num_heads={}, pos_bnd={}, dilation={}'.format(
-                self.num_heads, self.pos_bnd, self.dilation)  # noqa
+    # def extra_repr(self) -> str:
+    #     return 'num_heads={}, pos_bnd={}, dilation={}'.format(
+    #             self.num_heads, self.pos_bnd, self.dilation)  # noqa
         
         
 class CPE(torch.nn.Module):
@@ -126,7 +126,7 @@ class HextreeAttention(torch.nn.Module):
     def __init__(self, dim: int, patch_size: int, num_heads: int,
                  qkv_bias: bool = True, qk_scale: Optional[float] = None,
                  attn_drop: float = 0.0, proj_drop: float = 0.0,
-                 dilation: int = 1, use_rpe: bool = False):
+                 dilation: int = 1, use_rpe: bool = True):
         super().__init__()
         self.dim = dim
         self.patch_size = patch_size
@@ -193,9 +193,9 @@ class HextreeAttention(torch.nn.Module):
                 assert NotImplementedError, 'only RPE and RPE2 implemented!'
         return attn
 
-    def extra_repr(self) -> str:
-        return 'dim={}, patch_size={}, num_heads={}, dilation={}'.format(
-                self.dim, self.patch_size, self.num_heads, self.dilation)  # noqa
+    # def extra_repr(self) -> str:
+    #     return 'dim={}, patch_size={}, num_heads={}, dilation={}'.format(
+    #             self.dim, self.patch_size, self.num_heads, self.dilation)  # noqa
 
 
 class HexFormerBlock(torch.nn.Module):
