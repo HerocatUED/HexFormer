@@ -1,4 +1,6 @@
 # HexFormer
+Intro: a general 4D backbone
+
 Task: point cloud sequence segmentation (for now)
 
 ## Quick Stark
@@ -14,11 +16,10 @@ pip install -r requirements.txt
 ```
 3. Prepare datasets, download and unzip.
 - [SemanticKITTI](http://www.semantic-kitti.org/dataset.html#download)
-- [HOI4D]()**TODO**
+- [HOI4D](https://onedrive.live.com/?redeem=aHR0cHM6Ly8xZHJ2Lm1zL3UvcyFBcFFGX2VfYnctVVNnaU9CSW5Ga0dxR1p4ZU1lP2U9eGFQcGl3&id=12E5C3DBEFFD0594%21291&cid=12E5C3DBEFFD0594)
 4. Generate filelist and Modify config file(Take kitti for example)
 ```
 python data_utils/tools.py --dataset kitti --root_dir $.../SemanticKITTI$
-python data_utils/tools.py --dataset hoi4d
 ```
 5. Train
 ```
@@ -32,11 +33,9 @@ python run_seg.py --run test --gpu 0 --alias kitti --port 10008 --ckpt $path_to_
 - Tested with Python 3.10, torch 2.3.0 with CUDA 11.8
 
 TODO： 
-- update to pytorch 2.0, speedup with torch.compile()
+- speedup with torch.compile()
 - loss design
-- CPE: 3D DwConv + 1D Conv
 - reuse history prediction
-- FPS: current 4~6 frame/s with single 3090GPU on KITTI
-- Cross Attention/ mask attention: query Current
+- FPS: single 3090GPU on KITTI
 - inference code: Vote=1, GPUnum=1
-- clean locations and paths: 
+- clean locations and paths
