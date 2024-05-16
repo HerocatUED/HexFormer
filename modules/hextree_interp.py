@@ -77,12 +77,12 @@ class HextreeInterp(torch.nn.Module):
 
         return self.func(data, hextree, depth, pts, self.nempty, self.bound_check)
 
-    # def extra_repr(self) -> str:
-    #     r"""Sets the extra representation of the module."""
+    def extra_repr(self) -> str:
+        r"""Sets the extra representation of the module."""
 
-    #     return ("method={}, nempty={}, bound_check={}, rescale_pts={}").format(
-    #         self.method, self.nempty, self.bound_check, self.rescale_pts
-    #     )  # noqa
+        return ("method={}, nempty={}, bound_check={}, rescale_pts={}").format(
+            self.method, self.nempty, self.bound_check, self.rescale_pts
+        )  # noqa
 
 
 # class HextreeInterp(torch.nn.Module):
