@@ -74,7 +74,7 @@ class ReadFile:
 
 
 class Transform:
-    """A boilerplate class which transforms an input data.
+    r"""A boilerplate class which transforms an input data.
     The input data is first converted to :class:`Points`, then randomly transformed
     (if enabled), and converted to an :class:`Hextree`.
 
@@ -135,7 +135,7 @@ class Transform:
         return output
 
     def preprocess(self, sample: dict, idx: int):
-        """
+        r"""
         Transforms :attr:`sample` to :class:`Points` and performs some specific
         transformations, like normalization.
         """
@@ -145,7 +145,7 @@ class Transform:
         return points
 
     def transform(self, points: Points, idx: int):
-        """
+        r"""
         Applies the general transformations.
         """
 
@@ -167,7 +167,7 @@ class Transform:
         return {"points": points}
 
     def points2hextree(self, points: Points):
-        """
+        r"""
         Converts the input :attr:`points` to an hextree.
         """
 
@@ -176,7 +176,7 @@ class Transform:
         return hextree
 
     def rnd_parameters(self):
-        """
+        r"""
         Generates random parameters for data augmentation.
         """
 

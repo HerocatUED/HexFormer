@@ -1,8 +1,10 @@
 import os
 import h5py
 import argparse
+import yaml
 import numpy as np
 from tqdm import tqdm
+
 
 def construct_hoi4d_part(root_dir: str, dataset_dir: str, config_dir: str):
     """
@@ -53,6 +55,7 @@ def construct_hoi4d_part(root_dir: str, dataset_dir: str, config_dir: str):
     f_test = open(f"{config_dir}/test_data.txt", "w")
     f_test.write(test_list)
     f_test.close()
+
 
 def construct_hoi4d(root_dir: str, dataset_dir: str, config_dir: str):
     """
@@ -217,6 +220,65 @@ def hoi4d_range(path: str, chunk_size: int = 20):
     print(record)
 
 
+def remap(semantic: np.array, inverse: bool = False):
+        """
+        Remap semantic classes.
+
+        Args:
+        semantic: semantic classes to remap.
+        inverse: class2num if True, num2class if False. NOTE: See KITTI config for more.
+        """
+        config_path = "config/kitti/semantic-kitti-all.yaml"
+        cfg = yaml.safe_load(open(config_path, "r"))
+        # get number of interest classes, and the label mappings
+        if inverse:
+            # print("Mapping xentropy to original labels")
+            remapdict = cfg["learning_map_inv"]
+        else:
+            remapdict = cfg["learning_map"]
+
+        # make lookup table for mapping
+        maxkey = max(remapdict.keys())
+
+        # +100 hack making lut bigger just in case there are unknown labels
+        remap_lut = np.zeros((maxkey + 100), dtype=np.int32)
+        remap_lut[list(remapdict.keys())] = list(remapdict.values())
+        return remap_lut[semantic]
+    
+    
+def visualize(data_dir: str, log_dir: str, config_path: str, frame_num: int, predict: bool = True):
+    scan_name = data_dir + "/dataset/sequences/08/velodyne/{:0>6d}.bin".format(frame_num)
+    scan = np.fromfile(scan_name, dtype=np.float32).reshape(-1, 4)[:, :-1]
+    if predict:
+        label_name = log_dir + "/sequences/08/predictions/{:0>6d}.label".format(frame_num)
+    else:
+        label_name = data_dir + "/dataset/sequences/08/labels/{:0>6d}.label".format(frame_num)
+    label = np.fromfile(label_name, dtype=np.int32)
+    label = label.reshape((-1))
+    sem_label = label & 0xFFFF  # semantic label in lower half
+    
+    points = scan
+    labels = remap(sem_label, False)
+    
+    DATA = yaml.safe_load(open(config_path, 'r'))
+    remapdict = DATA["learning_map_inv"]
+    # make lookup table for mapping
+    maxkey = max(remapdict.keys())
+    # +100 hack making lut bigger just in case there are unknown labels
+    remap_lut = np.zeros((maxkey + 100), dtype=np.int32)
+    remap_lut[list(remapdict.keys())] = list(remapdict.values())
+    remap_lut[-1] = -1
+    labels = remap_lut[labels]
+    
+    color = DATA["color_map"]
+    color_lut = np.ones((300, 3), dtype=np.int32)
+    color_lut[list(color.keys())] = list(color.values())
+    color_lut[-1] = np.ones(3, dtype=np.int32) * 100
+    colors = color_lut[labels]
+    
+    pcds = np.concatenate([points, colors], axis=1)
+    np.savetxt(f'{frame_num}-pcds-label-{predict}.txt', pcds)
+
 if __name__ == "__main__":
     
     # parser = argparse.ArgumentParser()
@@ -224,11 +286,17 @@ if __name__ == "__main__":
     # parser.add_argument("--dataset", type=str, required=True)
     # args = parser.parse_args()
     
-    root_dir = "/mnt/sdc/wangx/HOI4D/HOI4D_dataset/seg_data_h5"
-    dataset_dir = "/mnt/sdc/wangx/dataset/HOI4D"
-    config_dir = "/mnt/sdc/wangx/HexFormer/config/HOI4D"
-    
+    # root_dir = "/mnt/sdc/wangx/HOI4D/HOI4D_dataset/seg_data_h5"
+    # dataset_dir = "/mnt/sdc/wangx/dataset/HOI4D"
+    # config_dir = "/mnt/sdc/wangx/HexFormer/config/HOI4D"
     # hoi4d_range(root_dir)
-    construct_hoi4d(root_dir, dataset_dir, config_dir)
+    # construct_hoi4d(root_dir, dataset_dir, config_dir)
     
+    root_dir = "/mnt/sdc/wangrh/data/SemanticKITTI"
+    config_dir = "/mnt/sdc/wangx/HexFormer/config/kitti"
+    config_path = "/mnt/sdc/wangx/HexFormer/config/kitti/semantic-kitti-all.yaml"
+    log_dir = "/mnt/sdc/wangx/HexFormer/logs/log_MultiScan_3Dconv_4Dattention_test_kitti"
     # construct_kitti(root_dir, config_dir)
+    frame_num = 3600
+    visualize(root_dir, log_dir, config_path, frame_num, predict=True)
+    visualize(root_dir, log_dir, config_path, frame_num, predict=False)

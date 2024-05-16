@@ -107,7 +107,7 @@ class SegSolver(Solver):
         accu = self.accuracy(logit, label)
         return {"train/loss": loss, "train/accu": accu}
 
-    def test_step(self, batch):
+    def test_step(self, batch): # this is evaluation when training
         batch = self.process_batch(batch, self.FLAGS.DATA.test)
         with torch.no_grad():
             logit, label = self.model_forward(batch)
@@ -123,7 +123,7 @@ class SegSolver(Solver):
         tensors = [loss, accu, mIoU] + insc + union
         return dict(zip(names, tensors))
 
-    def eval_step(self, batch):
+    def eval_step(self, batch): # this is test when inference
         batch = self.process_batch(batch, self.FLAGS.DATA.test)
         filename = self.logdir + "/predictions/{:0>6d}.label".format(batch["iter_num"])
         curr_folder = os.path.dirname(filename)

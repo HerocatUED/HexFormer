@@ -8,7 +8,7 @@ from hextree import Hextree
 from modules import (
     HextreeT, HextreeDropPath, 
     HextreeConvBn, HextreeConvBnRelu, 
-    HextreeDeconvBn, HextreeDeconvBnRelu
+    HextreeGroupConv
     )
 
 
@@ -105,7 +105,21 @@ class RPE2(torch.nn.Module):
     def extra_repr(self) -> str:
         return 'num_heads={}, pos_bnd={}, dilation={}'.format(
                 self.num_heads, self.pos_bnd, self.dilation)  # noqa
+        
+        
+class CPE(torch.nn.Module):
 
+    def __init__(self, channels: int, group_size: int = 32, kernel_size: List[int] = [3], 
+                 stride: int = 1, nempty: bool = False):
+        super().__init__()
+        self.conv = HextreeGroupConv(channels, group_size, kernel_size, stride, nempty)
+        self.bn = torch.nn.BatchNorm1d(channels)
+
+    def forward(self, data: torch.Tensor, hextree: Hextree, depth: int):
+        data = self.conv(data, hextree, depth)
+        data = self.bn(data)
+        return data
+    
 
 class HextreeAttention(torch.nn.Module):
 
@@ -198,10 +212,10 @@ class HexFormerBlock(torch.nn.Module):
         self.norm2 = torch.nn.LayerNorm(dim)
         self.mlp = MLP(dim, int(dim * mlp_ratio), dim, activation, proj_drop)
         self.drop_path = HextreeDropPath(drop_path, nempty)
-        # self.cpe = OctreeDWConvBn(dim, nempty=nempty)
+        self.cpe = CPE(dim, nempty=nempty)
 
     def forward(self, data: torch.Tensor, hextree: HextreeT, depth: int):
-        # data = self.cpe(data, hextree, depth) + data
+        data = self.cpe(data, hextree, depth) + data
         attn = self.attention(self.norm1(data), hextree, depth)
         data = data + self.drop_path(attn, hextree, depth)
         ffn = self.mlp(self.norm2(data))
@@ -221,8 +235,8 @@ class HexFormerStage(torch.nn.Module):
         super().__init__()
         self.num_blocks = num_blocks
         self.use_checkpoint = use_checkpoint
-        self.interval = interval  # normalization interval
-        self.num_norms = (num_blocks - 1) // self.interval
+        # self.interval = interval  # normalization interval
+        # self.num_norms = (num_blocks - 1) // self.interval
 
         self.blocks = torch.nn.ModuleList([hexformer_block(dim=dim, num_heads=num_heads, patch_size=patch_size,
                                                            dilation=1 if (i % 2 == 0) else dilation,
