@@ -3,5 +3,6 @@
 *.npy
 *.npz
 dataset
-logs*
+logs
 test/test_data
+config

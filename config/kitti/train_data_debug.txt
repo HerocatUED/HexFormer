@@ -1,9 +1,0 @@
-/mnt/sdc/wangrh/data/SemanticKITTI/dataset/sequences/00/velodyne/000005.bin
-/mnt/sdc/wangrh/data/SemanticKITTI/dataset/sequences/00/velodyne/000006.bin
-/mnt/sdc/wangrh/data/SemanticKITTI/dataset/sequences/00/velodyne/000007.bin
-/mnt/sdc/wangrh/data/SemanticKITTI/dataset/sequences/00/velodyne/000008.bin
-/mnt/sdc/wangrh/data/SemanticKITTI/dataset/sequences/00/velodyne/000009.bin
-/mnt/sdc/wangrh/data/SemanticKITTI/dataset/sequences/00/velodyne/000010.bin
-/mnt/sdc/wangrh/data/SemanticKITTI/dataset/sequences/00/velodyne/000011.bin
-/mnt/sdc/wangrh/data/SemanticKITTI/dataset/sequences/00/velodyne/000012.bin
-/mnt/sdc/wangrh/data/SemanticKITTI/dataset/sequences/00/velodyne/000013.bin

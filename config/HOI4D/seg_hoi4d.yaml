@@ -5,7 +5,7 @@ SOLVER:
   best_val: max:mIoU_part
 
   ckpt_num: 20
-  max_epoch: 50
+  max_epoch: 30
   test_every_epoch: 1
   log_per_iter: 100
 
@@ -41,8 +41,8 @@ DATA:
     # data loading
     has_label: True
     history: 2
-    location: /mnt/sdc/wangx/HOI4D/HOI4D_dataset/seg_data_h5
-    filelist: config/hoi4d/train_data.txt
+    location: /data/wangx/dataset/HOI4D
+    filelist: config/HOI4D/train_data.txt
     batch_size: 32 # for a single GPU, real batch size = GPU_num * batch_size
     shuffle: True
     num_workers: 0
@@ -67,8 +67,8 @@ DATA:
     # data loading
     has_label: True
     history: 2
-    location: /mnt/sdc/wangx/HOI4D/HOI4D_dataset/seg_data_h5
-    filelist: config/hoi4d/val_data.txt
+    location: /data/wangx/dataset/HOI4D
+    filelist: config/HOI4D/val_data.txt
     batch_size: 8
     shuffle: False
     num_workers: 0

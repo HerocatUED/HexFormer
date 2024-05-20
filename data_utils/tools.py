@@ -74,19 +74,20 @@ def construct_hoi4d(root_dir: str, dataset_dir: str, config_dir: str):
     train_list = ""
     val_list = ""
     test_list = ""
-    video_cnt = -1
+    video_cnt = 0
     
     # train and validation data
     for h5file in ["train1", "train2", "train3", "train4"]:
         with h5py.File(f"{root_dir}/{h5file}.h5", "r") as f:
+            video_cnt_base = video_cnt
             for data, folder, suffix, data_type in zip(
                 ["semantic", "pcd"], ["labels", "velodyne"], ["label", "bin"], [np.int32, np.float32]
             ):
                 print(h5file, data)
                 original_data = f[data]
                 shape = original_data.shape
-                for video in tqdm(range(shape[0])):
-                    video_cnt += 1
+                for i, video in enumerate(tqdm(range(shape[0]))):
+                    video_cnt = video_cnt_base + i
                     video_folder = dir_path + "/{:0>4d}/{}".format(video_cnt, folder)
                     os.makedirs(video_folder)
                     for frame in range(shape[1]):
