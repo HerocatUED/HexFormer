@@ -46,14 +46,28 @@ class TConv(torch.nn.Module):
         # self.conv = nn.Conv1d(in_channels, out_channels, kernel_size, stride)
         self.conv = FastConv1d(in_channels, out_channels, kernel_size)
             
+    # def forward(self, data: torch.Tensor, hextree: Hextree, depth: int):
+    #     datas = [data]
+    #     key = hextree.key(depth, self.nempty)
+    #     t, x, y, z, b = key2txyz(key, depth)
+    #     for i in range(1, self.kernel_size):
+    #         ti = t - i
+    #         ti[ti < 0] = 100 # ti not exist, padding with t0
+    #         key_ti = txyz2key(ti, x, y, z, b) 
+    #         datas.append(self.search_value(data, key, key_ti))
+    #     data = torch.stack(datas, dim=2)
+    #     data = self.conv(data)
+    #     return data
+    
     def forward(self, data: torch.Tensor, hextree: Hextree, depth: int):
         datas = [data]
         key = hextree.key(depth, self.nempty)
-        t, x, y, z, b = key2txyz(key, depth)
+        t = key & 255
+        bxyz = (key >> 8) << 8
         for i in range(1, self.kernel_size):
             ti = t - i
             ti[ti < 0] = 100 # ti not exist, padding with t0
-            key_ti = txyz2key(ti, x, y, z, b) 
+            key_ti = bxyz | ti 
             datas.append(self.search_value(data, key, key_ti))
         data = torch.stack(datas, dim=2)
         data = self.conv(data)
