@@ -1,6 +1,5 @@
 import os
 import h5py
-import argparse
 import yaml
 import numpy as np
 from tqdm import tqdm
@@ -299,6 +298,7 @@ if __name__ == "__main__":
     config_path = "/mnt/sdc/wangx/HexFormer/config/kitti/semantic-kitti-all.yaml"
     log_dir = "/mnt/sdc/wangx/HexFormer/logs/log_MultiScan_3Dconv_4Dattention_test_kitti"
     # construct_kitti(root_dir, config_dir)
+    
     frame_num = 3600
     visualize(root_dir, log_dir, config_path, frame_num, predict=True)
     visualize(root_dir, log_dir, config_path, frame_num, predict=False)

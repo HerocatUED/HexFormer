@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.utils.checkpoint
 from typing import List
 
-from hextree import Hextree, key2txyz, txyz2key
+from hextree import Hextree
 from ocnn.nn import OctreeConv, OctreeDeconv
 
 

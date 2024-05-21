@@ -22,7 +22,7 @@ def train():
     print(f"Training on dataset {args.alias}")
     cmds = [
         "python segmentation.py",
-        f"--config config/{args.alias}/seg_{args.alias}.yaml",
+        f"--config configs/{args.alias}/seg_{args.alias}.yaml",
         "SOLVER.gpu  {},".format(args.gpu),
         "SOLVER.alias  {}".format(args.alias),
         "SOLVER.dist_url tcp://localhost:{}".format(args.port),
@@ -37,7 +37,7 @@ def test():
     ckpt = args.ckpt  # use args.ckpt if provided
     cmds = [
         "python segmentation.py",
-        f"--config config/{args.alias}/seg_{args.alias}.yaml",
+        f"--config configs/{args.alias}/seg_{args.alias}.yaml",
         "LOSS.mask -255",  # to keep all points
         "SOLVER.gpu  {},".format(args.gpu),
         "SOLVER.run evaluate",
