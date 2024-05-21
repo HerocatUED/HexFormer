@@ -39,3 +39,4 @@ TODO：
 - FPS: single 3090GPU on KITTI
 - inference code: Vote=1, GPUnum=1
 - clean locations and paths
+- update config files
