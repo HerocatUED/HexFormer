@@ -74,7 +74,7 @@ def construct_hoi4d(root_dir: str, dataset_dir: str, config_dir: str):
     train_list = ""
     val_list = ""
     test_list = ""
-    video_cnt = 0
+    video_cnt = -1
     
     # train and validation data
     for h5file in ["train1", "train2", "train3", "train4"]:
@@ -87,7 +87,7 @@ def construct_hoi4d(root_dir: str, dataset_dir: str, config_dir: str):
                 original_data = f[data]
                 shape = original_data.shape
                 for i, video in enumerate(tqdm(range(shape[0]))):
-                    video_cnt = video_cnt_base + i
+                    video_cnt = video_cnt_base + i + 1
                     video_folder = dir_path + "/{:0>4d}/{}".format(video_cnt, folder)
                     os.makedirs(video_folder)
                     for frame in range(shape[1]):
@@ -105,7 +105,7 @@ def construct_hoi4d(root_dir: str, dataset_dir: str, config_dir: str):
         original_data = f[data]
         shape = original_data.shape
         for i, video in enumerate(tqdm(range(shape[0]))):
-            video_cnt = video_cnt_base + i
+            video_cnt = video_cnt_base + i + 1
             video_folder = dir_path + "/{:0>4d}/{}".format(video_cnt, folder)
             os.makedirs(video_folder)
             for frame in range(shape[1]):
