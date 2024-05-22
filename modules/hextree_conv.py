@@ -35,8 +35,16 @@ class TConv(torch.nn.Module):
         out_channels: int, 
         kernel_size: int = 3,
         stride: int = 1,
-        nempty: bool = False):
+        nempty: bool = False,
+        pad_mode: int = 0):
         super().__init__()
+        r'''
+        Args:
+        pad_mode(int):
+            0 means pad with all-zero feature
+            1 means pad with t_min feature
+            2 means pad with shared learnable feature
+        '''
         
         assert nempty == True, "nempty hardcode"
         assert kernel_size > 1, "TConv with only one frame is meaningless."
@@ -45,6 +53,10 @@ class TConv(torch.nn.Module):
         self.nempty = nempty
         # self.conv = nn.Conv1d(in_channels, out_channels, kernel_size, stride)
         self.conv = FastConv1d(in_channels, out_channels, kernel_size)
+        self.pad_mode = pad_mode
+        self.pad_feat = None
+        if pad_mode == 2:
+            self.pad_feat = nn.Parameter(torch.randn(in_channels))
             
     # def forward(self, data: torch.Tensor, hextree: Hextree, depth: int):
     #     datas = [data]
@@ -66,14 +78,15 @@ class TConv(torch.nn.Module):
         bxyz = (key >> 8) << 8
         for i in range(1, self.kernel_size):
             ti = t - i
-            ti[ti < 0] = 100 # ti not exist, padding with t0
+            # padding
+            ti[ti < 0] = 0 if self.pad_mode == 1 else 255
             key_ti = bxyz | ti 
-            datas.append(self.search_value(data, key, key_ti))
+            datas.append(self.search_value(data, key, key_ti, self.pad_feat))
         data = torch.stack(datas, dim=2)
         data = self.conv(data)
         return data
     
-    def search_value(self, value: torch.Tensor, key: torch.Tensor, query: torch.Tensor):
+    def search_value(self, value: torch.Tensor, key: torch.Tensor, query: torch.Tensor, pad_feat: torch.Tensor = None):
         r''' Searches values according to sorted shuffled keys.
 
         Args:
@@ -81,6 +94,7 @@ class TConv(torch.nn.Module):
             key (torch.Tensor): The key tensor corresponds to :attr:`value` with shape 
                 (N,), which contains sorted shuffled keys of an octree.
             query (torch.Tensor): The query tensor, which also contains shuffled keys.
+            pad_feat (torch.Tensor): If not none, pad the out-of-bound queries with pad_feat tensor.
         '''
 
         # deal with out-of-bound queries, the indices of these queries
@@ -95,6 +109,7 @@ class TConv(torch.nn.Module):
         # assign the found value to the output
         out = torch.zeros(query.shape[0], value.shape[1], device=value.device)
         out[found] = value[idx[found]]
+        out[not found] = pad_feat
         return out
                 
 

@@ -9,7 +9,7 @@ from thsolver import Dataset
 from .utils import Transform
 
 
-config_path = "config/kitti/semantic-kitti-all.yaml"
+config_path = "configs/kitti/semantic-kitti-all.yaml"
 cfg = yaml.safe_load(open(config_path, "r"))
 
 
