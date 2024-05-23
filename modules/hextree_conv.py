@@ -109,7 +109,8 @@ class TConv(torch.nn.Module):
         # assign the found value to the output
         out = torch.zeros(query.shape[0], value.shape[1], device=value.device)
         out[found] = value[idx[found]]
-        out[not found] = pad_feat
+        if pad_feat is not None: 
+            out[torch.logical_not(found)] = pad_feat
         return out
                 
 
