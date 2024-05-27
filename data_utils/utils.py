@@ -164,7 +164,7 @@ class Transform:
         # inbox_mask = points.clip_xyz(bbmin=-1, bbmax=1)
         # return {'points': points, 'inbox_mask': inbox_mask}
 
-        return {"points": points}
+        return points
 
     def points2hextree(self, points: Points):
         r"""

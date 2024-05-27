@@ -58,9 +58,37 @@ class KITTITransform(Transform):
         pcds.normalize_xyz(keep_shape=True, box_size=2*self.scale_factor)
         
         # transform including rotatation, translation, scaling, and flipping
-        output = self.transform(pcds, idx)
+        pcds = self.transform(pcds, idx)
+        
+        # random crop
+        if self.distort:
+            max_npt = self.flags.max_npt if self.flags.max_npt > 0 else pcds.npt
+            max_npt = min(max_npt, int(pcds.npt * self.flags.crop_ratio))
+            pcds = self.rand_crop(pcds, max_npt)
+            
+        # align z
+        pcds = self.align_z(pcds)
 
-        return output
+        return {"points": pcds}
+    
+    def rand_crop(self, points: Points, max_npt: int):
+        r''' Keeps `max_npt` pts at most centered by a radomly chosen pts. 
+        '''
+        pts = points.points
+        npt = points.npt
+        crop_mask = torch.ones(npt, dtype=torch.bool)
+        if npt > max_npt:
+            rand_idx = torch.randint(low=0, high=npt, size=(1,))
+            sort_idx = torch.argsort(torch.sum((pts - pts[rand_idx])**2, 1))
+            crop_idx = sort_idx[max_npt:]
+            crop_mask[crop_idx] = False
+            points = points[crop_mask] 
+        return points
+    
+    def align_z(self, points: Points):
+        points.points[:, 3] -= points.points[:, 3].min()
+        return points
+    
 
 
 class ReadKITTI:
@@ -86,10 +114,10 @@ class ReadKITTI:
         root_dir = filename[:root_pos]
         sequence_id = int(root_dir[-2:])
         frame_num = int(filename[root_pos + 10 : filename.find(".bin")])
-
+        past_frame = max(frame_num - self.history, 0)
+        
         # point clouds
         pcds = []
-        past_frame = max(frame_num - self.history, 0)
         for j, i in enumerate(range(past_frame, frame_num + 1)):
             scan_name = root_dir + "/velodyne/{:0>6d}.bin".format(i)
             scan = np.fromfile(scan_name, dtype=np.float32)
@@ -105,14 +133,18 @@ class ReadKITTI:
 
         # label
         if self.has_label:
-            label_name = root_dir + "/labels/{:0>6d}.label".format(frame_num)
-            label = np.fromfile(label_name, dtype=np.int32)
-            label = label.reshape((-1))
-            sem_label = label & 0xFFFF  # semantic label in lower half
-            inst_label = label >> 16  # instance id in upper half
-            # sanity check
-            assert (sem_label + (inst_label << 16) == label).all()
-            output["labels"] = remap(sem_label, False)
+            labels = []
+            for i in range(past_frame, frame_num + 1):
+                label_name = root_dir + "/labels/{:0>6d}.label".format(i)
+                label = np.fromfile(label_name, dtype=np.int32)
+                label = label.reshape((-1))
+                sem_label = label & 0xFFFF  # semantic label in lower half
+                inst_label = label >> 16  # instance id in upper half
+                # sanity check
+                assert (sem_label + (inst_label << 16) == label).all()
+                labels.append(sem_label)
+            output["labels"] = np.hstack(labels)
+            output["labels"] = remap(output["labels"], False)
 
         return output
 

@@ -36,9 +36,9 @@ class HOI4DTransform(Transform):
         pcds.normalize_xyz(keep_shape=True, box_size=2*self.scale_factor)
         
         # transform including rotatation, translation, scaling, and flipping
-        output = self.transform(pcds, idx)
+        pcds = self.transform(pcds, idx)
 
-        return output
+        return {"points": pcds}
 
 
 class ReadHOI4D:

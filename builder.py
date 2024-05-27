@@ -8,7 +8,7 @@ def hexsegformer_large(in_channels, out_channels, **kwargs):
     return HexFormerSeg(
         in_channels,
         out_channels,
-        channels=[128, 256, 512, 1024],
+        channels=[128, 256, 512, 512],
         num_blocks=[2, 2, 6, 2],
         num_heads=[4, 8, 16, 32],
         patch_size=128,
@@ -25,7 +25,7 @@ def hexsegformer(in_channels, out_channels, **kwargs):
     return HexFormerSeg(
         in_channels,
         out_channels,
-        channels=[64, 128, 256, 512],
+        channels=[64, 128, 256, 256],
         num_blocks=[2, 2, 6, 2],
         num_heads=[4, 8, 16, 32],
         patch_size=64,
@@ -42,7 +42,7 @@ def hexsegformer_small(in_channels, out_channels, **kwargs):
     return HexFormerSeg(
         in_channels,
         out_channels,
-        channels=[32, 64, 128, 256],
+        channels=[32, 64, 128, 128],
         num_blocks=[2, 2, 6, 2],
         num_heads=[4, 8, 16, 32],
         patch_size=32,
@@ -51,23 +51,6 @@ def hexsegformer_small(in_channels, out_channels, **kwargs):
         nempty=True,
         stem_down=2,
         fpn_channel=64,
-        head_drop=[0.5, 0.5],
-    )
-    
-
-def hexsegformer_toy(in_channels, out_channels, **kwargs):
-    return HexFormerSeg(
-        in_channels,
-        out_channels,
-        channels=[64, 128, 256, 256],
-        num_blocks=[2, 2, 6, 2],
-        num_heads=[4, 8, 16, 32],
-        patch_size=64,
-        dilation=4,
-        drop_path=0.3,
-        nempty=True,
-        stem_down=2,
-        fpn_channel=128,
         head_drop=[0.5, 0.5],
     )
 
@@ -83,7 +66,7 @@ def get_segmentation_model(flags):
         "hexsegformer": hexsegformer,
         "hexsegformer_large": hexsegformer_large,
         "hexsegformer_small": hexsegformer_small,
-        "hexsegformer_toy": hexsegformer_toy,
+        # "hexsegformer_toy": hexsegformer_toy,
     }
 
     return networks[flags.name.lower()](**params)
