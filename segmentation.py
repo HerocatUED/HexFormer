@@ -126,7 +126,11 @@ class SegSolver(Solver):
 
     def eval_step(self, batch): # this is test when inference
         batch = self.process_batch(batch, self.FLAGS.DATA.test)
-        filename = self.logdir + "/predictions/{:0>6d}.label".format(batch["iter_num"])
+        origin_filename = batch['filename'][0]
+        root_pos = origin_filename.find("/velodyne")
+        scan_id = origin_filename[root_pos-2: root_pos]
+        frame_id = origin_filename[root_pos+10: root_pos+16]
+        filename = self.logdir + f"/sequences/{scan_id}/predictions/{frame_id}.label"
         curr_folder = os.path.dirname(filename)
         if not os.path.exists(curr_folder):
             os.makedirs(curr_folder)

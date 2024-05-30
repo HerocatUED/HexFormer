@@ -4,5 +4,6 @@
 *.npz
 dataset
 logs/
+logs_test/
 test/test_data/
 configs/
