@@ -10,6 +10,7 @@ from .hextree_conv import (
     HextreeDeconvBn,
     HextreeDeconvBnRelu,
     HextreeGroupConv,
+    HextreeResBlock,
 )
 from .hextree_pad import hextree_pad, hextree_depad
 from .hextreeT import HextreeT
@@ -33,6 +34,7 @@ __all__ = [
     "hextree_pad",
     "hextree_depad",
     "HextreeT",
+    "HextreeResBlock"
 ]
 
 classes = __all__

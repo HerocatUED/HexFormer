@@ -7,6 +7,23 @@ from hextree import Hextree
 from ocnn.nn import OctreeConv, OctreeDeconv
 
 
+class Conv1x1Bn(torch.nn.Module):
+    r''' A sequence of :class:`Conv1x1` and :class:`BatchNorm`.
+    '''
+
+    def __init__(self, in_channels: int, out_channels: int):
+        super().__init__()
+        self.linear = torch.nn.Linear(in_channels, out_channels)
+        self.bn = torch.nn.BatchNorm1d(out_channels) #, bn_eps, bn_momentum)
+
+    def forward(self, data: torch.Tensor):
+        r''''''
+
+        out = self.linear(data)
+        out = self.bn(out)
+        return out
+
+
 class FastConv1d(nn.Module):
     r"""input (N, in_C, kernel_size) and output (N, out_C)"""
     def __init__(self, in_channels: int, out_channels: int, kernel_size: int):
@@ -79,7 +96,7 @@ class TConv(torch.nn.Module):
         Args:
             value (torch.Tensor): The input tensor with shape (N, C).
             key (torch.Tensor): The key tensor corresponds to :attr:`value` with shape 
-                (N,), which contains sorted shuffled keys of an octree.
+                (N,), which contains sorted shuffled keys of an hextree.
             query (torch.Tensor): The query tensor, which also contains shuffled keys.
             pad_feat (torch.Tensor): If not none, pad the out-of-bound queries with pad_feat tensor.
         '''
@@ -297,9 +314,9 @@ class HextreeGroupConv(torch.nn.Module):
             OctreeConv(group_size, group_size, kernel_size, 
             stride, nempty, use_bias, direct_method, max_buffer)
             for _ in range(self.group_num))
-        self.tconv = TConv(channels, channels, t_kernel_size, 1, nempty)
+        # self.tconv = TConv(channels, channels, t_kernel_size, 1, nempty)
         self.bn1 = nn.GroupNorm(self.group_num, channels)
-        self.bn2 = nn.BatchNorm1d(channels)
+        # self.bn2 = nn.BatchNorm1d(channels)
 
     def forward(self, data: torch.Tensor, hextree: Hextree, depth: int):
         # data (N, C), C = k * group_size
@@ -310,6 +327,51 @@ class HextreeGroupConv(torch.nn.Module):
                 self.convs[i](data[:, self.group_size*i:self.group_size*(i+1)], hextree.octrees, depth)
         data = data[hextree.oct2hex_nempty[depth]]
         data = self.bn1(data)
-        data = self.tconv(data, hextree, depth)
-        data = self.bn2(data)
+        # data = self.tconv(data, hextree, depth)
+        # data = self.bn2(data)
         return data
+    
+
+
+class HextreeResBlock(torch.nn.Module):
+    r''' Basic Hextree-based ResNet block. The block is composed of
+    a series of :obj:`Conv3x3` and :obj:`Conv3x3`.
+
+      Args:
+        in_channels (int): Number of input channels.
+        out_channels (int): Number of output channels.
+        stride (int): The stride of the block (:obj:`1` or :obj:`2`).
+        bottleneck (int): The input and output channels of the :obj:`Conv3x3` is
+            equal to the input channel divided by :attr:`bottleneck`.
+        nempty (bool): If True, only performs the convolution on non-empty
+            octree nodes.
+    '''
+
+    def __init__(self, in_channels, out_channels, stride=1, bottleneck=1,
+                nempty=False):
+        super().__init__()
+        self.in_channels = in_channels
+        self.out_channels = out_channels
+        self.stride = stride
+        channelb = int(out_channels / bottleneck)
+
+        if self.stride == 2:
+            self.downsample = HextreeConvBn(in_channels, in_channels, kernel_size=[2], stride=2, nempty=nempty, use_bias=True)
+        self.conv3x3a = HextreeConvBnRelu(in_channels, channelb, nempty=nempty)
+        self.conv3x3b = HextreeConvBn(channelb, out_channels, nempty=nempty)
+        if self.in_channels != self.out_channels:
+            self.conv1x1 = Conv1x1Bn(in_channels, out_channels)
+        self.relu = torch.nn.ReLU(inplace=True)
+
+    def forward(self, data: torch.Tensor, hextree: Hextree, depth: int):
+        r''''''
+
+        if self.stride == 2:
+            data = self.downsample(data, hextree, depth)
+            depth = depth - 1
+        conv1 = self.conv3x3a(data, hextree, depth)
+        conv2 = self.conv3x3b(conv1, hextree, depth)
+        if self.in_channels != self.out_channels:
+            data = self.conv1x1(data)
+        out = self.relu(conv2 + data)
+        return out
