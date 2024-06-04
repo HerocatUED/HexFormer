@@ -122,6 +122,30 @@ class CPE(torch.nn.Module):
         return data
     
 
+class PositionalEncoding(torch.nn.Module):
+    r'''sin-cos positional encoding'''
+    def __init__(self, dim, patch_size):
+        super(PositionalEncoding, self).__init__()
+        self.dim = dim
+        pe = torch.zeros(patch_size, dim)
+        position = torch.arange(0, patch_size, dtype=torch.float).unsqueeze(1)
+        div_term = torch.exp(torch.arange(0, dim, 2).float() * (- torch.log(10000.0) / dim))
+        pe[:, 0::2] = torch.sin(position * div_term)
+        pe[:, 1::2] = torch.cos(position * div_term)
+        pe = pe.unsqueeze(0)
+        self.register_buffer('pe', pe)
+
+    def forward(self, x):
+        """
+        Arguments:
+            x: Tensor of shape (-1, patch_size, dim)
+        Returns:
+            Tensor of shape (-1, patch_size, dim) with added positional encodings
+        """
+        x = x + self.pe.data.unsqueeze(0)
+        return x
+    
+
 class HextreeAttention(torch.nn.Module):
 
     def __init__(self, dim: int, patch_size: int, num_heads: int,
@@ -142,6 +166,7 @@ class HextreeAttention(torch.nn.Module):
         self.proj_drop = torch.nn.Dropout(proj_drop)
         self.softmax = torch.nn.Softmax(dim=-1)
         self.rpe = RPE(patch_size, num_heads, dilation) if self.use_rpe else None
+        self.pe = PositionalEncoding(dim, patch_size)
 
     def forward(self, data: torch.Tensor, hextree: HextreeT, depth: int):
         H = self.num_heads
@@ -159,6 +184,7 @@ class HextreeAttention(torch.nn.Module):
             rel_pos = hextree.rel_pos[depth]
             mask = hextree.patch_mask[depth]
         data = data.view(-1, K, C)
+        data = self.pe(data)
 
         # qkv
         qkv = self.qkv(data).reshape(-1, K, 3, H, C // H).permute(2, 0, 3, 1, 4)
