@@ -2,8 +2,9 @@
 .vscode
 *.npy
 *.npz
+configs
 dataset
-logs/
-logs_test/
+logs
+logs_test
+logs_hoi4d
 test/test_data/
-configs/

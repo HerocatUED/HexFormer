@@ -315,7 +315,7 @@ class HextreeGroupConv(torch.nn.Module):
             stride, nempty, use_bias, direct_method, max_buffer)
             for _ in range(self.group_num))
         # self.tconv = TConv(channels, channels, t_kernel_size, 1, nempty)
-        # self.bn1 = nn.GroupNorm(self.group_num, channels)
+        self.bn1 = nn.GroupNorm(self.group_num, channels)
         # self.bn2 = nn.BatchNorm1d(channels)
 
     def forward(self, data: torch.Tensor, hextree: Hextree, depth: int):
@@ -326,7 +326,7 @@ class HextreeGroupConv(torch.nn.Module):
             data[:, self.group_size*i:self.group_size*(i+1)] = \
                 self.convs[i](data[:, self.group_size*i:self.group_size*(i+1)], hextree.octrees, depth)
         data = data[hextree.oct2hex_nempty[depth]]
-        # data = self.bn1(data)
+        data = self.bn1(data)
         # data = self.tconv(data, hextree, depth)
         # data = self.bn2(data)
         return data

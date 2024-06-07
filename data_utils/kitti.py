@@ -50,7 +50,7 @@ class KITTITransform(Transform):
         # get input sample
         pcds = Points(
             points=torch.from_numpy(sample["points"][:, :4]),
-            labels=torch.from_numpy(sample["labels"]),
+            labels=torch.from_numpy(sample["labels"]) if "labels" in sample.keys() else None,
             features=torch.from_numpy(sample["points"][:, 4:]),
         )
         

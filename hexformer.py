@@ -1,5 +1,5 @@
 # HexFormer BackBone
-
+import math
 import torch
 from typing import Optional, List
 from torch.utils.checkpoint import checkpoint
@@ -129,7 +129,7 @@ class PositionalEncoding(torch.nn.Module):
         self.dim = dim
         pe = torch.zeros(patch_size, dim)
         position = torch.arange(0, patch_size, dtype=torch.float).unsqueeze(1)
-        div_term = torch.exp(torch.arange(0, dim, 2).float() * (- torch.log(10000.0) / dim))
+        div_term = torch.exp(torch.arange(0, dim, 2).float() * (-math.log(10000.0) / dim))
         pe[:, 0::2] = torch.sin(position * div_term)
         pe[:, 1::2] = torch.cos(position * div_term)
         pe = pe.unsqueeze(0)
@@ -166,7 +166,7 @@ class HextreeAttention(torch.nn.Module):
         self.proj_drop = torch.nn.Dropout(proj_drop)
         self.softmax = torch.nn.Softmax(dim=-1)
         self.rpe = RPE(patch_size, num_heads, dilation) if self.use_rpe else None
-        self.pe = PositionalEncoding(dim, patch_size)
+        # self.pe = PositionalEncoding(dim, patch_size)
 
     def forward(self, data: torch.Tensor, hextree: HextreeT, depth: int):
         H = self.num_heads
@@ -184,7 +184,7 @@ class HextreeAttention(torch.nn.Module):
             rel_pos = hextree.rel_pos[depth]
             mask = hextree.patch_mask[depth]
         data = data.view(-1, K, C)
-        data = self.pe(data)
+        # data = self.pe(data)
 
         # qkv
         qkv = self.qkv(data).reshape(-1, K, 3, H, C // H).permute(2, 0, 3, 1, 4)

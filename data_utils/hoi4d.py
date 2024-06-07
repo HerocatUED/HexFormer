@@ -17,19 +17,20 @@ def remap(semantic: np.array, inverse: bool = False):
         """
     return semantic
 
+    
 class HOI4DTransform(Transform):
 
     def __init__(self, flags):
         super().__init__(**flags)
 
         self.flags = flags
-        self.scale_factor = 70
+        self.scale_factor = 100
 
     def __call__(self, sample, idx=None):
         # get input sample
         pcds = Points(
             points=torch.from_numpy(sample["points"][:, :4]),
-            labels=torch.from_numpy(sample["labels"]),
+            labels=torch.from_numpy(sample["labels"]) if "labels" in sample.keys() else None,
         )
         
         # normalize points
@@ -37,8 +38,35 @@ class HOI4DTransform(Transform):
         
         # transform including rotatation, translation, scaling, and flipping
         pcds = self.transform(pcds, idx)
+        
+        # random crop
+        if self.distort:
+            max_npt = self.flags.max_npt if self.flags.max_npt > 0 else pcds.npt
+            max_npt = min(max_npt, int(pcds.npt * self.flags.crop_ratio))
+            pcds = self.rand_crop(pcds, max_npt)
+            
+        # align z
+        pcds = self.align_z(pcds)
 
         return {"points": pcds}
+    
+    def rand_crop(self, points: Points, max_npt: int):
+        r''' Keeps `max_npt` pts at most centered by a radomly chosen pts. 
+        '''
+        pts = points.points
+        npt = points.npt
+        crop_mask = torch.ones(npt, dtype=torch.bool)
+        if npt > max_npt:
+            rand_idx = torch.randint(low=0, high=npt, size=(1,))
+            sort_idx = torch.argsort(torch.sum((pts - pts[rand_idx])**2, 1))
+            crop_idx = sort_idx[max_npt:]
+            crop_mask[crop_idx] = False
+            points = points[crop_mask] 
+        return points
+    
+    def align_z(self, points: Points):
+        points.points[:, 3] -= points.points[:, 3].min()
+        return points
 
 
 class ReadHOI4D:
@@ -70,10 +98,14 @@ class ReadHOI4D:
 
         # label
         if self.has_label:
-            label_name = root_dir + "/labels/{:0>6d}.label".format(frame_num)
-            label = np.fromfile(label_name, dtype=np.int32)
-            sem_label = label.reshape((-1))
-            output["labels"] = remap(sem_label)
+            labels = []
+            for i in range(past_frame, frame_num + 1):
+                label_name = root_dir + "/labels/{:0>6d}.label".format(frame_num)
+                label = np.fromfile(label_name, dtype=np.int32)
+                sem_label = label.reshape((-1))
+                labels.append(sem_label)
+            output["labels"] = np.hstack(labels)
+            output["labels"] = remap(output["labels"], False)
 
         return output
 

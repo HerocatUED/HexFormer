@@ -29,6 +29,9 @@ python run_seg.py --run train --gpu 0,1,2,3 --alias kitti --port 10008
 ```
 python run_seg.py --run test --gpu 0 --alias kitti --port 10008 --ckpt $path_to_your_model$
 ```
+Inference speed on KITTI with single 4090GPU: 
+20351frame / 3706s = 5.5 FPS
+FPS_min = 5, FPS_avg = 6, FPS_top = 8. 
 **Note** 
 - Tested with Python 3.10, torch 2.3.0 with CUDA 11.8
 
@@ -36,7 +39,5 @@ TODO：
 - speedup with torch.compile()
 - loss design
 - reuse history prediction
-- FPS: single 3090GPU on KITTI
-- inference code: Vote=1, GPUnum=1
 - clean locations and paths
 - update config files
