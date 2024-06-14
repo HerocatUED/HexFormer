@@ -1,169 +1,8 @@
-import os
 import h5py
 import yaml
+import argparse
 import numpy as np
 from tqdm import tqdm
-
-
-def construct_hoi4d_part(root_dir: str, dataset_dir: str, config_dir: str):
-    """
-    Construct filelist for HOI4D.
-    Uncompress data from .h5 file and organize in KITTI structure.
-
-    Args:
-    root_dir: path to HOI4D seg data.
-    dataset_dir: path to save uncompressed data.
-    config_dir: path to config folder where we save filelist.
-    """
-    dir_path = dataset_dir + "/dataset/sequences"
-    if not os.path.exists(dir_path):
-        os.makedirs(dir_path)
-
-    train_list = ""
-    val_list = ""
-    test_list = ""
-
-    for h5file in ["train1"]:
-        with h5py.File(f"{root_dir}/{h5file}.h5", "r") as f:
-            for data, folder, suffix, data_type in zip(
-                ["semantic", "pcd"], ["labels", "velodyne"], ["label", "bin"], [np.int32, np.float32]
-            ):
-                print(h5file, data)
-                original_data = f[data]
-                shape = original_data.shape
-                assert shape[1] == 300
-                for video in tqdm(range(500)):
-                    video_folder = dir_path + "/{:0>3d}/{}".format(video, folder)
-                    os.makedirs(video_folder)
-                    for frame in range(160):
-                        filename = video_folder + "/{:0>6d}.{}".format(frame, suffix)
-                        frame_data = original_data[video][frame].astype(data_type)
-                        frame_data.tofile(filename)
-                        if data == "pcd":
-                            if filename == "test": test_list += filename + "\n"
-                            else:
-                                if video % 5 == 0: val_list += filename + "\n"
-                                else: train_list += filename + "\n"
-                        
-    f_train = open(f"{config_dir}/train_data.txt", "w")
-    f_train.write(train_list)
-    f_train.close()
-    f_val = open(f"{config_dir}/val_data.txt", "w")
-    f_val.write(val_list)
-    f_val.close()
-    f_test = open(f"{config_dir}/test_data.txt", "w")
-    f_test.write(test_list)
-    f_test.close()
-
-
-def construct_hoi4d(root_dir: str, dataset_dir: str, config_dir: str):
-    """
-    Construct filelist for HOI4D.
-    Uncompress data from .h5 file and organize in KITTI structure.
-
-    Args:
-    root_dir: path to HOI4D seg data.
-    dataset_dir: path to save uncompressed data.
-    config_dir: path to config folder where we save filelist.
-    """
-    dir_path = dataset_dir + "/dataset/sequences"
-    if not os.path.exists(dir_path):
-        os.makedirs(dir_path)
-
-    train_list = ""
-    val_list = ""
-    test_list = ""
-    video_cnt = -1
-    
-    # train and validation data
-    for h5file in ["train1", "train2", "train3", "train4"]:
-        with h5py.File(f"{root_dir}/{h5file}.h5", "r") as f:
-            video_cnt_base = video_cnt
-            for data, folder, suffix, data_type in zip(
-                ["semantic", "pcd"], ["labels", "velodyne"], ["label", "bin"], [np.int32, np.float32]
-            ):
-                print(h5file, data)
-                original_data = f[data]
-                shape = original_data.shape
-                for i, video in enumerate(tqdm(range(shape[0]))):
-                    video_cnt = video_cnt_base + i + 1
-                    video_folder = dir_path + "/{:0>4d}/{}".format(video_cnt, folder)
-                    os.makedirs(video_folder)
-                    for frame in range(shape[1]):
-                        filename = video_folder + "/{:0>6d}.{}".format(frame, suffix)
-                        frame_data = original_data[video][frame].astype(data_type)
-                        frame_data.tofile(filename)
-                        if data == "pcd":
-                            if video % 5 == 0: val_list += filename + "\n"
-                            else: train_list += filename + "\n"
-    
-    # test data 
-    video_cnt_base = video_cnt
-    with h5py.File(f"{root_dir}/test.h5", "r") as f:
-        data, folder, suffix, data_type = "pcd", "velodyne", "bin", np.float32
-        original_data = f[data]
-        shape = original_data.shape
-        for i, video in enumerate(tqdm(range(shape[0]))):
-            video_cnt = video_cnt_base + i + 1
-            video_folder = dir_path + "/{:0>4d}/{}".format(video_cnt, folder)
-            os.makedirs(video_folder)
-            for frame in range(shape[1]):
-                filename = video_folder + "/{:0>6d}.{}".format(frame, suffix)
-                frame_data = original_data[video][frame].astype(data_type)
-                frame_data.tofile(filename)
-                test_list += filename + "\n"
-
-    f_train = open(f"{config_dir}/train_data.txt", "w")
-    f_train.write(train_list)
-    f_train.close()
-    f_val = open(f"{config_dir}/val_data.txt", "w")
-    f_val.write(val_list)
-    f_val.close()
-    f_test = open(f"{config_dir}/test_data.txt", "w")
-    f_test.write(test_list)
-    f_test.close()
-
-
-def construct_kitti(root_dir: str, config_dir: str):
-    """
-    Construct filelist for KITTI.
-    mode: 'train' use 00-10; 'test' use 11-21.
-
-    Args:
-    root_dir: path to KITTI.
-    config_dir: path to config folder where we save filelist.
-    """
-
-    train_list = ""
-    val_list = ""
-    test_list = ""
-
-    path = root_dir + "/dataset/sequences/"
-    videos = os.listdir(path)
-    videos.sort()
-    for video in videos:
-        pcd_dir = path + video + "/velodyne/"
-        pcd_files = os.listdir(pcd_dir)
-        pcd_files.sort()
-        if int(video) >= 11:
-            for pcd in pcd_files:
-                test_list += pcd_dir + pcd + "\n"
-        elif int(video) == 8:
-            for pcd in pcd_files:
-                val_list += pcd_dir + pcd + "\n"
-        else:
-            for pcd in pcd_files:
-                train_list += pcd_dir + pcd + "\n"
-
-    f_train = open(f"{config_dir}/train_data.txt", "w")
-    f_train.write(train_list)
-    f_train.close()
-    f_val = open(f"{config_dir}/val_data.txt", "w")
-    f_val.write(val_list)
-    f_val.close()
-    f_test = open(f"{config_dir}/test_data.txt", "w")
-    f_test.write(test_list)
-    f_test.close()
 
 
 def hoi4d_range(path: str, chunk_size: int = 20):
@@ -174,15 +13,31 @@ def hoi4d_range(path: str, chunk_size: int = 20):
     chunk_size: size of data processed at one time. NOTE set it according to memory of your device.
     path: path to dir containing h5 files of HOI4D.
     """
-    max_range = np.ones((3, 1)) * (-1e8)
-    min_range = np.ones((3, 1)) * 1e8
-    record = dict()
-
+    
     def find_range(datas, func):
         rg = np.zeros((len(datas), 1))
         for i, data in enumerate(datas):
             rg[i] = func(data)
         return rg
+    
+    def find_class():
+        class_ids = np.array([-1])
+        for filename in [
+            "train1_float32.h5",
+            "train2_float32.h5",
+            "train3_float32.h5",
+            "train4_float32.h5",
+        ]:
+            with h5py.File(path + "/" + filename, "r") as f:
+                print(filename)
+                original_data = f["semantic"]
+                class_ids = np.hstack([np.unique(original_data), class_ids])
+        return np.unique(class_ids)
+    
+    max_range = np.ones((3, 1)) * (-1e8)
+    min_range = np.ones((3, 1)) * 1e8
+    record = dict()
+    print(find_class())
 
     for filename in [
         "test_float32.h5",
@@ -221,15 +76,15 @@ def hoi4d_range(path: str, chunk_size: int = 20):
     print(record)
 
 
-def remap(semantic: np.array, inverse: bool = False):
+def remap(semantic: np.array, inverse: bool = False, config_path: str = None):
         """
         Remap semantic classes.
 
         Args:
         semantic: semantic classes to remap.
         inverse: class2num if True, num2class if False. NOTE: See KITTI config for more.
+        config_path: path to SemanticKITTI config file.
         """
-        config_path = "config/kitti/semantic-kitti-all.yaml"
         cfg = yaml.safe_load(open(config_path, "r"))
         # get number of interest classes, and the label mappings
         if inverse:
@@ -247,7 +102,7 @@ def remap(semantic: np.array, inverse: bool = False):
         return remap_lut[semantic]
     
     
-def visualize(data_dir: str, log_dir: str, config_path: str, frame_num: int, predict: bool = True):
+def visualize_kitti(data_dir: str, log_dir: str, config_path: str, frame_num: int, predict: bool = True):
     scan_name = data_dir + "/dataset/sequences/08/velodyne/{:0>6d}.bin".format(frame_num)
     scan = np.fromfile(scan_name, dtype=np.float32).reshape(-1, 4)[:, :-1]
     if predict:
@@ -259,7 +114,7 @@ def visualize(data_dir: str, log_dir: str, config_path: str, frame_num: int, pre
     sem_label = label & 0xFFFF  # semantic label in lower half
     
     points = scan
-    labels = remap(sem_label, False)
+    labels = remap(sem_label, False, config_path)
     
     DATA = yaml.safe_load(open(config_path, 'r'))
     remapdict = DATA["learning_map_inv"]
@@ -280,25 +135,29 @@ def visualize(data_dir: str, log_dir: str, config_path: str, frame_num: int, pre
     pcds = np.concatenate([points, colors], axis=1)
     np.savetxt(f'{frame_num}-pcds-label-{predict}.txt', pcds)
 
+
+def tools(dataset: str, root_dir: str):
+    if dataset == "hoi4d":
+        config_dir = "../configs/hoi4d"
+        hoi4d_range(root_dir)
+    elif dataset == "kitti":
+        config_dir = "../configs/kitti"
+        config_path = "../configs/kitti/semantic-kitti-all.yaml"
+        log_dir = "../logs/log_MultiScan_3Dconv_4Dattention_test_kitti"
+        frame_num = 3600
+        visualize_kitti(root_dir, log_dir, config_path, frame_num, predict=True)
+        visualize_kitti(root_dir, log_dir, config_path, frame_num, predict=False)
+    else:
+        assert 0, "dataset not supported!"
+    print(f"Dataset {dataset} done.")
+
+
 if __name__ == "__main__":
     
-    # parser = argparse.ArgumentParser()
-    # parser.add_argument("--root_dir", type=str, required=False, default="../dataset/SemanticKITTI")
-    # parser.add_argument("--dataset", type=str, required=True)
-    # args = parser.parse_args()
-    
-    # root_dir = "/mnt/sdc/wangx/HOI4D/HOI4D_dataset/seg_data_h5"
-    # dataset_dir = "/mnt/sdc/wangx/dataset/HOI4D"
-    # config_dir = "/mnt/sdc/wangx/HexFormer/config/HOI4D"
-    # hoi4d_range(root_dir)
-    # construct_hoi4d(root_dir, dataset_dir, config_dir)
-    
-    root_dir = "/mnt/sdc/wangrh/data/SemanticKITTI"
-    config_dir = "/mnt/sdc/wangx/HexFormer/config/kitti"
-    config_path = "/mnt/sdc/wangx/HexFormer/config/kitti/semantic-kitti-all.yaml"
-    log_dir = "/mnt/sdc/wangx/HexFormer/logs/log_MultiScan_3Dconv_4Dattention_test_kitti"
-    # construct_kitti(root_dir, config_dir)
-    
-    frame_num = 3600
-    visualize(root_dir, log_dir, config_path, frame_num, predict=True)
-    visualize(root_dir, log_dir, config_path, frame_num, predict=False)
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--dataset", type=str, required=True)
+    parser.add_argument("--root_dir", type=str, required=True)
+    args = parser.parse_args()
+    tools(args.dataset, args.root_dir)
+
+

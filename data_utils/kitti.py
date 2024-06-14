@@ -67,7 +67,7 @@ class KITTITransform(Transform):
             pcds = self.rand_crop(pcds, max_npt)
             
         # align z
-        pcds = self.align_z(pcds)
+        # pcds = self.align_z(pcds)
 
         return {"points": pcds}
     
