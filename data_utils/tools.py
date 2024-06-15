@@ -1,3 +1,4 @@
+import os
 import h5py
 import yaml
 import argparse
@@ -76,6 +77,29 @@ def hoi4d_range(path: str, chunk_size: int = 20):
     print(record)
 
 
+def bin2npy(log_dir: str):
+    videos = os.listdir(log_dir + '/sequences')
+    npy_dir = log_dir + '/predict_npy'
+    os.makedirs(npy_dir)
+    for video in videos:
+        os.makedirs(npy_dir + '/' + video)
+        frames_root = log_dir + 'sequences/' + video + '/predictions'
+        labels = []
+        for frame in os.listdir(frames_root):
+            label = np.fromfile(os.path.join(frames_root, frame), dtype=np.int8)
+            label = label.reshape((-1))
+            labels.append(label)
+        np.save(npy_dir + '/' + video + '/labels.npy', np.vstack(labels, dtype=np.int8))
+    npy_files = os.listdir(npy_dir)
+    data = []
+    for npy_file in npy_files:
+        npy_data = np.load(os.path.join(npy_dir, npy_file))
+        data.append(npy_data)
+    concatenated_data = np.concatenate(data, axis=0)
+    np.save(log_dir + '/predict.npy', concatenated_data)
+    print(np.shape(concatenated_data))
+
+
 def remap(semantic: np.array, inverse: bool = False, config_path: str = None):
         """
         Remap semantic classes.
@@ -138,8 +162,10 @@ def visualize_kitti(data_dir: str, log_dir: str, config_path: str, frame_num: in
 
 def tools(dataset: str, root_dir: str):
     if dataset == "hoi4d":
-        config_dir = "../configs/hoi4d"
-        hoi4d_range(root_dir)
+        # config_dir = "../configs/hoi4d"
+        # hoi4d_range(root_dir)
+        log_dir = "../logs/log_MultiScan_3Dconv_4Dattention_test_kitti"
+        bin2npy(log_dir)
     elif dataset == "kitti":
         config_dir = "../configs/kitti"
         config_path = "../configs/kitti/semantic-kitti-all.yaml"

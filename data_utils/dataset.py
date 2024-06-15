@@ -6,6 +6,12 @@ from tqdm import tqdm
 
 
 def check_and_init(config_dir: str):
+    """
+    Check whether filelist already exists and initialize filelist.
+
+    Args:
+    config_dir: path to config folder where we save filelist.
+    """
     if os.path.exists(f"{config_dir}/train_data.txt"):
         assert 0, "config files already exist!"
     if os.path.exists(f"{config_dir}/val_data.txt"):

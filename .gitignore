@@ -3,8 +3,5 @@
 *.npy
 *.npz
 configs
-dataset
-logs
-logs_test
-logs_hoi4d
+logs*/
 test/test_data/
