@@ -26,6 +26,7 @@ python data_utils/tools.py --dataset kitti --root_dir $.../SemanticKITTI$
 python run_seg.py --run train --gpu 0,1,2,3 --alias kitti --port 10008
 ```
 6. Inference(must with only one GPU)
+modify config.json, test: batch size = 1, num_worker = 1
 ```
 python run_seg.py --run test --gpu 0 --alias kitti --port 10008 --ckpt $path_to_your_model$
 ```

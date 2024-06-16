@@ -291,7 +291,7 @@ class HextreeDeconvBnRelu(torch.nn.Module):
 
 
 class HextreeGroupConv(torch.nn.Module):
-    r"""Hextree based GroupConvolution. NOTE:in_channel==out_channel"""
+    r"""Hextree based GroupConvolution. NOTE:in_channel == out_channel"""
     def __init__(
         self,
         channels: int,
@@ -314,24 +314,23 @@ class HextreeGroupConv(torch.nn.Module):
             OctreeConv(group_size, group_size, kernel_size, 
             stride, nempty, use_bias, direct_method, max_buffer)
             for _ in range(self.group_num))
-        # self.tconv = TConv(channels, channels, t_kernel_size, 1, nempty)
         self.bn1 = nn.GroupNorm(self.group_num, channels)
+        # self.tconv = TConv(channels, channels, t_kernel_size, 1, nempty)
         # self.bn2 = nn.BatchNorm1d(channels)
 
     def forward(self, data: torch.Tensor, hextree: Hextree, depth: int):
         # data (N, C), C = k * group_size
         assert data.size(dim = 1) % self.group_size == 0
         data = data[hextree.hex2oct_nempty[depth]]
-        for i in range(self.group_num):
-            data[:, self.group_size*i:self.group_size*(i+1)] = \
-                self.convs[i](data[:, self.group_size*i:self.group_size*(i+1)], hextree.octrees, depth)
+        input_groups = torch.split(data, self.group_size, dim=1)
+        output_groups = [conv(input_group, hextree.octrees, depth) for conv, input_group in zip(self.convs, input_groups)]
+        data = torch.cat(output_groups, dim=1)
         data = data[hextree.oct2hex_nempty[depth]]
         data = self.bn1(data)
         # data = self.tconv(data, hextree, depth)
         # data = self.bn2(data)
         return data
     
-
 
 class HextreeResBlock(torch.nn.Module):
     r''' Basic Hextree-based ResNet block. The block is composed of
@@ -347,9 +346,15 @@ class HextreeResBlock(torch.nn.Module):
             octree nodes.
     '''
 
-    def __init__(self, in_channels, out_channels, stride=1, bottleneck=1,
-                nempty=False):
+    def __init__(
+        self, 
+        in_channels: int, 
+        out_channels: int, 
+        stride: int = 1, 
+        bottleneck: int = 1, 
+        nempty: bool = False):
         super().__init__()
+        
         self.in_channels = in_channels
         self.out_channels = out_channels
         self.stride = stride

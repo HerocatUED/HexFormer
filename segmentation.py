@@ -129,9 +129,10 @@ class SegSolver(Solver):
     def eval_step(self, batch): # this is test when inference
         batch = self.process_batch(batch, self.FLAGS.DATA.test)
         origin_filename = batch['filename'][0]
-        root_pos = origin_filename.find("/velodyne")
-        scan_id = origin_filename[root_pos-2: root_pos]
-        frame_id = origin_filename[root_pos+10: root_pos+16]
+        pos1 = origin_filename.find("/velodyne")
+        pos2 = origin_filename.find("/sequences")
+        scan_id = origin_filename[pos2+11: pos1]
+        frame_id = origin_filename[pos1+10: pos1+16]
         filename = self.logdir + f"/sequences/{scan_id}/predictions/{frame_id}.label"
         curr_folder = os.path.dirname(filename)
         if not os.path.exists(curr_folder):
