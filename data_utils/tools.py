@@ -79,25 +79,30 @@ def hoi4d_range(path: str, chunk_size: int = 20):
 
 def bin2npy(log_dir: str):
     videos = os.listdir(log_dir + '/sequences')
+    videos.sort()
     npy_dir = log_dir + '/predict_npy'
     os.makedirs(npy_dir)
-    for video in videos:
+    for video in tqdm(videos):
         os.makedirs(npy_dir + '/' + video)
-        frames_root = log_dir + 'sequences/' + video + '/predictions'
+        frames_root = log_dir + '/sequences/' + video + '/predictions'
         labels = []
-        for frame in os.listdir(frames_root):
-            label = np.fromfile(os.path.join(frames_root, frame), dtype=np.int8)
+        frames = os.listdir(frames_root)
+        frames.sort()
+        for frame in frames:
+            label = np.fromfile(os.path.join(frames_root, frame), dtype=np.int32)
             label = label.reshape((-1))
             labels.append(label)
-        np.save(npy_dir + '/' + video + '/labels.npy', np.vstack(labels, dtype=np.int8))
+        labels = np.vstack(labels, dtype=np.int8)
+        np.save(npy_dir + '/' + video + '/labels.npy', labels)
     npy_files = os.listdir(npy_dir)
+    npy_files.sort()
     data = []
     for npy_file in npy_files:
-        npy_data = np.load(os.path.join(npy_dir, npy_file))
-        data.append(npy_data)
-    concatenated_data = np.concatenate(data, axis=0)
-    np.save(log_dir + '/predict.npy', concatenated_data)
-    print(np.shape(concatenated_data))
+        npy_data = np.load(os.path.join(npy_dir, npy_file, "labels.npy"))
+        data.append(npy_data.reshape(1, 300, 8192))
+    data = np.vstack(data, dtype=np.int8)
+    np.save(log_dir + '/predict.npy', data)
+    print(np.shape(data))
 
 
 def remap(semantic: np.array, inverse: bool = False, config_path: str = None):
@@ -160,11 +165,11 @@ def visualize_kitti(data_dir: str, log_dir: str, config_path: str, frame_num: in
     np.savetxt(f'{frame_num}-pcds-label-{predict}.txt', pcds)
 
 
-def tools(dataset: str, root_dir: str):
+def tools(dataset: str, root_dir: str = None):
     if dataset == "hoi4d":
         # config_dir = "../configs/hoi4d"
         # hoi4d_range(root_dir)
-        log_dir = "../logs/log_MultiScan_3Dconv_4Dattention_test_kitti"
+        log_dir = "logs_test/log_3Dconv_4Dattention_CPE_RPE_large_test_hoi4d"
         bin2npy(log_dir)
     elif dataset == "kitti":
         config_dir = "../configs/kitti"
@@ -181,8 +186,8 @@ def tools(dataset: str, root_dir: str):
 if __name__ == "__main__":
     
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", type=str, required=True)
-    parser.add_argument("--root_dir", type=str, required=True)
+    parser.add_argument("--dataset", type=str, required=False)
+    parser.add_argument("--root_dir", type=str, required=False)
     args = parser.parse_args()
     tools(args.dataset, args.root_dir)
 
