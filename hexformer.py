@@ -290,12 +290,12 @@ class PatchEmbed(torch.nn.Module):
         self.num_stages = num_down
         channels = [int(dim * 2**i) for i in range(-self.num_stages, 1)]
 
-        self.convs = torch.nn.ModuleList([HextreeConvBnRelu(
-            in_dim if i == 0 else channels[i], channels[i], kernel_size=[3],
-            stride=1, nempty=nempty) for i in range(self.num_stages)])
-        # self.convs = torch.nn.ModuleList([HextreeResBlock(
-        #     in_dim if i == 0 else channels[i], channels[i],
+        # self.convs = torch.nn.ModuleList([HextreeConvBnRelu(
+        #     in_dim if i == 0 else channels[i], channels[i], kernel_size=[3],
         #     stride=1, nempty=nempty) for i in range(self.num_stages)])
+        self.convs = torch.nn.ModuleList([HextreeResBlock(
+            in_dim if i == 0 else channels[i], channels[i],
+            stride=1, nempty=nempty, use_t=True) for i in range(self.num_stages)])
         self.downsamples = torch.nn.ModuleList([HextreeConvBnRelu(
             channels[i], channels[i+1], kernel_size=[2], stride=2, nempty=nempty)
             for i in range(self.num_stages)])

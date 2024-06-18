@@ -119,7 +119,13 @@ class TConv(torch.nn.Module):
                 
 
 class HextreeConv(torch.nn.Module):
-    r"""Hextree based Convolution"""
+    r"""
+    Hextree based Convolution
+    
+    Args: refer to OCNN.nn.OctreeConv
+    use_t (bool): whether use T-Convolution, if true module will be 4D Convolution.
+    t_kernel_size (int): kernel size of T-Convolution.
+    """
 
     def __init__(
         self,
@@ -131,32 +137,38 @@ class HextreeConv(torch.nn.Module):
         direct_method: bool = False,
         use_bias: bool = True,
         max_buffer: int = 200000000,
+        use_t: bool = False,
         t_kernel_size: int = 3,
     ):
         super().__init__()
         assert nempty == True, "nempty hardcode"
         self.conv = OctreeConv(in_channels, out_channels, kernel_size, 
             stride, nempty, use_bias, direct_method, max_buffer)
-        # self.tconv = TConv(out_channels, out_channels, t_kernel_size, 1, nempty)
-        # self.bn = torch.nn.BatchNorm1d(out_channels)
         self.down = stride == 2
+        self.use_t = use_t
+        if self.use_t:
+            self.tconv = TConv(out_channels, out_channels, t_kernel_size, 1, nempty)
 
     def forward(self, data: torch.Tensor, hextree: Hextree, depth: int):
         data = data[hextree.hex2oct_nempty[depth]]
         data = self.conv(data, hextree.octrees, depth)
         if self.down:
             data = data[hextree.oct2hex_nempty[depth - 1]]
-            # data = self.bn(data)
-            # data = self.tconv(data, hextree, depth - 1)
+            if self.use_t: data = self.tconv(data, hextree, depth - 1)
         else:
             data = data[hextree.oct2hex_nempty[depth]]
-            # data = self.bn(data)
-            # data = self.tconv(data, hextree, depth)
+            if self.use_t: data = self.tconv(data, hextree, depth)
         return data
 
 
 class HextreeDeconv(torch.nn.Module):
-    r"""Hextree based DeConvolution"""
+    r"""
+    Hextree based DeConvolution
+    
+    Args: refer to OCNN.nn.OctreeConv
+    use_t (bool): whether use T-Convolution, if true module will be 4D Convolution.
+    t_kernel_size (int): kernel size of T-Convolution.
+    """
 
     def __init__(
         self,
@@ -168,21 +180,23 @@ class HextreeDeconv(torch.nn.Module):
         direct_method: bool = False,
         use_bias: bool = True,
         max_buffer: int = 200000000,
+        use_t: bool = False,
         t_kernel_size: int = 3,
     ):
         super().__init__()
         assert nempty == True, "nempty hardcode"
         self.deconv = OctreeDeconv(in_channels, out_channels, kernel_size, 
             stride, nempty, use_bias, direct_method, max_buffer)
-        # self.tconv = TConv(out_channels, out_channels, t_kernel_size, 1, nempty)
-        # self.bn = torch.nn.BatchNorm1d(out_channels)
+        self.use_t = use_t
+        if self.use_t:
+            self.tconv = TConv(out_channels, out_channels, t_kernel_size, 1, nempty)
 
     def forward(self, data: torch.Tensor, hextree: Hextree, depth: int):
         data = data[hextree.hex2oct_nempty[depth]]
         data = self.deconv(data, hextree.octrees, depth)
         data = data[hextree.oct2hex_nempty[depth + 1]]
-        # data = self.bn(data)
-        # data = self.tconv(data, hextree, depth + 1)
+        if self.use_t:
+            data = self.tconv(data, hextree, depth + 1)
         return data
 
 
@@ -198,11 +212,13 @@ class HextreeConvBn(torch.nn.Module):
         nempty: bool = False,
         direct_method: bool = False,
         use_bias: bool = False,
-        max_buffer: int = 200000000
+        max_buffer: int = 200000000,
+        use_t: bool = False,
+        t_kernel_size: int = 3,
     ):
         super().__init__()
         self.conv = HextreeConv(in_channels, out_channels, kernel_size, 
-            stride, nempty, use_bias, direct_method, max_buffer)
+            stride, nempty, use_bias, direct_method, max_buffer, use_t, t_kernel_size)
         self.bn = torch.nn.BatchNorm1d(out_channels)
 
     def forward(self, data: torch.Tensor, hextree: Hextree, depth: int):
@@ -223,11 +239,13 @@ class HextreeConvBnRelu(torch.nn.Module):
         nempty: bool = False,
         direct_method: bool = False,
         use_bias: bool = False,
-        max_buffer: int = 200000000
+        max_buffer: int = 200000000,
+        use_t: bool = False,
+        t_kernel_size: int = 3,
     ):
         super().__init__()
         self.conv = HextreeConv(in_channels, out_channels, kernel_size, 
-            stride, nempty, use_bias, direct_method, max_buffer)
+            stride, nempty, use_bias, direct_method, max_buffer, use_t, t_kernel_size)
         self.bn = torch.nn.BatchNorm1d(out_channels)
         self.act = torch.nn.LeakyReLU(inplace=True)
 
@@ -250,11 +268,13 @@ class HextreeDeconvBn(torch.nn.Module):
         nempty: bool = False,
         direct_method: bool = False,
         use_bias: bool = False,
-        max_buffer: int = 200000000
+        max_buffer: int = 200000000,
+        use_t: bool = False,
+        t_kernel_size: int = 3,
     ):
         super().__init__()
         self.deconv = HextreeDeconv(in_channels, out_channels, kernel_size, 
-            stride, nempty, use_bias, direct_method, max_buffer)
+            stride, nempty, use_bias, direct_method, max_buffer, use_t, t_kernel_size)
         self.bn = torch.nn.BatchNorm1d(out_channels)
 
     def forward(self, data: torch.Tensor, hextree: Hextree, depth: int):
@@ -275,11 +295,13 @@ class HextreeDeconvBnRelu(torch.nn.Module):
         nempty: bool = False,
         direct_method: bool = False,
         use_bias: bool = False,
-        max_buffer: int = 200000000
+        max_buffer: int = 200000000,
+        use_t: bool = False,
+        t_kernel_size: int = 3,
     ):
         super().__init__()
         self.deconv = HextreeDeconv(in_channels, out_channels, kernel_size, 
-            stride, nempty, use_bias, direct_method, max_buffer)
+            stride, nempty, use_bias, direct_method, max_buffer, use_t, t_kernel_size)
         self.bn = torch.nn.BatchNorm1d(out_channels)
         self.act = torch.nn.LeakyReLU(inplace=True)
 
@@ -302,6 +324,7 @@ class HextreeGroupConv(torch.nn.Module):
         direct_method: bool = False,
         use_bias: bool = True,
         max_buffer: int = 200000000,
+        use_t: bool = False,
         t_kernel_size: int = 3,
         ):
         super().__init__()
@@ -314,9 +337,11 @@ class HextreeGroupConv(torch.nn.Module):
             OctreeConv(group_size, group_size, kernel_size, 
             stride, nempty, use_bias, direct_method, max_buffer)
             for _ in range(self.group_num))
+        self.act = torch.nn.LeakyReLU(inplace=True)
         self.bn1 = nn.GroupNorm(self.group_num, channels)
-        # self.tconv = TConv(channels, channels, t_kernel_size, 1, nempty)
-        # self.bn2 = nn.BatchNorm1d(channels)
+        self.use_t = use_t
+        if self.use_t:
+            self.tconv = TConv(channels, channels, t_kernel_size, 1, nempty)
 
     def forward(self, data: torch.Tensor, hextree: Hextree, depth: int):
         # data (N, C), C = k * group_size
@@ -326,10 +351,9 @@ class HextreeGroupConv(torch.nn.Module):
         output_groups = [conv(input_group, hextree.octrees, depth) for conv, input_group in zip(self.convs, input_groups)]
         data = torch.cat(output_groups, dim=1)
         data = data[hextree.oct2hex_nempty[depth]]
+        if self.use_t: data = self.tconv(data, hextree, depth)
         data = self.bn1(data)
-        # data = self.tconv(data, hextree, depth)
-        # data = self.bn2(data)
-        return data
+        return self.act(data)
     
 
 class HextreeResBlock(torch.nn.Module):
@@ -344,6 +368,7 @@ class HextreeResBlock(torch.nn.Module):
             equal to the input channel divided by :attr:`bottleneck`.
         nempty (bool): If True, only performs the convolution on non-empty
             octree nodes.
+        use_t (bool): whether use T-Convolution, if true module will be 4D Convolution.
     '''
 
     def __init__(
@@ -352,7 +377,8 @@ class HextreeResBlock(torch.nn.Module):
         out_channels: int, 
         stride: int = 1, 
         bottleneck: int = 1, 
-        nempty: bool = False):
+        nempty: bool = False,
+        use_t: bool = False,):
         super().__init__()
         
         self.in_channels = in_channels
@@ -361,9 +387,9 @@ class HextreeResBlock(torch.nn.Module):
         channelb = int(out_channels / bottleneck)
 
         if self.stride == 2:
-            self.downsample = HextreeConvBn(in_channels, in_channels, kernel_size=[2], stride=2, nempty=nempty, use_bias=True)
-        self.conv3x3a = HextreeConvBnRelu(in_channels, channelb, nempty=nempty)
-        self.conv3x3b = HextreeConvBn(channelb, out_channels, nempty=nempty)
+            self.downsample = HextreeConvBn(in_channels, in_channels, kernel_size=[2], stride=2, nempty=nempty, use_bias=True, use_t=use_t)
+        self.conv3x3a = HextreeConvBnRelu(in_channels, channelb, nempty=nempty, use_t=use_t)
+        self.conv3x3b = HextreeConvBn(channelb, out_channels, nempty=nempty, use_t=use_t)
         if self.in_channels != self.out_channels:
             self.conv1x1 = Conv1x1Bn(in_channels, out_channels)
         self.relu = torch.nn.ReLU(inplace=True)
