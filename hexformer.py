@@ -113,7 +113,7 @@ class CPE(torch.nn.Module):
     def __init__(self, channels: int, group_size: int = 32, kernel_size: List[int] = [3], 
                  stride: int = 1, nempty: bool = False):
         super().__init__()
-        self.conv = HextreeGroupConv(channels, group_size, kernel_size, stride, nempty)
+        self.conv = HextreeGroupConv(channels, group_size, kernel_size, stride, nempty, use_t=False)
         self.bn = torch.nn.BatchNorm1d(channels)
 
     def forward(self, data: torch.Tensor, hextree: Hextree, depth: int):
@@ -122,28 +122,28 @@ class CPE(torch.nn.Module):
         return data
     
 
-class PositionalEncoding(torch.nn.Module):
-    r'''sin-cos positional encoding'''
-    def __init__(self, dim, patch_size):
-        super(PositionalEncoding, self).__init__()
-        self.dim = dim
-        pe = torch.zeros(patch_size, dim)
-        position = torch.arange(0, patch_size, dtype=torch.float).unsqueeze(1)
-        div_term = torch.exp(torch.arange(0, dim, 2).float() * (-math.log(10000.0) / dim))
-        pe[:, 0::2] = torch.sin(position * div_term)
-        pe[:, 1::2] = torch.cos(position * div_term)
-        pe = pe.unsqueeze(0)
-        self.register_buffer('pe', pe)
+# class PositionalEncoding(torch.nn.Module):
+#     r'''sin-cos positional encoding'''
+#     def __init__(self, dim, patch_size):
+#         super(PositionalEncoding, self).__init__()
+#         self.dim = dim
+#         pe = torch.zeros(patch_size, dim)
+#         position = torch.arange(0, patch_size, dtype=torch.float).unsqueeze(1)
+#         div_term = torch.exp(torch.arange(0, dim, 2).float() * (-math.log(10000.0) / dim))
+#         pe[:, 0::2] = torch.sin(position * div_term)
+#         pe[:, 1::2] = torch.cos(position * div_term)
+#         pe = pe.unsqueeze(0)
+#         self.register_buffer('pe', pe)
 
-    def forward(self, x):
-        """
-        Arguments:
-            x: Tensor of shape (-1, patch_size, dim)
-        Returns:
-            Tensor of shape (-1, patch_size, dim) with added positional encodings
-        """
-        x = x + self.pe.data.unsqueeze(0)
-        return x
+#     def forward(self, x):
+#         """
+#         Arguments:
+#             x: Tensor of shape (-1, patch_size, dim)
+#         Returns:
+#             Tensor of shape (-1, patch_size, dim) with added positional encodings
+#         """
+#         x = x + self.pe.data.unsqueeze(0)
+#         return x
     
 
 class HextreeAttention(torch.nn.Module):
@@ -262,15 +262,12 @@ class HexFormerStage(torch.nn.Module):
         super().__init__()
         self.num_blocks = num_blocks
         self.use_checkpoint = use_checkpoint
-        # self.interval = interval  # normalization interval
-        # self.num_norms = (num_blocks - 1) // self.interval
 
         self.blocks = torch.nn.ModuleList([hexformer_block(dim=dim, num_heads=num_heads, patch_size=patch_size,
                                                            dilation=1 if (i % 2 == 0) else dilation,
                                                            mlp_ratio=mlp_ratio, qkv_bias=qkv_bias, qk_scale=qk_scale, attn_drop=attn_drop, proj_drop=proj_drop,
                                                            drop_path=drop_path[i] if isinstance(drop_path, list) else drop_path,
                                                            nempty=nempty, activation=activation) for i in range(num_blocks)])
-        # self.norms = torch.nn.ModuleList([torch.nn.BatchNorm1d(dim) for _ in range(self.num_norms)])
 
     def forward(self, data: torch.Tensor, hextree: HextreeT, depth: int):
         for i in range(self.num_blocks):
@@ -278,8 +275,6 @@ class HexFormerStage(torch.nn.Module):
                 data = checkpoint(self.blocks[i], data, hextree, depth, use_reentrant=False)
             else:
                 data = self.blocks[i](data, hextree, depth)
-            # if i % self.interval == 0 and i != 0:
-            #   data = self.norms[(i - 1) // self.interval](data)
         return data
     
     
@@ -290,12 +285,12 @@ class PatchEmbed(torch.nn.Module):
         self.num_stages = num_down
         channels = [int(dim * 2**i) for i in range(-self.num_stages, 1)]
 
-        # self.convs = torch.nn.ModuleList([HextreeConvBnRelu(
-        #     in_dim if i == 0 else channels[i], channels[i], kernel_size=[3],
-        #     stride=1, nempty=nempty) for i in range(self.num_stages)])
-        self.convs = torch.nn.ModuleList([HextreeResBlock(
-            in_dim if i == 0 else channels[i], channels[i],
-            stride=1, nempty=nempty, use_t=True) for i in range(self.num_stages)])
+        self.convs = torch.nn.ModuleList([HextreeConvBnRelu(
+            in_dim if i == 0 else channels[i], channels[i], kernel_size=[3],
+            stride=1, nempty=nempty) for i in range(self.num_stages)])
+        # self.convs = torch.nn.ModuleList([HextreeResBlock(
+        #     in_dim if i == 0 else channels[i], channels[i],
+        #     stride=1, nempty=nempty, use_t=False) for i in range(self.num_stages)])
         self.downsamples = torch.nn.ModuleList([HextreeConvBnRelu(
             channels[i], channels[i+1], kernel_size=[2], stride=2, nempty=nempty)
             for i in range(self.num_stages)])

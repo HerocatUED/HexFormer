@@ -53,7 +53,7 @@ class TConv(torch.nn.Module):
         kernel_size: int = 3,
         stride: int = 1,
         nempty: bool = False,
-        pad_mode: int = 2):
+        pad_mode: int = 1):
         super().__init__()
         r'''
         Args:
