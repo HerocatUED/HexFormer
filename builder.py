@@ -11,12 +11,12 @@ def hexsegformer_large(in_channels, out_channels, **kwargs):
         channels=[128, 256, 512, 512],
         num_blocks=[2, 2, 6, 2],
         num_heads=[4, 8, 16, 32],
-        patch_size=128,
+        patch_size=192,
         dilation=4,
         drop_path=0.5,
         nempty=True,
         stem_down=2,
-        fpn_channel=512,
+        fpn_channel=256,
         head_drop=[0.5, 0.5],
     )
     
@@ -45,12 +45,12 @@ def hexsegformer(in_channels, out_channels, **kwargs):
         channels=[64, 128, 256, 256],
         num_blocks=[2, 2, 6, 2],
         num_heads=[4, 8, 16, 32],
-        patch_size=128,
+        patch_size=256,
         dilation=4,
         drop_path=0.5,
         nempty=True,
         stem_down=2,
-        fpn_channel=256,
+        fpn_channel=128,
         head_drop=[0.5, 0.5],
     )
     
@@ -67,7 +67,7 @@ def hexsegformer_small(in_channels, out_channels, **kwargs):
         drop_path=0.5,
         nempty=True,
         stem_down=2,
-        fpn_channel=128,
+        fpn_channel=64,
         head_drop=[0.5, 0.5],
     )
 
