@@ -1,5 +1,5 @@
 # HexFormer BackBone
-
+import math
 import torch
 from typing import Optional, List
 from torch.utils.checkpoint import checkpoint
@@ -8,7 +8,8 @@ from hextree import Hextree
 from modules import (
     HextreeT, HextreeDropPath, 
     HextreeConvBn, HextreeConvBnRelu, 
-    HextreeGroupConv
+    HextreeDeconvBn, HextreeDeconvBnRelu,
+    HextreeGroupConv, HextreeResBlock,
     )
 
 
@@ -112,13 +113,37 @@ class CPE(torch.nn.Module):
     def __init__(self, channels: int, group_size: int = 32, kernel_size: List[int] = [3], 
                  stride: int = 1, nempty: bool = False):
         super().__init__()
-        self.conv = HextreeGroupConv(channels, group_size, kernel_size, stride, nempty)
+        self.conv = HextreeGroupConv(channels, group_size, kernel_size, stride, nempty, use_t=False)
         self.bn = torch.nn.BatchNorm1d(channels)
 
     def forward(self, data: torch.Tensor, hextree: Hextree, depth: int):
         data = self.conv(data, hextree, depth)
         data = self.bn(data)
         return data
+    
+
+# class PositionalEncoding(torch.nn.Module):
+#     r'''sin-cos positional encoding'''
+#     def __init__(self, dim, patch_size):
+#         super(PositionalEncoding, self).__init__()
+#         self.dim = dim
+#         pe = torch.zeros(patch_size, dim)
+#         position = torch.arange(0, patch_size, dtype=torch.float).unsqueeze(1)
+#         div_term = torch.exp(torch.arange(0, dim, 2).float() * (-math.log(10000.0) / dim))
+#         pe[:, 0::2] = torch.sin(position * div_term)
+#         pe[:, 1::2] = torch.cos(position * div_term)
+#         pe = pe.unsqueeze(0)
+#         self.register_buffer('pe', pe)
+
+#     def forward(self, x):
+#         """
+#         Arguments:
+#             x: Tensor of shape (-1, patch_size, dim)
+#         Returns:
+#             Tensor of shape (-1, patch_size, dim) with added positional encodings
+#         """
+#         x = x + self.pe.data.unsqueeze(0)
+#         return x
     
 
 class HextreeAttention(torch.nn.Module):
@@ -141,6 +166,7 @@ class HextreeAttention(torch.nn.Module):
         self.proj_drop = torch.nn.Dropout(proj_drop)
         self.softmax = torch.nn.Softmax(dim=-1)
         self.rpe = RPE(patch_size, num_heads, dilation) if self.use_rpe else None
+        # self.pe = PositionalEncoding(dim, patch_size)
 
     def forward(self, data: torch.Tensor, hextree: HextreeT, depth: int):
         H = self.num_heads
@@ -158,6 +184,7 @@ class HextreeAttention(torch.nn.Module):
             rel_pos = hextree.rel_pos[depth]
             mask = hextree.patch_mask[depth]
         data = data.view(-1, K, C)
+        # data = self.pe(data)
 
         # qkv
         qkv = self.qkv(data).reshape(-1, K, 3, H, C // H).permute(2, 0, 3, 1, 4)
@@ -235,15 +262,12 @@ class HexFormerStage(torch.nn.Module):
         super().__init__()
         self.num_blocks = num_blocks
         self.use_checkpoint = use_checkpoint
-        # self.interval = interval  # normalization interval
-        # self.num_norms = (num_blocks - 1) // self.interval
 
         self.blocks = torch.nn.ModuleList([hexformer_block(dim=dim, num_heads=num_heads, patch_size=patch_size,
                                                            dilation=1 if (i % 2 == 0) else dilation,
                                                            mlp_ratio=mlp_ratio, qkv_bias=qkv_bias, qk_scale=qk_scale, attn_drop=attn_drop, proj_drop=proj_drop,
                                                            drop_path=drop_path[i] if isinstance(drop_path, list) else drop_path,
                                                            nempty=nempty, activation=activation) for i in range(num_blocks)])
-        # self.norms = torch.nn.ModuleList([torch.nn.BatchNorm1d(dim) for _ in range(self.num_norms)])
 
     def forward(self, data: torch.Tensor, hextree: HextreeT, depth: int):
         for i in range(self.num_blocks):
@@ -251,8 +275,6 @@ class HexFormerStage(torch.nn.Module):
                 data = checkpoint(self.blocks[i], data, hextree, depth, use_reentrant=False)
             else:
                 data = self.blocks[i](data, hextree, depth)
-            # if i % self.interval == 0 and i != 0:
-            #   data = self.norms[(i - 1) // self.interval](data)
         return data
     
     
@@ -266,6 +288,9 @@ class PatchEmbed(torch.nn.Module):
         self.convs = torch.nn.ModuleList([HextreeConvBnRelu(
             in_dim if i == 0 else channels[i], channels[i], kernel_size=[3],
             stride=1, nempty=nempty) for i in range(self.num_stages)])
+        # self.convs = torch.nn.ModuleList([HextreeResBlock(
+        #     in_dim if i == 0 else channels[i], channels[i],
+        #     stride=1, nempty=nempty, use_t=False) for i in range(self.num_stages)])
         self.downsamples = torch.nn.ModuleList([HextreeConvBnRelu(
             channels[i], channels[i+1], kernel_size=[2], stride=2, nempty=nempty)
             for i in range(self.num_stages)])
@@ -293,7 +318,9 @@ class HexFormer(torch.nn.Module):
         self.nempty = nempty
         self.num_stages = len(num_blocks)
         self.stem_down = stem_down
-        drop_ratio = torch.linspace(0, drop_path, sum(num_blocks)).tolist()
+        encode_blocks = sum(num_blocks)
+        drop_ratio = torch.linspace(0, drop_path, encode_blocks).tolist()
+        # drop_ratio = torch.linspace(0, drop_path, encode_blocks+sum(num_blocks[:-1])).tolist()
         # Patch Embdedding
         self.patch_embed = PatchEmbed(in_channels, channels[0], stem_down, nempty)
         # Encoder
@@ -305,6 +332,15 @@ class HexFormer(torch.nn.Module):
         self.downsamples = torch.nn.ModuleList([HextreeConvBn(
         channels[i], channels[i + 1], kernel_size=[2], stride=2, 
         nempty=nempty, use_bias=True) for i in range(self.num_stages - 1)])
+        # Decoder
+        # self.decoders = torch.nn.ModuleList([HexFormerStage(
+        #     dim=channels[-i-2], num_heads=num_heads[-i-2], patch_size=patch_size,
+        #     drop_path=drop_ratio[encode_blocks+sum(num_blocks[-i-1:-1]):encode_blocks+sum(num_blocks[-i-2:-1])],
+        #     dilation=dilation, nempty=nempty, num_blocks=num_blocks[-i-2],)
+        #     for i in range(self.num_stages - 1)])
+        # self.upsamples = torch.nn.ModuleList([HextreeDeconvBn(
+        # channels[-i-1], channels[-i-2], kernel_size=[2], stride=2, 
+        # nempty=nempty, use_bias=True) for i in range(self.num_stages - 1)])
         
     def forward(self, data: torch.Tensor, hextree: Hextree, depth: int):
         # PE
@@ -320,30 +356,10 @@ class HexFormer(torch.nn.Module):
             features[depth_i] = data
             if i < self.num_stages - 1:
                 data = self.downsamples[i](data, hextree, depth_i)
-        
+        # Decoder
+        # for i in range(self.num_stages - 1):
+        #     depth_i = depth - self.num_stages + i + 1
+        #     data = self.upsamples[i](data, hextree, depth_i)
+        #     data = self.decoders[i](data, hextree, depth_i + 1)
+        #     features[depth_i + 1] += data
         return features
-        
-        # # Decoder
-        # depth = min(features.keys())
-        # target_depth = max(features.keys()) 
-        # assert self.num_stages + self.stem_down == len(features)
-        # data = self.conv1x1[0](features[depth])
-        # out = self.upsample(data, hextree, depth, target_depth)
-        # for i in range(1, self.num_stages):
-        #     depth_i = depth + i
-        #     data = self.upsample(data, hextree, depth_i-1, depth_i)
-        #     data = self.conv1x1[i](features[depth_i]) + data
-        #     # data = self.norm(data)
-        #     data = self.decoders[i-1](data, hextree, depth_i)
-        #     out = out + self.upsample(data, hextree, depth_i, target_depth)
-
-        # # PE upsample
-        # for i in range(self.stem_down, 0, -1):
-        #     depth_i = target_depth - i + 1
-        #     data = self.upsample(data, hextree, depth_i-1, depth_i) + features[depth_i]
-        #     data = self.norm(data)
-        #     if depth_i == target_depth: out += data
-        #     else: out += self.upsample(data, hextree, depth_i, target_depth)
-        # out = self.norm(out)
-        
-        # return out

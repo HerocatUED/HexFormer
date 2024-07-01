@@ -62,16 +62,19 @@ class SegSolver(Solver):
             batch["query_mask"] = torch.hstack(query_mask)
         return batch
 
-    def model_forward(self, batch):
+    def model_forward(self, batch, train: bool = True):
         hextree, points = batch["hextree"], batch["points"]
         data = self.get_input_feature(hextree)
 
         query_pts = torch.cat([points.points, points.batch_id], dim=1)
         query_pts = query_pts[batch["query_mask"]]
         logit = self.model(data, hextree, hextree.depth, query_pts)
-        label_mask = points.labels > self.FLAGS.LOSS.mask  # filter labels
-        return logit[label_mask], points.labels[label_mask]
-
+        if train:
+            query_label = points.labels[batch["query_mask"]]
+            label_mask = query_label > self.FLAGS.LOSS.mask  # filter labels
+            return logit[label_mask], query_label[label_mask]
+        else: return logit
+        
     def config_optimizer(self):
         flags = self.FLAGS.SOLVER
         if flags.type.lower() == "adamw_attn":
@@ -125,12 +128,17 @@ class SegSolver(Solver):
 
     def eval_step(self, batch): # this is test when inference
         batch = self.process_batch(batch, self.FLAGS.DATA.test)
-        filename = self.logdir + "/predictions/{:0>6d}.label".format(batch["iter_num"])
+        origin_filename = batch['filename'][0]
+        pos1 = origin_filename.find("/velodyne")
+        pos2 = origin_filename.find("/sequences")
+        scan_id = origin_filename[pos2+11: pos1]
+        frame_id = origin_filename[pos1+10: pos1+16]
+        filename = self.logdir + f"/sequences/{scan_id}/predictions/{frame_id}.label"
         curr_folder = os.path.dirname(filename)
         if not os.path.exists(curr_folder):
             os.makedirs(curr_folder)
         with torch.no_grad():
-            logit, _ = self.model_forward(batch)
+            logit = self.model_forward(batch, False)
         pred = logit.argmax(dim=1).cpu().numpy().astype(np.int32)
         pred = self.remap(pred, True)
         pred.tofile(filename)
