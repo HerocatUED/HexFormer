@@ -1,6 +1,6 @@
 # build models
 
-from data_utils import get_hoi4d_seg_dataset, get_kitti_seg_dataset
+from data_utils import get_hoi4d_seg_dataset, get_kitti_seg_dataset, get_hoi4d_action_seg_dataset
 from hexformerseg import HexFormerSeg
 
 
@@ -37,6 +37,21 @@ def hexsegformer_hoi4d(in_channels, out_channels, **kwargs):
         head_drop=[0.5, 0.5],
     )
 
+def hexsegformer_hoi4d_large(in_channels, out_channels, **kwargs):
+    return HexFormerSeg(
+        in_channels,
+        out_channels,
+        channels=[128, 256, 512, 1024],
+        num_blocks=[2, 2, 6, 2],
+        num_heads=[4, 8, 16, 32],
+        patch_size=192,
+        dilation=4,
+        drop_path=0.5,
+        nempty=True,
+        stem_down=2,
+        fpn_channel=256,
+        head_drop=[0.5, 0.5],
+    )
 
 def hexsegformer(in_channels, out_channels, **kwargs):
     return HexFormerSeg(
@@ -70,6 +85,22 @@ def hexsegformer_small(in_channels, out_channels, **kwargs):
         fpn_channel=64,
         head_drop=[0.5, 0.5],
     )
+    
+def hexsegformer_action_toy(in_channels, out_channels, **kwargs):
+    return HexFormerSeg(
+        in_channels,
+        out_channels,
+        channels=[32, 64, 128, 128],
+        num_blocks=[2, 2, 6, 2],
+        num_heads=[4, 8, 16, 32],
+        patch_size=64,
+        dilation=4,
+        drop_path=0.5,
+        nempty=True,
+        stem_down=2,
+        fpn_channel=64,
+        head_drop=[0.5, 0.5],
+    )
 
 
 def get_segmentation_model(flags):
@@ -83,7 +114,8 @@ def get_segmentation_model(flags):
         "hexsegformer": hexsegformer,
         "hexsegformer_large": hexsegformer_large,
         "hexsegformer_small": hexsegformer_small,
-        # "hexsegformer_toy": hexsegformer_toy,
+        "hexsegformer_hoi4d_large": hexsegformer_hoi4d_large,
+        "hexsegformer_action_toy": hexsegformer_action_toy,
     }
 
     return networks[flags.name.lower()](**params)
@@ -94,5 +126,7 @@ def get_segmentation_dataset(flags):
         return get_hoi4d_seg_dataset(flags)
     elif flags.name.lower() == "kitti":
         return get_kitti_seg_dataset(flags)
+    elif flags.name.lower() == "hoi4d_action":
+        return get_hoi4d_action_seg_dataset(flags)
     else:
         raise ValueError
