@@ -119,11 +119,15 @@ def construct_kitti(root_dir: str, config_dir: str):
 def prepare_dataset(dataset: str, root_dir: str):
     print(f"Preparing dataset: {dataset}.\nOriginal data should be placed in {root_dir}.")
     if dataset == "hoi4d":
-        dataset_dir = "../dataset/HOI4D"
-        config_dir = "../configs/hoi4d"
+        dataset_dir = "dataset/HOI4D_SemSeg"
+        config_dir = "configs/hoi4d"
+        construct_hoi4d(root_dir, dataset_dir, config_dir)
+    elif dataset == "hoi4d_action":
+        dataset_dir = "dataset/HOI4D_ActSeg"
+        config_dir = "configs/hoi4d"
         construct_hoi4d(root_dir, dataset_dir, config_dir)
     elif dataset == "kitti":
-        config_dir = "../configs/kitti"
+        config_dir = "configs/kitti"
         construct_kitti(root_dir, config_dir)
     else:
         assert 0, "dataset not supported!"

@@ -42,3 +42,7 @@ TODO：
 - reuse history prediction
 - clean locations and paths
 - update config files
+- KITTI init feature: polar
+- Efficiency Exp
+- Add Action Segmentaion task
+- HOI4D Vis, center?
