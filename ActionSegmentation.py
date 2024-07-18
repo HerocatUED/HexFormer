@@ -17,16 +17,15 @@ from modules import InputFeature
 torch.multiprocessing.set_sharing_strategy("file_system")
 
 
-class SegSolver(Solver):
+class ActSegSolver(Solver):
 
     def __init__(self, FLAGS, is_master=True):
         super().__init__(FLAGS, is_master)
-        self.weights = None
-        if "kitti" in FLAGS.SOLVER.alias:
-            from data_utils.kitti import remap
-        elif "hoi4d" in FLAGS.SOLVER.alias:
-            from data_utils.hoi4d import remap
+        if "hoi4d_action" in FLAGS.SOLVER.alias:
+            from data_utils.hoi4d_action_seg import remap
+        else: raise NotImplementedError
         self.remap = remap
+        self.overlap = [0.10, 0.25, 0.50]
 
     def get_model(self, flags):
         return builder.get_segmentation_model(flags)
@@ -116,14 +115,13 @@ class SegSolver(Solver):
             logit, label = self.model_forward(batch)
         loss = self.loss_function(logit, label)
         accu = self.accuracy(logit, label)
-        num_class = self.FLAGS.LOSS.num_class
-        mIoU, insc, union = self.IoU_per_class(logit, label, num_class)
-        names = (
-            ["test/loss", "test/accu", "test/mIoU"]
-            + ["test/intsc_%d" % i for i in range(num_class)]
-            + ["test/union_%d" % i for i in range(num_class)]
-        )
-        tensors = [loss, accu, mIoU] + insc + union
+        pred = logit.argmax(dim=1)
+        score, tp, fp, fn = self.score(pred, label)
+        names = (["test/loss", "test/accu", "test/edit_score"]
+                 + ["test/tp_%.2f" % o for o in self.overlap]
+                 + ["test/fp_%.2f" % o for o in self.overlap]
+                 + ["test/fn_%.2f" % o for o in self.overlap])
+        tensors = [loss, accu, score] + tp + fp + fn
         return dict(zip(names, tensors))
 
     def eval_step(self, batch): # this is test when inference
@@ -143,31 +141,24 @@ class SegSolver(Solver):
         pred = self.remap(pred, True)
         pred.tofile(filename)
         
-        
     def result_callback(self, avg_tracker, epoch):
-        r"""Calculate the part mIoU."""
-
-        iou_part = 0.0
+        r"""Calculate F1 Score.""" 
+        
         avg = avg_tracker.average()
 
-        # Labels smaller than `mask` is ignored. The points with the label 0 in
-        # KITTI are background points, i.e., unlabeled points
-        mask = self.FLAGS.LOSS.mask + 1
-        num_class = self.FLAGS.LOSS.num_class
-        for i in range(mask, num_class):
-            instc_i = avg["test/intsc_%d" % i]
-            union_i = avg["test/union_%d" % i]
-            iou_part += instc_i / (union_i + 1.0e-10)
-        iou_part = iou_part / (num_class - mask)
-
-        avg_tracker.update({"test/mIoU_part": torch.Tensor([iou_part])})
-        tqdm.write("=> Epoch: %d, test/mIoU_part: %f" % (epoch, iou_part))
+        for i in range(len(self.overlap)):
+            tp_i = avg["test/tp_%.2f" % self.overlap[i]]
+            fp_i = avg["test/fp_%.2f" % self.overlap[i]]
+            fn_i = avg["test/fn_%.2f" % self.overlap[i]]
+            precision = tp_i / float(tp_i + fp_i)
+            recall = tp_i / float(tp_i + fn_i)
+            f1 = 2.0 * (precision * recall) / (precision + recall + 1.0e-10)
+            f1 *= 100
+            avg_tracker.update({"test/f1_%.2f" % self.overlap[i]: torch.Tensor([f1])})
+            tqdm.write("=> Epoch: %d, test/f1_%.2f" % (epoch, f1))
 
     def loss_function(self, logit, label):
-        class_weight = None
-        if self.FLAGS.LOSS.weighted:
-            class_weight = self.get_weight()
-        criterion = torch.nn.CrossEntropyLoss(weight=class_weight)
+        criterion = torch.nn.CrossEntropyLoss()
         loss = criterion(logit, label.long())
         return loss
 
@@ -175,52 +166,76 @@ class SegSolver(Solver):
         pred = logit.argmax(dim=1)
         accu = pred.eq(label).float().mean()
         return accu
+    
+    def score(self, pred, label):
+        edit = 0
+        tp, fp, fn = torch.zeros(3), torch.zeros(3), torch.zeros(3)
+        pred, label = pred.view(-1, 150), label.view(-1, 150)
+        for i in range(pred.size(0)):
+            for j in range(len(self.overlap)):
+                tp[j], fp[j], fn[j] += self.f_score(pred[i], label[i], self.overlap[j])
+            edit += self.edit_score(pred[i], label[i])
+        return edit, tp, fp, fn
+    
+    def edit_score(self, pred, label, norm = True, bg_class = ["background"]):
+        P, _, _ = self.get_labels_start_end_time(pred, bg_class)
+        Y, _, _ = self.get_labels_start_end_time(label, bg_class)
+        return self.levenstein(P, Y, norm)
+    
+    def get_labels_start_end_time(self, frame_wise_labels, bg_class = ["background"]):
+        change_points = torch.nonzero(torch.diff(frame_wise_labels, prepend=frame_wise_labels[:1])).flatten()
+        starts = torch.cat((torch.tensor([0]), change_points))
+        labels = frame_wise_labels[starts]
+        ends = torch.cat((change_points, torch.tensor([len(frame_wise_labels) - 1])))
+        return labels, starts, ends
+ 
+    def levenstein(self, pred, label, norm = False):
+        r"""calculate levenstein distance"""
+        m_row = len(pred)
+        n_col = len(label)
 
-    def IoU_per_class(self, logit, label, class_num):
-        pred = logit.argmax(dim=1)
+        # Initialize the matrix
+        D = torch.zeros((m_row + 1, n_col + 1), dtype=torch.float32)
+        D[:, 0] = torch.arange(m_row + 1, dtype=torch.float32)
+        D[0, :] = torch.arange(n_col + 1, dtype=torch.float32)
 
-        mIoU, valid_part_num, esp = 0.0, 0.0, 1.0e-10
-        intsc, union = [None] * class_num, [None] * class_num
-        for k in range(class_num):
-            pk, lk = pred.eq(k), label.eq(k)
-            intsc[k] = torch.sum(torch.logical_and(pk, lk).float())
-            union[k] = torch.sum(torch.logical_or(pk, lk).float())
+        pred_expanded = pred.unsqueeze(1).expand(-1, n_col)
+        label_expanded = label.unsqueeze(0).expand(m_row, -1)
+        match_matrix = (pred_expanded != label_expanded).float()
 
-            valid = torch.sum(lk.any()) > 0
-            valid_part_num += valid.item()
-            mIoU += valid * intsc[k] / (union[k] + esp)
-
-        # Calculate the mIoU
-        mIoU /= valid_part_num + esp
-        return mIoU, intsc, union
-
-    def get_weight(self):
-        """
-        Get weights for weighted CrossEntropyLoss, only used in SemanticKITTI.
-        """
-        if self.weights is not None:
-            return self.weights
-        DATA = yaml.safe_load(open("config/kitti/semantic-kitti-all.yaml", "r"))
-        remapdict = DATA["learning_map_inv"]
-        # make lookup table for mapping
-        maxkey = max(remapdict.keys())
-        # +100 hack making lut bigger just in case there are unknown labels
-        remap_lut = np.zeros((maxkey + 100), dtype=np.int32)
-        remap_lut[list(remapdict.keys())] = list(remapdict.values())
-        labels = remap_lut[np.arange(1, 26)]
-        # content
-        content = DATA["content"]
-        content_lut = np.zeros((300), dtype=np.float32)
-        content_lut[list(content.keys())] = list(content.values())
-        weight = np.zeros(26)
-        weight[1:] = np.array(content_lut[labels])
-        weight = weight / weight.sum()
-        weight[0] = 1  # log 0 will be a bug
-        weight = -np.log(weight)
-        # weight = np.clip(1 / (weight + 1e-10), 0, self.FLAGS.LOSS.weight_clip)
-        self.weights = torch.tensor(weight, dtype=torch.float32).cuda()
-        return self.weights
+        # Fill the matrix using dynamic programming
+        for i in range(1, m_row + 1):
+            for j in range(1, n_col + 1):
+                cost = match_matrix[i - 1, j - 1]
+                D[i, j] = torch.min(torch.tensor([D[i - 1, j] + 1, D[i, j - 1] + 1, D[i - 1, j - 1] + cost]))
+        if norm:
+            score = (1 - D[m_row, n_col] / max(m_row, n_col)) * 100
+        else: score = D[m_row, n_col]
+        return score
+    
+    def f_score(self, pred, label, overlap, bg_class=["background"]):
+        p_label, p_start, p_end = self.get_labels_start_end_time(pred, bg_class)
+        y_label, y_start, y_end = self.get_labels_start_end_time(label, bg_class)
+    
+        tp = 0
+        fp = 0
+        hits = np.zeros(len(y_label))
+    
+        for j in range(len(p_label)):
+            intersection = np.minimum(p_end[j], y_end) - np.maximum(p_start[j], y_start)
+            union = np.maximum(p_end[j], y_end) - np.minimum(p_start[j], y_start)
+            IoU = (1.0*intersection / union)*([p_label[j] == y_label[x] for x in range(len(y_label))])
+            # Get the best scoring segment
+            idx = np.array(IoU).argmax()
+    
+            if IoU[idx] >= overlap and not hits[idx]:
+                tp += 1
+                hits[idx] = 1
+            else:
+                fp += 1
+        fn = len(y_label) - sum(hits)
+        return float(tp), float(fp), float(fn)
 
 
 if __name__ == "__main__":
-    SegSolver.main()
+    ActSegSolver.main()

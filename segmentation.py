@@ -26,6 +26,7 @@ class SegSolver(Solver):
             from data_utils.kitti import remap
         elif "hoi4d" in FLAGS.SOLVER.alias:
             from data_utils.hoi4d import remap
+        else: raise NotImplementedError
         self.remap = remap
 
     def get_model(self, flags):
