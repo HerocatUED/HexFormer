@@ -7,33 +7,32 @@ import numpy as np
 from tqdm import tqdm
 from thsolver import Solver
 
-import builder
 from hextree import Hextree, merge_hextrees, merge_points
 from modules import InputFeature
-
+from builder import get_segmentation_dataset, get_segmentation_model
 
 # The following line is to fix `RuntimeError: received 0 items of ancdata`.
 # Refer: https://github.com/pytorch/pytorch/issues/973
 torch.multiprocessing.set_sharing_strategy("file_system")
 
 
-class SegSolver(Solver):
+class SemSegSolver(Solver):
 
     def __init__(self, FLAGS, is_master=True):
         super().__init__(FLAGS, is_master)
         self.weights = None
-        if "kitti" in FLAGS.SOLVER.alias:
-            from data_utils.kitti import remap
-        elif "hoi4d" in FLAGS.SOLVER.alias:
-            from data_utils.hoi4d import remap
+        if "kitti_SemSeg" in FLAGS.SOLVER.alias:
+            from data_utils.kitti_SemSeg import remap
+        elif "hoi4d_SemSeg" in FLAGS.SOLVER.alias:
+            from data_utils.hoi4d_SemSeg import remap
         else: raise NotImplementedError
         self.remap = remap
 
     def get_model(self, flags):
-        return builder.get_segmentation_model(flags)
+        return get_segmentation_model(flags)
 
     def get_dataset(self, flags):
-        return builder.get_segmentation_dataset(flags)
+        return get_segmentation_dataset(flags)
 
     def get_input_feature(self, hextree):
         flags = self.FLAGS.MODEL
@@ -224,4 +223,4 @@ class SegSolver(Solver):
 
 
 if __name__ == "__main__":
-    SegSolver.main()
+    SemSegSolver.main()

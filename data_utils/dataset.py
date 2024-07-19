@@ -116,29 +116,29 @@ def construct_kitti(root_dir: str, config_dir: str):
     f_test.close()
     
 
-def prepare_dataset(dataset: str, root_dir: str):
-    print(f"Preparing dataset: {dataset}.\nOriginal data should be placed in {root_dir}.")
-    if dataset == "hoi4d":
+def prepare_dataset(alias: str, root_dir: str):
+    print(f"Preparing dataset for {alias}.\nOriginal data should be placed in {root_dir}.")
+    if alias == "hoi4d_SemSeg":
         dataset_dir = "dataset/HOI4D_SemSeg"
-        config_dir = "configs/hoi4d"
+        config_dir = "configs/hoi4d_SemSeg"
         construct_hoi4d(root_dir, dataset_dir, config_dir)
-    elif dataset == "hoi4d_action":
+    elif alias == "hoi4d_ActSeg":
         dataset_dir = "dataset/HOI4D_ActSeg"
-        config_dir = "configs/hoi4d"
+        config_dir = "configs/hoi4d_ActSeg"
         construct_hoi4d(root_dir, dataset_dir, config_dir)
-    elif dataset == "kitti":
-        config_dir = "configs/kitti"
+    elif alias == "kitti_SemSeg":
+        config_dir = "configs/kitti_SemSeg"
         construct_kitti(root_dir, config_dir)
     else:
         assert 0, "dataset not supported!"
-    print(f"Dataset {dataset} done.")
+    print(f"Dataset {alias} done.")
 
 
 if __name__ == "__main__":
     
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", type=str, required=True)
+    parser.add_argument("--alias", type=str, required=True)
     parser.add_argument("--root_dir", type=str, required=True)
     args = parser.parse_args()
-    prepare_dataset(args.dataset, args.root_dir)
+    prepare_dataset(args.alias, args.root_dir)
 

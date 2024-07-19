@@ -7,10 +7,9 @@ import numpy as np
 from tqdm import tqdm
 from thsolver import Solver
 
-import builder
 from hextree import Hextree, merge_hextrees, merge_points
 from modules import InputFeature
-
+from builder import get_segmentation_dataset, get_segmentation_model
 
 # The following line is to fix `RuntimeError: received 0 items of ancdata`.
 # Refer: https://github.com/pytorch/pytorch/issues/973
@@ -21,17 +20,19 @@ class ActSegSolver(Solver):
 
     def __init__(self, FLAGS, is_master=True):
         super().__init__(FLAGS, is_master)
-        if "hoi4d_action" in FLAGS.SOLVER.alias:
-            from data_utils.hoi4d_action_seg import remap
+        if "hoi4d_ActSeg" in FLAGS.SOLVER.alias:
+            from data_utils.hoi4d_ActSeg import remap
         else: raise NotImplementedError
         self.remap = remap
         self.overlap = [0.10, 0.25, 0.50]
+        self.overlap_len = len(self.overlap)
+        self.video_len = 150
 
     def get_model(self, flags):
-        return builder.get_segmentation_model(flags)
+        return get_segmentation_model(flags)
 
     def get_dataset(self, flags):
-        return builder.get_segmentation_dataset(flags)
+        return get_segmentation_dataset(flags)
 
     def get_input_feature(self, hextree):
         flags = self.FLAGS.MODEL
@@ -146,7 +147,7 @@ class ActSegSolver(Solver):
         
         avg = avg_tracker.average()
 
-        for i in range(len(self.overlap)):
+        for i in range(self.overlap_len):
             tp_i = avg["test/tp_%.2f" % self.overlap[i]]
             fp_i = avg["test/fp_%.2f" % self.overlap[i]]
             fn_i = avg["test/fn_%.2f" % self.overlap[i]]
@@ -169,13 +170,16 @@ class ActSegSolver(Solver):
     
     def score(self, pred, label):
         edit = 0
-        tp, fp, fn = torch.zeros(3), torch.zeros(3), torch.zeros(3)
-        pred, label = pred.view(-1, 150), label.view(-1, 150)
+        tp, fp, fn = torch.zeros(self.overlap_len), torch.zeros(self.overlap_len), torch.zeros(self.overlap_len)
+        pred, label = pred.view(-1, self.video_len), label.view(-1, self.video_len)
         for i in range(pred.size(0)):
-            for j in range(len(self.overlap)):
-                tp[j], fp[j], fn[j] += self.f_score(pred[i], label[i], self.overlap[j])
+            for j in range(self.overlap_len):
+                tp_, fp_, fn_ = self.f_score(pred[i], label[i], self.overlap[j])
+                tp[j] += tp_
+                fp[j] += fp_
+                fn[j] += fn_
             edit += self.edit_score(pred[i], label[i])
-        return edit, tp, fp, fn
+        return edit / pred.size(0), tp, fp, fn
     
     def edit_score(self, pred, label, norm = True, bg_class = ["background"]):
         P, _, _ = self.get_labels_start_end_time(pred, bg_class)

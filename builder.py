@@ -44,7 +44,7 @@ def hexsegformer_hoi4d_large(in_channels, out_channels, **kwargs):
         channels=[128, 256, 512, 1024],
         num_blocks=[2, 2, 6, 2],
         num_heads=[4, 8, 16, 32],
-        patch_size=192,
+        patch_size=256,
         dilation=4,
         drop_path=0.5,
         nempty=True,
