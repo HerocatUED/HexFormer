@@ -51,28 +51,18 @@ class ActSegSolver(Solver):
             batch["points"] = batch["points"].cuda(non_blocking=True)
         else:
             points = [pts.cuda(non_blocking=True) for pts in batch["points"]]
-            query_mask = [
-                pts.points[:, 0] == torch.max(pts.points[:, 0]) for pts in points
-            ]
             hextrees = [points2hextree(pts) for pts in points]
             hextree = merge_hextrees(hextrees)
             # hextree.construct_all_neigh()
             batch["points"] = merge_points(points)
             batch["hextree"] = hextree
-            batch["query_mask"] = torch.hstack(query_mask)
         return batch
 
     def model_forward(self, batch, train: bool = True):
         hextree, points = batch["hextree"], batch["points"]
         data = self.get_input_feature(hextree)
-
-        query_pts = torch.cat([points.points, points.batch_id], dim=1)
-        query_pts = query_pts[batch["query_mask"]]
-        logit = self.model(data, hextree, hextree.depth, query_pts)
-        if train:
-            query_label = points.labels[batch["query_mask"]]
-            label_mask = query_label > self.FLAGS.LOSS.mask  # filter labels
-            return logit[label_mask], query_label[label_mask]
+        logit = self.model(data, hextree, hextree.depth)
+        if train: return logit, points.labels
         else: return logit
         
     def config_optimizer(self):

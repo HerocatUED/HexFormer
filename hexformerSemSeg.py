@@ -59,7 +59,7 @@ class SegHeader(torch.nn.Module):
         return out
 
 
-class HexFormerSeg(torch.nn.Module):
+class HexFormerSemSeg(torch.nn.Module):
 
     def __init__(
             self, in_channels: int, out_channels: int,
