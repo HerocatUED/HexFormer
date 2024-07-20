@@ -6,7 +6,7 @@ import numpy as np
 from tqdm import tqdm
 
 
-def hoi4d_range(path: str, chunk_size: int = 20):
+def hoi4d_range(path: str, chunk_size: int = 20, need_class: bool = False):
     """
     Find data range for hoi4d
 
@@ -24,10 +24,10 @@ def hoi4d_range(path: str, chunk_size: int = 20):
     def find_class():
         class_ids = np.array([-1])
         for filename in [
-            "train1_float32.h5",
-            "train2_float32.h5",
-            "train3_float32.h5",
-            "train4_float32.h5",
+            "train1.h5",
+            "train2.h5",
+            "train3.h5",
+            "train4.h5",
         ]:
             with h5py.File(path + "/" + filename, "r") as f:
                 print(filename)
@@ -38,14 +38,16 @@ def hoi4d_range(path: str, chunk_size: int = 20):
     max_range = np.ones((3, 1)) * (-1e8)
     min_range = np.ones((3, 1)) * 1e8
     record = dict()
-    print(find_class())
+    
+    if need_class: 
+        print(find_class())
 
     for filename in [
-        "test_float32.h5",
-        "train1_float32.h5",
-        "train2_float32.h5",
-        "train3_float32.h5",
-        "train4_float32.h5",
+        "test.h5",
+        "train1.h5",
+        "train2.h5",
+        "train3.h5",
+        "train4.h5",
     ]:
         with h5py.File(path + "/" + filename, "r") as f:
             print(filename)
@@ -168,9 +170,9 @@ def visualize_kitti(data_dir: str, log_dir: str, config_path: str, frame_num: in
 def tools(dataset: str, root_dir: str = None):
     if dataset == "hoi4d":
         # config_dir = "../configs/hoi4d"
-        # hoi4d_range(root_dir)
-        log_dir = "logs_test/log_3Dconv_4Dattention_CPE_RPE_large_test_hoi4d"
-        bin2npy(log_dir)
+        hoi4d_range(root_dir)
+        # log_dir = "logs_test/log_3Dconv_4Dattention_CPE_RPE_large_test_hoi4d"
+        # bin2npy(log_dir)
     elif dataset == "kitti":
         config_dir = "../configs/kitti"
         config_path = "../configs/kitti/semantic-kitti-all.yaml"

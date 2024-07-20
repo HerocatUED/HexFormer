@@ -123,10 +123,11 @@ class ReadKITTI:
             scan = np.fromfile(scan_name, dtype=np.float32)
             scan = scan.reshape((-1, 4))
             N = np.shape(scan)[0]
-            points = np.ones((N, 5), dtype=np.float32)
+            points = np.ones((N, 8), dtype=np.float32)
             # put in attribute
             points[:, 1:4] = self.local2global(scan[:, 0:3], i, sequence_id)  # get xyz
             points[:, 4] = scan[:, 3]  # density
+            points[:, 5:] = self.polar(scan[:, 0:3]) # polar
             points[:, 0] *= j
             pcds.append(points)
         output["points"] = np.vstack(pcds)
@@ -171,6 +172,22 @@ class ReadKITTI:
         global_xyz = (trans_matrix @ local_xyz).reshape((-1, 4))
 
         return global_xyz[:, :3]
+    
+    def polar(self, pcd: np.array):
+        r"""
+        Trans local coordinates to polar coordinates.
+
+        Args:
+        pcd: local xyz coordinates.
+        """
+        x = pcd[:, 0]
+        y = pcd[:, 1]
+        z = pcd[:, 2]
+        r = np.sqrt(x**2 + y**2 + z**2)
+        theta = np.arctan2(y, x)
+        phi = np.arccos(z / (r + 1e-10))
+        polar_coords = np.stack((r, theta, phi), axis = -1)
+        return polar_coords
 
 
 class CollateBatch:
@@ -188,7 +205,7 @@ class CollateBatch:
         return outputs
 
 
-def get_kitti_seg_dataset(flags):
+def get_kitti_sem_seg_dataset(flags):
     transform = KITTITransform(flags)
     read_file = ReadKITTI(
         has_label=flags.has_label, root_dir=flags.location, history=flags.history

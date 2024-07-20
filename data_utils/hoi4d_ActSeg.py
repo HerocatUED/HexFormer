@@ -98,14 +98,10 @@ class ReadHOI4D:
 
         # label
         if self.has_label:
-            labels = []
-            for i in range(past_frame, frame_num + 1):
-                label_name = root_dir + "/labels/{:0>6d}.label".format(frame_num)
-                label = np.fromfile(label_name, dtype=np.int32)
-                sem_label = label.reshape((-1))
-                labels.append(sem_label)
-            output["labels"] = np.hstack(labels)
-            output["labels"] = remap(output["labels"], False)
+            label_name = root_dir + "/labels/{:0>6d}.label".format(frame_num)
+            label = np.fromfile(label_name, dtype=np.int32)
+            sem_label = label.reshape((-1))
+            output["labels"] = remap(sem_label, False)
 
         return output
 
@@ -125,7 +121,7 @@ class CollateBatch:
         return outputs
 
 
-def get_hoi4d_action_seg_dataset(flags):
+def get_hoi4d_act_seg_dataset(flags):
     transform = HOI4DTransform(flags)
     read_file = ReadHOI4D(
         has_label=flags.has_label, root_dir=flags.location, history=flags.history
