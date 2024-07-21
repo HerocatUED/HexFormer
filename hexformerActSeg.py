@@ -16,6 +16,7 @@ class ActSegHeader(torch.nn.Module):
           head_down: int, nempty: bool, dropout: float):
         super().__init__()
         self.head_down = head_down
+        self.in_channel = in_channel
         self.conv3x3 = torch.nn.ModuleList([HextreeConvBnRelu(
             in_channel, in_channel, kernel_size=[3],
             stride=1, nempty=nempty) for i in range(self.head_down)])
@@ -23,7 +24,7 @@ class ActSegHeader(torch.nn.Module):
             in_channel, in_channel, kernel_size=[2], stride=2, nempty=nempty)
             for i in range(head_down)])
         self.classifier = torch.nn.Sequential(
-            torch.nn.Linear(in_channel, hid_channel),
+            torch.nn.Linear(in_channel * 8, hid_channel),
             torch.nn.BatchNorm1d(hid_channel),
             torch.nn.ReLU(inplace=True),
             torch.nn.Dropout(p = dropout),
@@ -38,10 +39,15 @@ class ActSegHeader(torch.nn.Module):
         assert depth == 1
         # get current feature
         t, x, y, z, b = key2txyz(hextree.key(depth, True))
-        mask = t == t.max()
-        data = data[mask]
+        datas = []
+        for i in torch.unique(b):
+            mask0 = b == i
+            t_ = t[mask0]
+            mask1 = t_ == t_.max()
+            datas.append(data[mask0][mask1].view(1, -1))
+        out = torch.vstack(datas)
         # classify
-        logit = self.classifier(data)
+        logit = self.classifier(out)
         return logit
 
 

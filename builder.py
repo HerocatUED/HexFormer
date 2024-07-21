@@ -63,7 +63,7 @@ def hexsegformer(in_channels, out_channels, **kwargs):
         channels=[64, 128, 256, 256],
         num_blocks=[2, 2, 6, 2],
         num_heads=[4, 8, 16, 32],
-        patch_size=128,
+        patch_size=64,
         dilation=4,
         drop_path=0.5,
         nempty=True,
@@ -93,7 +93,7 @@ def hexsegformer_action_toy(in_channels, out_channels, **kwargs):
     return HexFormerActSeg(
         in_channels,
         out_channels,
-        channels=[32, 64, 128, 128],
+        channels=[32, 64, 128, 256],
         num_blocks=[2, 2, 6, 2],
         num_heads=[4, 8, 16, 32],
         patch_size=64,

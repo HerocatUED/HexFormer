@@ -59,10 +59,6 @@ class InputFeature(torch.nn.Module):
         if "G" in self.feature:
             scale = 2 ** (1 - depth)  # normalize xyz [0, 2^depth] -> [-1, 1]
             global_points = hexree.points[depth] * scale - 1.0
-            # normalize t -> 0, ... not [-1, 1]
-            global_points[:, 0] = hexree.points[depth][:, 0] - torch.min(
-                hexree.points[depth][:, 0]
-            )
             features.append(global_points)
 
         if "P" in self.feature:

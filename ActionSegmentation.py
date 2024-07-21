@@ -106,6 +106,11 @@ class ActSegSolver(Solver):
             logit, label = self.model_forward(batch)
         loss = self.loss_function(logit, label)
         accu = self.accuracy(logit, label)
+        
+        names = (["test/loss", "test/accu"])
+        tensors = [loss, accu]
+        return dict(zip(names, tensors))
+        
         pred = logit.argmax(dim=1)
         score, tp, fp, fn = self.score(pred, label)
         names = (["test/loss", "test/accu", "test/edit_score"]
@@ -134,7 +139,7 @@ class ActSegSolver(Solver):
         
     def result_callback(self, avg_tracker, epoch):
         r"""Calculate F1 Score.""" 
-        
+        return
         avg = avg_tracker.average()
 
         for i in range(self.overlap_len):

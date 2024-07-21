@@ -45,7 +45,7 @@ TODO：
 - update config files
 - KITTI init feature: polar
 - Efficiency Exp
-- Add Action Segmentaion task
+- Add Action Segmentaion task: DA
 - HOI4D Vis, center?
 - script.sh
 - clean the code
