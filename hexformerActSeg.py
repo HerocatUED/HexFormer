@@ -17,9 +17,9 @@ class ActSegHeader(torch.nn.Module):
         super().__init__()
         self.head_down = head_down
         self.in_channel = in_channel
-        self.conv3x3 = torch.nn.ModuleList([HextreeConvBnRelu(
-            in_channel, in_channel, kernel_size=[3],
-            stride=1, nempty=nempty) for i in range(self.head_down)])
+        # self.conv3x3 = torch.nn.ModuleList([HextreeConvBnRelu(
+        #     in_channel, in_channel, kernel_size=[3],
+        #     stride=1, nempty=nempty) for i in range(self.head_down)])
         self.downsamples = torch.nn.ModuleList([HextreeConvBnRelu(
             in_channel, in_channel, kernel_size=[2], stride=2, nempty=nempty)
             for i in range(head_down)])
@@ -33,7 +33,7 @@ class ActSegHeader(torch.nn.Module):
     def forward(self, data: torch.Tensor, hextree: Hextree, depth: int):
         # downsample to depth = 1
         for i in range(self.head_down):
-            data = self.conv3x3[i](data, hextree, depth)
+            # data = self.conv3x3[i](data, hextree, depth)
             data = self.downsamples[i](data, hextree, depth)
             depth -= 1
         assert depth == 1

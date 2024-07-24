@@ -5,6 +5,15 @@ import argparse
 import numpy as np
 from tqdm import tqdm
 
+def hoi4d_clip(origin_path: str, clip_path: str, clip_len: int):
+    """Clip a small chunck of HOI4D.h5 file"""
+    with h5py.File(origin_path + "/train1.h5", "r") as f:
+        data = f["pcd"][:clip_len]
+    with h5py.File(clip_path, "w") as new_f:
+        new_f.create_dataset(
+            "pcd", shape=data.shape, dtype=np.float32, chunks=True) 
+        new_f["pcd"][:] = data.astype(np.float32)
+
 
 def hoi4d_range(path: str, chunk_size: int = 20, need_class: bool = False):
     """
@@ -170,9 +179,12 @@ def visualize_kitti(data_dir: str, log_dir: str, config_path: str, frame_num: in
 def tools(dataset: str, root_dir: str = None):
     if dataset == "hoi4d":
         # config_dir = "../configs/hoi4d"
-        hoi4d_range(root_dir)
+        # hoi4d_range(root_dir)
         # log_dir = "logs_test/log_3Dconv_4Dattention_CPE_RPE_large_test_hoi4d"
         # bin2npy(log_dir)
+        origin_path = "/data/wangx/dataset/HOI4D"
+        clip_path = "/data/wangx/workspace/HexFormer/dataset/tmp/sem.h5"
+        hoi4d_clip(origin_path, clip_path, clip_len=10)
     elif dataset == "kitti":
         config_dir = "../configs/kitti"
         config_path = "../configs/kitti/semantic-kitti-all.yaml"
