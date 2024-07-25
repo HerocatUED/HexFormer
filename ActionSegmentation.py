@@ -106,13 +106,8 @@ class ActSegSolver(Solver):
             logit, label = self.model_forward(batch)
         loss = self.loss_function(logit, label)
         accu = self.accuracy(logit, label)
-        
-        names = (["test/loss", "test/accu"])
-        tensors = [loss, accu]
-        return dict(zip(names, tensors))
-        
         pred = logit.argmax(dim=1)
-        score, tp, fp, fn = self.score(pred, label)
+        score, tp, fp, fn = self.score(pred.cpu(), label.cpu())
         names = (["test/loss", "test/accu", "test/edit_score"]
                  + ["test/tp_%.2f" % o for o in self.overlap]
                  + ["test/fp_%.2f" % o for o in self.overlap]
@@ -139,7 +134,7 @@ class ActSegSolver(Solver):
         
     def result_callback(self, avg_tracker, epoch):
         r"""Calculate F1 Score.""" 
-        return
+
         avg = avg_tracker.average()
 
         for i in range(self.overlap_len):
@@ -165,23 +160,23 @@ class ActSegSolver(Solver):
     
     def score(self, pred, label):
         edit = 0
-        tp, fp, fn = torch.zeros(self.overlap_len), torch.zeros(self.overlap_len), torch.zeros(self.overlap_len)
         pred, label = pred.view(-1, self.video_len), label.view(-1, self.video_len)
+        tp, fp, fn = torch.zeros(self.overlap_len), torch.zeros(self.overlap_len), torch.zeros(self.overlap_len)
         for i in range(pred.size(0)):
+            edit += self.edit_score(pred[i], label[i])
             for j in range(self.overlap_len):
                 tp_, fp_, fn_ = self.f_score(pred[i], label[i], self.overlap[j])
                 tp[j] += tp_
                 fp[j] += fp_
                 fn[j] += fn_
-            edit += self.edit_score(pred[i], label[i])
-        return edit / pred.size(0), tp, fp, fn
+        return edit / pred.size(0), list(tp), list(fp), list(fn)
     
-    def edit_score(self, pred, label, norm = True, bg_class = ["background"]):
-        P, _, _ = self.get_labels_start_end_time(pred, bg_class)
-        Y, _, _ = self.get_labels_start_end_time(label, bg_class)
+    def edit_score(self, pred, label, norm = True):
+        P, _, _ = self.get_labels_start_end_time(pred)
+        Y, _, _ = self.get_labels_start_end_time(label)
         return self.levenstein(P, Y, norm)
     
-    def get_labels_start_end_time(self, frame_wise_labels, bg_class = ["background"]):
+    def get_labels_start_end_time(self, frame_wise_labels):
         change_points = torch.nonzero(torch.diff(frame_wise_labels, prepend=frame_wise_labels[:1])).flatten()
         starts = torch.cat((torch.tensor([0]), change_points))
         labels = frame_wise_labels[starts]
@@ -212,27 +207,24 @@ class ActSegSolver(Solver):
         else: score = D[m_row, n_col]
         return score
     
-    def f_score(self, pred, label, overlap, bg_class=["background"]):
-        p_label, p_start, p_end = self.get_labels_start_end_time(pred, bg_class)
-        y_label, y_start, y_end = self.get_labels_start_end_time(label, bg_class)
-    
+    def f_score(self, pred, label, overlap):
+        p_label, p_start, p_end = self.get_labels_start_end_time(pred)
+        y_label, y_start, y_end = self.get_labels_start_end_time(label)
+        
         tp = 0
         fp = 0
-        hits = np.zeros(len(y_label))
-    
+        hits = torch.zeros(len(y_label), dtype=torch.int32)
+        
         for j in range(len(p_label)):
-            intersection = np.minimum(p_end[j], y_end) - np.maximum(p_start[j], y_start)
-            union = np.maximum(p_end[j], y_end) - np.minimum(p_start[j], y_start)
-            IoU = (1.0*intersection / union)*([p_label[j] == y_label[x] for x in range(len(y_label))])
-            # Get the best scoring segment
-            idx = np.array(IoU).argmax()
-    
+            intersection = torch.min(p_end[j], y_end) - torch.max(p_start[j], y_start)
+            union = torch.max(p_end[j], y_end) - torch.min(p_start[j], y_start)
+            IoU = (1.0 * intersection / union) * (p_label[j] == y_label)
+            idx = IoU.argmax() # Get the best scoring segment
             if IoU[idx] >= overlap and not hits[idx]:
                 tp += 1
                 hits[idx] = 1
-            else:
-                fp += 1
-        fn = len(y_label) - sum(hits)
+            else: fp += 1
+        fn = len(y_label) - hits.sum().item()
         return float(tp), float(fp), float(fn)
 
 

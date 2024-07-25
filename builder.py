@@ -96,12 +96,11 @@ def hexsegformer_action_toy(in_channels, out_channels, **kwargs):
         channels=[64, 128, 256, 512],
         num_blocks=[2, 2, 6, 2],
         num_heads=[4, 8, 16, 32],
-        patch_size=256,
+        patch_size=128,
         dilation=4,
         drop_path=0.5,
         nempty=True,
         stem_down=2,
-        head_down=3,
         hid_channel=1024,
         head_drop=0.5,
     )

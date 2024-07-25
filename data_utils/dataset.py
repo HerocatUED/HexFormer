@@ -113,13 +113,12 @@ def construct_hoi4d_act(root_dir: str, dataset_dir: str, config_dir: str):
                     video_cnt = video_cnt_base + i + 1
                     video_folder = dir_path + "/{:0>4d}/{}".format(video_cnt, folder)
                     os.makedirs(video_folder)
-                    for frame in range(shape[1]):
-                        filename = video_folder + "/{:0>6d}.{}".format(frame, suffix)
-                        frame_data = original_data[video][frame].astype(data_type)
-                        frame_data.tofile(filename)
-                        if data == "pcd":
-                            if video % 5 == 0: f_val.write(filename + "\n")
-                            else: f_train.write(filename + "\n")
+                    filename = video_folder + "/{:0>6d}.{}".format(video_cnt, suffix)
+                    video_data = original_data[video].astype(data_type)
+                    video_data.tofile(filename)
+                    if data == "pcd":
+                        if video % 5 == 0: f_val.write(filename + "\n")
+                        else: f_train.write(filename + "\n")
     
     # test data 
     video_cnt_base = video_cnt
@@ -131,11 +130,10 @@ def construct_hoi4d_act(root_dir: str, dataset_dir: str, config_dir: str):
             video_cnt = video_cnt_base + i + 1
             video_folder = dir_path + "/{:0>4d}/{}".format(video_cnt, folder)
             os.makedirs(video_folder)
-            for frame in range(shape[1]):
-                filename = video_folder + "/{:0>6d}.{}".format(frame, suffix)
-                frame_data = original_data[video][frame].astype(data_type)
-                frame_data.tofile(filename)
-                f_test.write(filename + "\n")
+            filename = video_folder + "/{:0>6d}.{}".format(video_cnt, suffix)
+            video_data = original_data[video].astype(data_type)
+            video_data.tofile(filename)
+            f_test.write(filename + "\n")
 
     f_train.close()
     f_val.close()
