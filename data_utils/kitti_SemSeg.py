@@ -15,7 +15,7 @@ cfg = yaml.safe_load(open(config_path, "r"))
 
 def remap(semantic: np.array, inverse: bool = False):
         r"""
-        Remap semantic classes.
+        Remap semantic classes. https://github.com/PRBonn/semantic-kitti-api
 
         Args:
         semantic: semantic classes to remap.

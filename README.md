@@ -26,7 +26,7 @@ python data_utils/dataset.py --alias $alias$ --root_dir $.../SemanticKITTI$
 python run.py --run train --alias $alias$ --gpu 0,1,2,3 --port 10008
 ```
 6. Inference (with only one GPU)
-modify config.json, test: batch size = 1, num_worker = 1
+**modify config.json**, test: batch size = 1, num_worker = 1
 ```
 python run.py --run test --alias $alias$ --gpu 0 --port 10008 --ckpt $path_to_your_model$
 ```
@@ -34,6 +34,12 @@ Inference speed on KITTI with single 4090GPU:
 20351frame / 3706s = 5.5 FPS
 FPS_min = 5, FPS_avg = 6, FPS_top = 8.
 
+Convert to HOI4D.npy with data_utils/tools.py
+
+```
+python data_utils/tools.py --task npy_act
+```
+has\_label, test file list, batch size, location
 **Note** 
 - Tested with Python 3.10, torch 2.3.0 with CUDA 11.8
 
