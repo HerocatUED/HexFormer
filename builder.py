@@ -7,24 +7,23 @@ from hexformerSemSeg import HexFormerSemSeg
 from hexformerActSeg import HexFormerActSeg
 
 
-def hexsegformer_large(in_channels, out_channels, **kwargs):
+def hexformer_hoi4d_small(in_channels, out_channels, **kwargs):
     return HexFormerSemSeg(
         in_channels,
         out_channels,
-        channels=[128, 256, 512, 512],
+        channels=[64, 128, 256, 256],
         num_blocks=[2, 2, 6, 2],
         num_heads=[4, 8, 16, 32],
-        patch_size=192,
+        patch_size=64,
         dilation=4,
         drop_path=0.5,
         nempty=True,
         stem_down=2,
-        fpn_channel=256,
+        fpn_channel=128,
         head_drop=[0.5, 0.5],
     )
-    
 
-def hexsegformer_hoi4d(in_channels, out_channels, **kwargs):
+def hexformer_hoi4d(in_channels, out_channels, **kwargs):
     return HexFormerSemSeg(
         in_channels,
         out_channels,
@@ -40,7 +39,7 @@ def hexsegformer_hoi4d(in_channels, out_channels, **kwargs):
         head_drop=[0.5, 0.5],
     )
 
-def hexsegformer_hoi4d_large(in_channels, out_channels, **kwargs):
+def hexformer_hoi4d_large(in_channels, out_channels, **kwargs):
     return HexFormerSemSeg(
         in_channels,
         out_channels,
@@ -55,8 +54,24 @@ def hexsegformer_hoi4d_large(in_channels, out_channels, **kwargs):
         fpn_channel=256,
         head_drop=[0.5, 0.5],
     )
+    
+def hexformer_large(in_channels, out_channels, **kwargs):
+    return HexFormerSemSeg(
+        in_channels,
+        out_channels,
+        channels=[128, 256, 512, 512],
+        num_blocks=[2, 2, 6, 2],
+        num_heads=[4, 8, 16, 32],
+        patch_size=192,
+        dilation=4,
+        drop_path=0.5,
+        nempty=True,
+        stem_down=2,
+        fpn_channel=256,
+        head_drop=[0.5, 0.5],
+    )
 
-def hexsegformer(in_channels, out_channels, **kwargs):
+def hexformer(in_channels, out_channels, **kwargs):
     return HexFormerSemSeg(
         in_channels,
         out_channels,
@@ -73,7 +88,7 @@ def hexsegformer(in_channels, out_channels, **kwargs):
     )
     
     
-def hexsegformer_small(in_channels, out_channels, **kwargs):
+def hexformer_small(in_channels, out_channels, **kwargs):
     return HexFormerSemSeg(
         in_channels,
         out_channels,
@@ -89,13 +104,13 @@ def hexsegformer_small(in_channels, out_channels, **kwargs):
         head_drop=[0.5, 0.5],
     )
     
-def hexsegformer_action_toy(in_channels, out_channels, **kwargs):
+def hexformer_action(in_channels, out_channels, **kwargs):
     return HexFormerActSeg(
         in_channels,
         out_channels,
-        channels=[64, 128, 256, 512],
-        num_blocks=[2, 2, 6, 2],
-        num_heads=[4, 8, 16, 32],
+        channels=[128, 256, 512],
+        num_blocks=[2, 4, 6],
+        num_heads=[4, 8, 16],
         patch_size=128,
         dilation=4,
         drop_path=0.5,
@@ -114,11 +129,13 @@ def get_segmentation_model(flags):
         "nempty": flags.nempty,
     }
     networks = {
-        "hexsegformer": hexsegformer,
-        "hexsegformer_large": hexsegformer_large,
-        "hexsegformer_small": hexsegformer_small,
-        "hexsegformer_hoi4d_large": hexsegformer_hoi4d_large,
-        "hexsegformer_action_toy": hexsegformer_action_toy,
+        "hexformer": hexformer,
+        "hexformer_large": hexformer_large,
+        "hexformer_small": hexformer_small,
+        "hexformer_hoi4d_large": hexformer_hoi4d_large,
+        "hexformer_hoi4d": hexformer_hoi4d,
+        "hexformer_hoi4d_small": hexformer_hoi4d_small,
+        "hexformer_action": hexformer_action,
     }
 
     return networks[flags.name.lower()](**params)

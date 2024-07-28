@@ -19,7 +19,7 @@ class ActSegHeader(torch.nn.Module):
         self.classifier = torch.nn.Sequential(
             torch.nn.Linear(in_channel, hid_channel),
             torch.nn.BatchNorm1d(hid_channel),
-            torch.nn.LeakyReLU(inplace=True),
+            torch.nn.ReLU(inplace=True),
             torch.nn.Dropout(p = dropout),
             torch.nn.Linear(hid_channel, out_channel))
 
