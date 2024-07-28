@@ -79,35 +79,30 @@ class ReadHOI4D:
         root_pos = filename.find("/velodyne")
         assert root_pos > 0  # not found will be -1
         root_dir = filename[:root_pos]
-        frame_num = int(filename[root_pos + 10 : filename.find(".bin")])
+        video_id = int(filename[root_pos + 10 : filename.find(".bin")])
 
         # point clouds
-        pcds = []
-        past_frame = max(frame_num - self.history, 0)
-        for j, i in enumerate(range(past_frame, frame_num + 1)):
-            scan_name = root_dir + "/velodyne/{:0>6d}.bin".format(i)
-            scan = np.fromfile(scan_name, dtype=np.float32)
-            scan = scan.reshape((-1, 3))
-            N = np.shape(scan)[0]
-            points = np.ones((N, 4), dtype=np.float32)
-            # put in attribute
-            points[:, 1:] = scan  # get xyz
-            points[:, 0] *= j
-            pcds.append(points)
-        output["points"] = np.vstack(pcds)
+        scan_name = root_dir + "/velodyne/{:0>6d}.bin".format(video_id)
+        scan = np.fromfile(scan_name, dtype=np.float32)
+        scan = scan.reshape(150, 2048, 3) # HOI4D Action data hard code
+        output["points"] = self.points_3Dto4D(scan)
 
         # label
         if self.has_label:
-            labels = []
-            for i in range(past_frame, frame_num + 1):
-                label_name = root_dir + "/labels/{:0>6d}.label".format(frame_num)
-                label = np.fromfile(label_name, dtype=np.int32)
-                sem_label = label.reshape((-1))
-                labels.append(sem_label)
-            output["labels"] = np.hstack(labels)
-            output["labels"] = remap(output["labels"], False)
+            label_name = root_dir + "/labels/{:0>6d}.label".format(video_id)
+            label = np.fromfile(label_name, dtype=np.int32)
+            sem_label = label.reshape((-1))
+            output["labels"] = remap(sem_label, False)
 
         return output
+    
+    def points_3Dto4D(self, points_xyz: np.ndarray):
+        t_video, n_point, _ = points_xyz.shape
+        points_txyz = np.concatenate(
+            [np.zeros([t_video, n_point, 1]), points_xyz], axis=-1, dtype=np.float32)
+        points_txyz[:, :, 0] += (np.arange(t_video) + 1)[:, None]
+        points_txyz = points_txyz.reshape([-1, 4])  # (t_video * n_point, 4)
+        return points_txyz
 
 
 class CollateBatch:
@@ -125,7 +120,7 @@ class CollateBatch:
         return outputs
 
 
-def get_hoi4d_seg_dataset(flags):
+def get_hoi4d_act_seg_dataset(flags):
     transform = HOI4DTransform(flags)
     read_file = ReadHOI4D(
         has_label=flags.has_label, root_dir=flags.location, history=flags.history
