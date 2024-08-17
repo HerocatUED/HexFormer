@@ -109,14 +109,30 @@ def hexformer_action(in_channels, out_channels, **kwargs):
         in_channels,
         out_channels,
         channels=[128, 256, 512],
-        num_blocks=[2, 4, 6],
-        num_heads=[4, 8, 16],
+        num_blocks=[4, 4, 4],
+        num_heads=[8, 16, 32],
         patch_size=128,
         dilation=4,
         drop_path=0.5,
         nempty=True,
         stem_down=2,
         hid_channel=1024,
+        head_drop=0.5,
+    )
+    
+def hexformer_action_small(in_channels, out_channels, **kwargs):
+    return HexFormerActSeg(
+        in_channels,
+        out_channels,
+        channels=[64, 128, 256],
+        num_blocks=[2, 2, 2],
+        num_heads=[4, 8, 16],
+        patch_size=128,
+        dilation=4,
+        drop_path=0.5,
+        nempty=True,
+        stem_down=2,
+        hid_channel=512,
         head_drop=0.5,
     )
 
@@ -136,6 +152,7 @@ def get_segmentation_model(flags):
         "hexformer_hoi4d": hexformer_hoi4d,
         "hexformer_hoi4d_small": hexformer_hoi4d_small,
         "hexformer_action": hexformer_action,
+        "hexformer_action_small": hexformer_action_small,
     }
 
     return networks[flags.name.lower()](**params)
