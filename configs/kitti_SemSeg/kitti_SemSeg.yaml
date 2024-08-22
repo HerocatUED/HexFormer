@@ -1,0 +1,90 @@
+SOLVER:
+  gpu: 0,1,2,3
+  run: train
+  logdir: logs/log_3Dconv_4Dattention_CPE_RPE_polar # NOTE: MultiScan has 26 classes
+  best_val: max:mIoU_part
+
+  ckpt_num: 10
+  max_epoch: 50
+  test_every_epoch: 1
+  log_per_iter: 100
+
+  weight_decay: 1e-4
+  type: adamw_attn
+  lr: 2e-3
+  # lr_min: 2e-5
+  lr_type: cos
+  # warmup_epoch: 5
+  rand_seed: 13
+  dist_url: tcp://localhost:10002 # for distributed training
+
+
+DATA:
+  train:
+    name: kitti_SemSeg
+
+    # hextree building
+    depth: 12
+    full_depth: 3
+
+    # data augmentations
+    distort: True
+    angle: (10, 10, 180)
+    scale: 0.1
+    flip: (0.5, 0.5, 0.0)
+    uniform: True
+    cutmix: 0.0 # no cutmix
+    crop_ratio: 1 # random ratio of random cropping
+    max_npt: -1 # max point number of random cropping
+    # data loading
+    has_label: True
+    history: 2
+    location: /data/wangx/dataset/SemanticKITTI
+    filelist: configs/kitti_SemSeg/train_data.txt
+    batch_size: 2 # for a single GPU, real batch size = GPU_num * batch_size
+    shuffle: True
+    num_workers: 1
+
+  test:
+    name: kitti_SemSeg
+
+    # hextree building
+    depth: 12
+    full_depth: 3
+
+    # data augmentations
+    distort: False # no data augmentation by default
+    angle: (5, 5, 180)
+    scale: 0.1
+    flip: (0.5, 0.5, 0.0)
+    uniform: False
+    crop_ratio: 0.8
+    max_npt: -1
+    cutmix: 0.0
+
+    # data loading
+    has_label: True
+    history: 2
+    location: /data/wangx/dataset/SemanticKITTI
+    filelist: configs/kitti_SemSeg/val_data.txt
+    batch_size: 1
+    shuffle: False
+    num_workers: 1
+
+MODEL:
+  name: hexformer_kitti
+  feature:
+    GF # G -> Position txyz (4 channels);
+    # F -> Lidar Density (1 channel) & Polar Coordinate (3 channel)
+  channel: 8
+  nout: 26
+  nempty: True
+  interp: nearest
+  sync_bn: True
+  find_unused_parameters: False
+  use_compile: False
+
+LOSS:
+  mask: 0
+  num_class: 26
+  weighted: False

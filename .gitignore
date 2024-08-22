@@ -2,7 +2,9 @@
 .vscode
 *.npy
 *.npz
-configs
 logs*/
 test/test_data/
 dataset
+**/test_data.txt
+**/train_data.txt
+**/val_data.txt
