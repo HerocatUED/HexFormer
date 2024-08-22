@@ -55,7 +55,7 @@ def hexformer_hoi4d_large(in_channels, out_channels, **kwargs):
         head_drop=[0.5, 0.5],
     )
     
-def hexformer_large(in_channels, out_channels, **kwargs):
+def hexformer_kitti_large(in_channels, out_channels, **kwargs):
     return HexFormerSemSeg(
         in_channels,
         out_channels,
@@ -71,7 +71,7 @@ def hexformer_large(in_channels, out_channels, **kwargs):
         head_drop=[0.5, 0.5],
     )
 
-def hexformer(in_channels, out_channels, **kwargs):
+def hexformer_kitti(in_channels, out_channels, **kwargs):
     return HexFormerSemSeg(
         in_channels,
         out_channels,
@@ -88,7 +88,7 @@ def hexformer(in_channels, out_channels, **kwargs):
     )
     
     
-def hexformer_small(in_channels, out_channels, **kwargs):
+def hexformer_kitti_small(in_channels, out_channels, **kwargs):
     return HexFormerSemSeg(
         in_channels,
         out_channels,
@@ -145,9 +145,9 @@ def get_segmentation_model(flags):
         "nempty": flags.nempty,
     }
     networks = {
-        "hexformer": hexformer,
-        "hexformer_large": hexformer_large,
-        "hexformer_small": hexformer_small,
+        "hexformer_kitti": hexformer_kitti,
+        "hexformer_kitti_large": hexformer_kitti_large,
+        "hexformer_kitti_small": hexformer_kitti_small,
         "hexformer_hoi4d_large": hexformer_hoi4d_large,
         "hexformer_hoi4d": hexformer_hoi4d,
         "hexformer_hoi4d_small": hexformer_hoi4d_small,
