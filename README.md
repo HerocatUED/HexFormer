@@ -40,9 +40,9 @@ python run.py --run train --alias $alias$ --gpu 0,1,2,3 --port 10008
 ```
 python run.py --run test --alias $alias$ --gpu 0 --port 10008 --ckpt $path_to_your_model$
 ```
-After that, you can prepare results for submition according to the task. We provide scripts to convert. This scripts also provide other function you may need for further study, details see **data_utils/tools.py**. An example usage:
+After that, you can prepare results for submition according to the task. We provide scripts to convert. This scripts also provide other function you may need for further study, details see **data_utils/tools.py**. An example usage (you can find **predict.npy** under **log_dir** after you run following command):
 ```
-python data_utils/tools.py --task $npy_act$ --log_dir $$ --save_path $$
+python data_utils/tools.py --task npy_act --log_dir logs/log_3Dconv_4Dattention_CPE_RPE_d9_3blocks_huge_test_hoi4d_actseg
 ```
 
 
