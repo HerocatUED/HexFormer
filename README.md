@@ -1,6 +1,15 @@
 # HexFormer
 Official code for **HexFormer: An Efficient Backbone For Point Cloud Video Understanding**
 
+TODO： 
+- Efficiency Exp
+- speedup with torch.compile()
+- loss design
+- reuse history prediction
+- clean locations and paths for datasets
+- update config files
+- clean the code
+
 ## Quick Stark
 1. Clone the repository.
 ```
@@ -16,7 +25,7 @@ pip install -r requirements.txt
 3. Prepare datasets, download and unzip.
 - [SemanticKITTI](http://www.semantic-kitti.org/dataset.html#download)
 - [HOI4D](https://www.hoi4d.top/#downLoad)
-4. Generate filelist. 
+4. Preprocess dataset. We convert all datasets to SemanticKITTI structure and generate filelist for train, validate and test.
 
     **alias** is the name of tasks, e.g. kitti_SemSeg, hoi4d_SemSeg, hoi4d_ActSeg. 
 
@@ -40,17 +49,10 @@ python run.py --run train --alias $alias$ --gpu 0,1,2,3 --port 10008
 ```
 python run.py --run test --alias $alias$ --gpu 0 --port 10008 --ckpt $path_to_your_model$
 ```
-After that, you can prepare results for submition according to the task. We provide scripts to convert. This scripts also provide other function you may need for further study, details see **data_utils/tools.py**. An example usage (you can find **predict.npy** under **log_dir** after you run following command):
+After that, you can prepare results for submition according to the task. We provide scripts for help. This scripts also provide other function you may need for further study, details please refer to **data_utils/tools.py**. 
+
+An example usage: you can find **predict.npy** under **log_dir** after you run following command
 ```
 python data_utils/tools.py --task npy_act --log_dir logs/log_3Dconv_4Dattention_CPE_RPE_d9_3blocks_huge_test_hoi4d_actseg
 ```
 
-
-TODO： 
-- Efficiency Exp
-- speedup with torch.compile()
-- loss design
-- reuse history prediction
-- clean locations and paths for datasets
-- update config files
-- clean the code
