@@ -1,7 +1,7 @@
 SOLVER:
   gpu: 0,1,2,3
   run: train
-  logdir: logs_hoi4d/log_3Dconv_4Dattention_CPE_RPE_huge_d10
+  logdir: logs_test/log_3Dconv_4Dattention_CPE_RPE_huge_d10
   best_val: max:mIoU_part
 
   ckpt_num: 10
@@ -63,13 +63,13 @@ DATA:
     cutmix: 0.0   # no cutmix
 
     # data loading
-    has_label: True
+    has_label: False
     history: 2
     location: /data/wangx/dataset/HOI4D
-    filelist: configs/hoi4d_SemSeg/val_data.txt
-    batch_size: 12
+    filelist: configs/hoi4d_SemSeg/test_data.txt
+    batch_size: 1
     shuffle: False
-    num_workers: 2
+    num_workers: 1
 
 MODEL:
   name: hexformer_hoi4d_large

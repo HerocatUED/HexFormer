@@ -1,7 +1,7 @@
 SOLVER:
   gpu: 0,1,2,3
   run: train
-  logdir: logs_test/log_3Dconv_4Dattention_CPE_RPE_d9_3blocks_huge
+  logdir: logs/log_3Dconv_4Dattention_CPE_RPE_d9_3blocks_huge
   best_val: max:accu
 
   ckpt_num: 10
