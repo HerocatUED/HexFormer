@@ -113,7 +113,7 @@ class CPE(torch.nn.Module):
     def __init__(self, channels: int, group_size: int = 32, kernel_size: List[int] = [3], 
                  stride: int = 1, nempty: bool = False):
         super().__init__()
-        self.conv = HextreeGroupConv(channels, group_size, kernel_size, stride, nempty, use_t=True)
+        self.conv = HextreeGroupConv(channels, group_size, kernel_size, stride, nempty)
         self.bn = torch.nn.BatchNorm1d(channels)
 
     def forward(self, data: torch.Tensor, hextree: Hextree, depth: int):

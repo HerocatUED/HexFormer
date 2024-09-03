@@ -16,6 +16,7 @@ TODO：
 git clone git@github.com:HerocatUED/HexFormer.git
 ```
 2. Install [Pytorch](https://pytorch.org/) and other requirements (enter the folder *HexFormer*). 
+    
     **Note**: we tested codes with Python 3.10, torch 2.3.0 with CUDA 11.8
 ```
 cd HexFormer
