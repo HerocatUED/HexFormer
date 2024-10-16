@@ -14,36 +14,36 @@ cfg = yaml.safe_load(open(config_path, "r"))
 
 
 def remap(semantic: np.array, inverse: bool = False):
-        r"""
-        Remap semantic classes. https://github.com/PRBonn/semantic-kitti-api
+    r"""
+    Remap semantic classes. https://github.com/PRBonn/semantic-kitti-api
 
-        Args:
-        semantic: semantic classes to remap.
-        inverse: class2num if True, num2class if False. NOTE: See KITTI config for more.
-        """
-        
-        # get number of interest classes, and the label mappings
-        if inverse:
-            # print("Mapping xentropy to original labels")
-            remapdict = cfg["learning_map_inv"]
-        else:
-            remapdict = cfg["learning_map"]
+    Args:
+    semantic: semantic classes to remap.
+    inverse: class2num if True, num2class if False. NOTE: See KITTI config for more.
+    """
+    
+    # get number of interest classes, and the label mappings
+    if inverse:
+        # print("Mapping xentropy to original labels")
+        remapdict = cfg["learning_map_inv"]
+    else:
+        remapdict = cfg["learning_map"]
 
-        # make lookup table for mapping
-        maxkey = max(remapdict.keys())
+    # make lookup table for mapping
+    maxkey = max(remapdict.keys())
 
-        # +100 hack making lut bigger just in case there are unknown labels
-        remap_lut = np.zeros((maxkey + 100), dtype=np.int32)
-        remap_lut[list(remapdict.keys())] = list(remapdict.values())
-        return remap_lut[semantic]
+    # +100 hack making lut bigger just in case there are unknown labels
+    remap_lut = np.zeros((maxkey + 100), dtype=np.int32)
+    remap_lut[list(remapdict.keys())] = list(remapdict.values())
+    return remap_lut[semantic]
 
 
 class KITTITransform(Transform):
 
-    def __init__(self, flags):
-        super().__init__(**flags)
+    def __init__(self, flags_data):
+        super().__init__(**flags_data)
 
-        self.flags = flags
+        self.flags_data = flags_data
         self.scale_factor = 100
 
     def __call__(self, sample, idx=None):
@@ -62,8 +62,8 @@ class KITTITransform(Transform):
         
         # random crop
         if self.distort:
-            max_npt = self.flags.max_npt if self.flags.max_npt > 0 else pcds.npt
-            max_npt = min(max_npt, int(pcds.npt * self.flags.crop_ratio))
+            max_npt = self.flags_data.max_npt if self.flags_data.max_npt > 0 else pcds.npt
+            max_npt = min(max_npt, int(pcds.npt * self.flags_data.crop_ratio))
             pcds = self.rand_crop(pcds, max_npt)
             
         # align z
@@ -205,12 +205,12 @@ class CollateBatch:
         return outputs
 
 
-def get_kitti_sem_seg_dataset(flags):
-    transform = KITTITransform(flags)
+def get_kitti_sem_seg_dataset(flags_data):
+    transform = KITTITransform(flags_data)
     read_file = ReadKITTI(
-        has_label=flags.has_label, root_dir=flags.location, history=flags.history
+        has_label=flags_data.has_label, root_dir=flags_data.location, history=flags_data.history
     )
-    collate_batch = CollateBatch(flags.cutmix)
+    collate_batch = CollateBatch(flags_data.cutmix)
 
-    dataset = Dataset(flags.location, flags.filelist, transform, read_file=read_file)
+    dataset = Dataset(flags_data.location, flags_data.filelist, transform, read_file=read_file)
     return dataset, collate_batch

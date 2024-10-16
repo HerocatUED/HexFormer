@@ -21,7 +21,7 @@ SOLVER:
 
 DATA:
   train:
-    name: kitti_SemSeg
+    task: kitti_SemSeg
 
     # hextree building
     depth: 12
@@ -39,14 +39,14 @@ DATA:
     # data loading
     has_label: True
     history: 2
-    location: /data/wangx/dataset/SemanticKITTI
+    location: /mnt/sdc/wangrh/data/SemanticKITTI
     filelist: configs/kitti_SemSeg/train_data.txt
     batch_size: 1 # for a single GPU, real batch size = GPU_num * batch_size
     shuffle: True
     num_workers: 1
 
   test:
-    name: kitti_SemSeg
+    task: kitti_SemSeg
 
     # hextree building
     depth: 12
@@ -65,7 +65,7 @@ DATA:
     # data loading
     has_label: True
     history: 2
-    location: /data/wangx/dataset/SemanticKITTI
+    location: /mnt/sdc/wangrh/data/SemanticKITTI
     filelist: configs/kitti_SemSeg/val_data.txt
     batch_size: 1
     shuffle: False

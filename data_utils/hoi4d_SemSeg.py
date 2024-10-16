@@ -20,10 +20,10 @@ def remap(semantic: np.array, inverse: bool = False):
     
 class HOI4DTransform(Transform):
 
-    def __init__(self, flags):
-        super().__init__(**flags)
+    def __init__(self, flags_data):
+        super().__init__(**flags_data)
 
-        self.flags = flags
+        self.flags_data = flags_data
         self.scale_factor = 100
 
     def __call__(self, sample, idx=None):
@@ -41,8 +41,8 @@ class HOI4DTransform(Transform):
         
         # random crop
         if self.distort:
-            max_npt = self.flags.max_npt if self.flags.max_npt > 0 else pcds.npt
-            max_npt = min(max_npt, int(pcds.npt * self.flags.crop_ratio))
+            max_npt = self.flags_data.max_npt if self.flags_data.max_npt > 0 else pcds.npt
+            max_npt = min(max_npt, int(pcds.npt * self.flags_data.crop_ratio))
             pcds = self.rand_crop(pcds, max_npt)
             
         # align z
@@ -125,12 +125,12 @@ class CollateBatch:
         return outputs
 
 
-def get_hoi4d_sem_seg_dataset(flags):
-    transform = HOI4DTransform(flags)
+def get_hoi4d_sem_seg_dataset(flags_data):
+    transform = HOI4DTransform(flags_data)
     read_file = ReadHOI4D(
-        has_label=flags.has_label, root_dir=flags.location, history=flags.history
+        has_label=flags_data.has_label, root_dir=flags_data.location, history=flags_data.history
     )
-    collate_batch = CollateBatch(flags.cutmix)
+    collate_batch = CollateBatch(flags_data.cutmix)
 
-    dataset = Dataset(flags.location, flags.filelist, transform, read_file=read_file)
+    dataset = Dataset(flags_data.location, flags_data.filelist, transform, read_file=read_file)
     return dataset, collate_batch

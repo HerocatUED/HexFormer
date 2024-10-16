@@ -137,12 +137,12 @@ def hexformer_action_small(in_channels, out_channels, **kwargs):
     )
 
 
-def get_segmentation_model(flags):
+def get_segmentation_model(flags_model):
     params = {
-        "in_channels": flags.channel,
-        "out_channels": flags.nout,
-        "interp": flags.interp,
-        "nempty": flags.nempty,
+        "in_channels": flags_model.channel,
+        "out_channels": flags_model.nout,
+        "interp": flags_model.interp,
+        "nempty": flags_model.nempty,
     }
     networks = {
         "hexformer_kitti": hexformer_kitti,
@@ -155,15 +155,15 @@ def get_segmentation_model(flags):
         "hexformer_action_small": hexformer_action_small,
     }
 
-    return networks[flags.name.lower()](**params)
+    return networks[flags_model.name.lower()](**params)
 
 
-def get_segmentation_dataset(flags):
-    if flags.name.lower() == "hoi4d_semseg":
-        return get_hoi4d_sem_seg_dataset(flags)
-    elif flags.name.lower() == "kitti_semseg":
-        return get_kitti_sem_seg_dataset(flags)
-    elif flags.name.lower() == "hoi4d_actseg":
-        return get_hoi4d_act_seg_dataset(flags)
+def get_segmentation_dataset(flags_data):
+    if flags_data.task.lower() == "hoi4d_semseg":
+        return get_hoi4d_sem_seg_dataset(flags_data)
+    elif flags_data.task.lower() == "kitti_semseg":
+        return get_kitti_sem_seg_dataset(flags_data)
+    elif flags_data.task.lower() == "hoi4d_actseg":
+        return get_hoi4d_act_seg_dataset(flags_data)
     else:
         raise NotImplementedError
