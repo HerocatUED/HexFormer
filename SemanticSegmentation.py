@@ -6,6 +6,7 @@ import yaml
 import numpy as np
 from tqdm import tqdm
 from thsolver import Solver
+import time
 
 from hextree import Hextree, merge_hextrees, merge_points
 from modules import InputFeature
@@ -14,6 +15,10 @@ from builder import get_segmentation_dataset, get_segmentation_model
 # The following line is to fix `RuntimeError: received 0 items of ancdata`.
 # Refer: https://github.com/pytorch/pytorch/issues/973
 torch.multiprocessing.set_sharing_strategy("file_system")
+
+def count_parameters_in_millions(model):
+    total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
+    return total_params / 1e6  # Convert to millions
 
 
 class SemSegSolver(Solver):
@@ -29,7 +34,9 @@ class SemSegSolver(Solver):
         self.remap = remap
 
     def get_model(self, flags):
-        return get_segmentation_model(flags)
+        model = get_segmentation_model(flags)
+        print(count_parameters_in_millions(model))
+        return model
 
     def get_dataset(self, flags):
         return get_segmentation_dataset(flags)
@@ -105,8 +112,17 @@ class SemSegSolver(Solver):
 
     def train_step(self, batch):
         batch = self.process_batch(batch, self.FLAGS.DATA.train)
+
+        start_time = time.time()    
+        
         logit, label = self.model_forward(batch)
         loss = self.loss_function(logit, label)
+        
+        end_time = time.time()
+        memory = torch.cuda.max_memory_allocated() / 1024.0 / 1024.0
+        
+        print(f"Train forward time: {end_time - start_time}, Memory: {memory}")
+        
         accu = self.accuracy(logit, label)
         return {"train/loss": loss, "train/accu": accu}
 
@@ -137,9 +153,18 @@ class SemSegSolver(Solver):
         curr_folder = os.path.dirname(filename)
         if not os.path.exists(curr_folder):
             os.makedirs(curr_folder)
+            
+        start_time = time.time()    
+        
         with torch.no_grad():
-            logit = self.model_forward(batch, False)
+            logit = self.model_forward(batch, False)       
         pred = logit.argmax(dim=1).cpu().numpy().astype(np.int32)
+        
+        end_time = time.time()
+        memory = torch.cuda.max_memory_allocated() / 1024.0 / 1024.0
+        
+        print(f"Inference time: {end_time - start_time}, Memory: {memory}")
+        
         pred = self.remap(pred, True)
         pred.tofile(filename)
         

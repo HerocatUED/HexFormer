@@ -1,7 +1,9 @@
 SOLVER:
   gpu: 0,1,2,3
   run: train
-  logdir: logs_test/log_3Dconv_4Dattention_CPE_RPE_huge_d10
+  # logdir: logs_test/log_3Dconv_4Dattention_CPE_RPE_huge_d10
+  # logdir: logs_test/log_small
+  logdir: logs_test/log_base
   best_val: max:mIoU_part
 
   ckpt_num: 10
@@ -21,7 +23,7 @@ SOLVER:
 
 DATA:
   train:
-    name: hoi4d_SemSeg
+    task: hoi4d_SemSeg
 
     # hextree building
     depth: 10
@@ -41,12 +43,12 @@ DATA:
     history: 2
     location: /data/wangx/dataset/HOI4D
     filelist: configs/hoi4d_SemSeg/train_data.txt
-    batch_size: 12 # for a single GPU, real batch size = GPU_num * batch_size
+    batch_size: 1
     shuffle: True
     num_workers: 2
 
   test:
-    name: hoi4d_SemSeg
+    task: hoi4d_SemSeg
 
     # hextree building
     depth: 10
@@ -72,7 +74,9 @@ DATA:
     num_workers: 1
 
 MODEL:
-  name: hexformer_hoi4d_large
+  # name: hexformer_hoi4d_large
+  # name: hexformer_hoi4d
+  name: hexformer_hoi4d
   feature: G
   channel: 4
   nout: 49
