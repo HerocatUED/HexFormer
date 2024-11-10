@@ -1,7 +1,5 @@
 # HexFormer
-Intro: a general 4D backbone
-
-Task: point cloud sequence segmentation (for now)
+Official code for **HexFormer: An Efficient Backbone For Point Cloud Video Understanding**
 
 ## Quick Stark
 1. Clone the repository.
@@ -9,6 +7,8 @@ Task: point cloud sequence segmentation (for now)
 git clone git@github.com:HerocatUED/HexFormer.git
 ```
 2. Install [Pytorch](https://pytorch.org/) and other requirements (enter the folder *HexFormer*). 
+    
+    **Note**: we tested codes with Python 3.10, torch 2.3.0 with CUDA 11.8
 ```
 cd HexFormer
 pip3 install torch torchvision torchaudio
@@ -16,43 +16,35 @@ pip install -r requirements.txt
 ```
 3. Prepare datasets, download and unzip.
 - [SemanticKITTI](http://www.semantic-kitti.org/dataset.html#download)
-- [HOI4D](https://onedrive.live.com/?redeem=aHR0cHM6Ly8xZHJ2Lm1zL3UvcyFBcFFGX2VfYnctVVNnaU9CSW5Ga0dxR1p4ZU1lP2U9eGFQcGl3&id=12E5C3DBEFFD0594%21291&cid=12E5C3DBEFFD0594)
-4. Generate filelist and Modify config file (It takes a long time to preprocess)
+- [HOI4D](https://www.hoi4d.top/#downLoad)
+4. Preprocess dataset. We convert all datasets to SemanticKITTI structure and generate filelist for train, validate and test.
+
+    **alias** is the name of tasks, e.g. kitti_SemSeg, hoi4d_SemSeg, hoi4d_ActSeg. 
+
+    **root_dir** is where you download the dataset, e.g. Path to your dataset will be **root_dir/train1.h5** or **root_dir/dataset/sequences/...**, 
+
 ```
 python data_utils/dataset.py --alias $alias$ --root_dir $.../SemanticKITTI$
 ```
-5. Train
+5. Modify config file. Config files are placed in the folder **configs**. 
+Neccessary modifications:
+- **logdir**(line 4) if you start a new experiment.
+- **has_label**(line 66) $True$ if you conduct train; $Flase$ if you conduct inference. 
+- **location** (line 42, 68) and file list
+- **batch_size** (line 70) 1 if you conduct inference, otherwise whatever.
+- **num_workers** (line 72) 1 if you conduct inference, otherwise whatever.
+6. Train.
 ```
 python run.py --run train --alias $alias$ --gpu 0,1,2,3 --port 10008
 ```
-6. Inference (with only one GPU)
-**modify config.json**, test: batch size = 1, num_worker = 1
+7. Inference. **Note: modify config file before you conduct inference.**
 ```
 python run.py --run test --alias $alias$ --gpu 0 --port 10008 --ckpt $path_to_your_model$
 ```
-Inference speed on KITTI with single 4090GPU: 
-20351frame / 3706s = 5.5 FPS
-FPS_min = 5, FPS_avg = 6, FPS_top = 8.
+After that, you can prepare results for submition according to the task. We provide scripts for help. This scripts also provide other function you may need for further study, details please refer to **data_utils/tools.py**. 
 
-Convert to HOI4D.npy with data_utils/tools.py
-
+An example usage: you can find **predict.npy** under **log_dir** after you run following command
 ```
-python data_utils/tools.py --task npy_act
+python data_utils/tools.py --task npy_act --log_dir logs/log_3Dconv_4Dattention_CPE_RPE_d9_3blocks_huge_test_hoi4d_actseg
 ```
-has\_label, test file list, batch size, location
-**Note** 
-- Tested with Python 3.10, torch 2.3.0 with CUDA 11.8
 
-TODO： 
-- speedup with torch.compile()
-- loss design
-- reuse history prediction
-- clean locations and paths for datasets
-- update config files
-- KITTI init feature: polar
-- Efficiency Exp
-- Add Action Segmentaion task: DA
-- HOI4D Vis, center?
-- script.sh
-- clean the code
-- clean tools

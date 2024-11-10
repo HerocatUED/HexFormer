@@ -1,0 +1,9 @@
+All (Train + Test)
+
+xyz:
+x_min -43.64427896
+x_max 42.81422813
+y_min -30.09354823
+y_max 29.98298534
+z_min 1.154
+z_max 59.98

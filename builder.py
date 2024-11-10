@@ -55,14 +55,14 @@ def hexformer_hoi4d_large(in_channels, out_channels, **kwargs):
         head_drop=[0.5, 0.5],
     )
     
-def hexformer_large(in_channels, out_channels, **kwargs):
+def hexformer_kitti_large(in_channels, out_channels, **kwargs):
     return HexFormerSemSeg(
         in_channels,
         out_channels,
         channels=[128, 256, 512, 512],
         num_blocks=[2, 2, 6, 2],
         num_heads=[4, 8, 16, 32],
-        patch_size=192,
+        patch_size=128,
         dilation=4,
         drop_path=0.5,
         nempty=True,
@@ -71,14 +71,14 @@ def hexformer_large(in_channels, out_channels, **kwargs):
         head_drop=[0.5, 0.5],
     )
 
-def hexformer(in_channels, out_channels, **kwargs):
+def hexformer_kitti(in_channels, out_channels, **kwargs):
     return HexFormerSemSeg(
         in_channels,
         out_channels,
         channels=[64, 128, 256, 256],
         num_blocks=[2, 2, 6, 2],
         num_heads=[4, 8, 16, 32],
-        patch_size=64,
+        patch_size=128,
         dilation=4,
         drop_path=0.5,
         nempty=True,
@@ -88,7 +88,7 @@ def hexformer(in_channels, out_channels, **kwargs):
     )
     
     
-def hexformer_small(in_channels, out_channels, **kwargs):
+def hexformer_kitti_small(in_channels, out_channels, **kwargs):
     return HexFormerSemSeg(
         in_channels,
         out_channels,
@@ -104,7 +104,7 @@ def hexformer_small(in_channels, out_channels, **kwargs):
         head_drop=[0.5, 0.5],
     )
     
-def hexformer_action(in_channels, out_channels, **kwargs):
+def hexformer_action_large(in_channels, out_channels, **kwargs):
     return HexFormerActSeg(
         in_channels,
         out_channels,
@@ -120,7 +120,7 @@ def hexformer_action(in_channels, out_channels, **kwargs):
         head_drop=0.5,
     )
     
-def hexformer_action_small(in_channels, out_channels, **kwargs):
+def hexformer_action(in_channels, out_channels, **kwargs):
     return HexFormerActSeg(
         in_channels,
         out_channels,
@@ -145,9 +145,9 @@ def get_segmentation_model(flags):
         "nempty": flags.nempty,
     }
     networks = {
-        "hexformer": hexformer,
-        "hexformer_large": hexformer_large,
-        "hexformer_small": hexformer_small,
+        "hexformer_kitti": hexformer_kitti,
+        "hexformer_kitti_large": hexformer_kitti_large,
+        "hexformer_kitti_small": hexformer_kitti_small,
         "hexformer_hoi4d_large": hexformer_hoi4d_large,
         "hexformer_hoi4d": hexformer_hoi4d,
         "hexformer_hoi4d_small": hexformer_hoi4d_small,
