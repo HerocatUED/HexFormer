@@ -123,11 +123,11 @@ class ReadKITTI:
             scan = np.fromfile(scan_name, dtype=np.float32)
             scan = scan.reshape((-1, 4))
             N = np.shape(scan)[0]
-            points = np.ones((N, 5), dtype=np.float32)
+            points = np.ones((N, 8), dtype=np.float32)
             # put in attribute
             points[:, 1:4] = self.local2global(scan[:, 0:3], i, sequence_id)  # get xyz
             points[:, 4] = scan[:, 3]  # density
-            # points[:, 5:] = self.polar(scan[:, 0:3]) # polar
+            points[:, 5:] = self.polar(scan[:, 0:3]) # polar
             points[:, 0] *= j
             pcds.append(points)
         output["points"] = np.vstack(pcds)

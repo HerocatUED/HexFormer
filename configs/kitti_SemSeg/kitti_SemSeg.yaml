@@ -1,7 +1,7 @@
 SOLVER:
   gpu: 0,1,2,3
   run: train
-  logdir: logs/log_3Dconv_4Dattention_CPE_RPE_huge # NOTE: MultiScan has 26 classes
+  logdir: logs_test/log_3Dconv_4Dattention_CPE_RPE_huge_polar # NOTE: MultiScan has 26 classes
   best_val: max:mIoU_part
 
   ckpt_num: 10
@@ -63,10 +63,10 @@ DATA:
     cutmix: 0.0
 
     # data loading
-    has_label: True
+    has_label: False
     history: 2
     location: /data/wangx/dataset/SemanticKITTI
-    filelist: configs/kitti_SemSeg/val_data.txt
+    filelist: configs/kitti_SemSeg/test_data.txt
     batch_size: 1
     shuffle: False
     num_workers: 1
@@ -76,7 +76,7 @@ MODEL:
   feature:
     GF # G -> Position txyz (4 channels);
     # F -> Lidar Density (1 channel) or add Polar Coordinate (3 channel)
-  channel: 5
+  channel: 8
   nout: 26
   nempty: True
   interp: nearest

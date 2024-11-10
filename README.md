@@ -1,15 +1,6 @@
 # HexFormer
 Official code for **HexFormer: An Efficient Backbone For Point Cloud Video Understanding**
 
-TODO： 
-- Efficiency Exp
-- speedup with torch.compile()
-- loss design
-- reuse history prediction
-- clean locations and paths for datasets
-- update config files
-- clean the code
-
 ## Quick Stark
 1. Clone the repository.
 ```
@@ -39,7 +30,7 @@ python data_utils/dataset.py --alias $alias$ --root_dir $.../SemanticKITTI$
 Neccessary modifications:
 - **logdir**(line 4) if you start a new experiment.
 - **has_label**(line 66) $True$ if you conduct train; $Flase$ if you conduct inference. 
-- **location** (line 42, 68)
+- **location** (line 42, 68) and file list
 - **batch_size** (line 70) 1 if you conduct inference, otherwise whatever.
 - **num_workers** (line 72) 1 if you conduct inference, otherwise whatever.
 6. Train.

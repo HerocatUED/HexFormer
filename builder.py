@@ -60,7 +60,7 @@ def hexformer_kitti_large(in_channels, out_channels, **kwargs):
         in_channels,
         out_channels,
         channels=[128, 256, 512, 512],
-        num_blocks=[2, 2, 6, 6],
+        num_blocks=[2, 2, 6, 2],
         num_heads=[4, 8, 16, 32],
         patch_size=128,
         dilation=4,
@@ -104,7 +104,7 @@ def hexformer_kitti_small(in_channels, out_channels, **kwargs):
         head_drop=[0.5, 0.5],
     )
     
-def hexformer_action(in_channels, out_channels, **kwargs):
+def hexformer_action_large(in_channels, out_channels, **kwargs):
     return HexFormerActSeg(
         in_channels,
         out_channels,
@@ -120,7 +120,7 @@ def hexformer_action(in_channels, out_channels, **kwargs):
         head_drop=0.5,
     )
     
-def hexformer_action_small(in_channels, out_channels, **kwargs):
+def hexformer_action(in_channels, out_channels, **kwargs):
     return HexFormerActSeg(
         in_channels,
         out_channels,
