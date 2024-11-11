@@ -3,7 +3,7 @@ SOLVER:
   run: train
   # logdir: logs_test/log_3Dconv_4Dattention_CPE_RPE_huge_d10
   # logdir: logs_test/log_small
-  logdir: logs_test/log_base
+  logdir: logs/hoi-for-vis
   best_val: max:mIoU_part
 
   ckpt_num: 10
@@ -68,15 +68,15 @@ DATA:
     has_label: False
     history: 2
     location: /data/wangx/dataset/HOI4D
-    filelist: configs/hoi4d_SemSeg/test_data.txt
+    filelist: configs/hoi4d_SemSeg/test_data1.txt
     batch_size: 1
     shuffle: False
     num_workers: 1
 
 MODEL:
-  # name: hexformer_hoi4d_large
+  name: hexformer_hoi4d_large
   # name: hexformer_hoi4d
-  name: hexformer_hoi4d
+  # name: hexformer_hoi4d
   feature: G
   channel: 4
   nout: 49

@@ -1,7 +1,7 @@
 SOLVER:
   gpu: 0,1,2,3
   run: train
-  logdir: logs/log_3Dconv_4Dattention_CPE_RPE_huge # NOTE: MultiScan has 26 classes
+  logdir: logs/log_3Dconv_4Dattention_CPE_RPE_huge-forvis # NOTE: MultiScan has 26 classes
   best_val: max:mIoU_part
 
   ckpt_num: 10
@@ -39,8 +39,8 @@ DATA:
     # data loading
     has_label: True
     history: 2
-    location: /mnt/sdc/wangrh/data/SemanticKITTI
-    filelist: configs/kitti_SemSeg/train_data.txt
+    location: /data/wangx/dataset/SemanticKITTI
+    filelist: /data/wangx/workspace/HexFormer/configs/kitti_SemSeg/train_data.txt
     batch_size: 1 # for a single GPU, real batch size = GPU_num * batch_size
     shuffle: True
     num_workers: 1
@@ -65,8 +65,8 @@ DATA:
     # data loading
     has_label: True
     history: 2
-    location: /mnt/sdc/wangrh/data/SemanticKITTI
-    filelist: configs/kitti_SemSeg/val_data.txt
+    location: /data/wangx/dataset/SemanticKITTI
+    filelist: configs/kitti_SemSeg/val_datacopy2.txt
     batch_size: 1
     shuffle: False
     num_workers: 1
